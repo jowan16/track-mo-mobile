@@ -1,18 +1,38 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { DarkTheme, DefaultTheme, ThemeProvider as RouterThemeProvider, Stack } from 'expo-router'
+import * as SplashScreen from 'expo-splash-screen'
 
-SplashScreen.preventAutoHideAsync();
+import { AnimatedSplashOverlay } from '@/components/animated-icon'
+import { AuthProvider } from '@/context/AuthContext'
+import { ThemeProvider, useAppTheme } from '@/context/ThemeContext'
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+SplashScreen.preventAutoHideAsync()
+
+function AppContent() {
+  const { resolvedTheme } = useAppTheme()
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <RouterThemeProvider
+      value={resolvedTheme === 'dark' ? DarkTheme : DefaultTheme}
+    >
       <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
-  );
+
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(user)" />
+        <Stack.Screen name="(admin)" />
+      </Stack>
+    </RouterThemeProvider>
+  )
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </AuthProvider>
+  )
 }
