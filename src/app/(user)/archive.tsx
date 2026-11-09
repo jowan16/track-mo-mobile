@@ -228,6 +228,7 @@ export default function ArchiveScreen() {
             Manage your archived records
           </Text>
         </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.tabs}>
@@ -456,24 +457,30 @@ const styles = StyleSheet.create({
     backgroundColor: C.canvas,
   },
   header: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 18,
-    gap: 12,
+    minHeight: 80,
   },
+  headerSpacer: { width: 44, height: 44 },
   headerText: {
-    flex: 1,
+    position: 'absolute',
+    left: 72,
+    right: 72,
+    alignItems: 'center',
   },
   title: {
     color: C.ink,
     fontSize: 24,
     fontWeight: '800',
-  },
+   textAlign: 'center' },
   subtitle: {
     color: C.muted,
     fontSize: 13,
     marginTop: 3,
-  },
+   textAlign: 'center' },
   tabs: {
     flexDirection: 'row',
     marginHorizontal: 16,
