@@ -151,6 +151,8 @@ const styles = StyleSheet.create({
   },
   headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
   headerSpacer: { width: 44, height: 44 },
+  title: { color: C.ink, fontSize: 24, fontWeight: '800', textAlign: 'center' },
+  subtitle: { color: C.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
   topicIcon: { width: 50, height: 50, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   topicTitle: { color: C.ink, fontSize: 15, fontWeight: '800' },
   topicDescription: { color: C.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
