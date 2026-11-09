@@ -204,9 +204,10 @@ function getDateError(value: string) {
 
 export default function ExpensesScreen() {
   const { profile } = useAuth()
-  const params = useLocalSearchParams<{ openForm?: string; receiptDraft?: string; receiptPath?: string; receiptModel?: string; receiptRawText?: string }>()
+  const params = useLocalSearchParams<{ openForm?: string; category?: string; receiptDraft?: string; receiptPath?: string; receiptModel?: string; receiptRawText?: string }>()
 
   const [categories, setCategories] = useState<Category[]>([])
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
 
@@ -287,9 +288,8 @@ export default function ExpensesScreen() {
         ),
       )
 
-      const trackedCategories = (
-        (categoriesResult.data ?? []) as Category[]
-      ).filter((category) => selectedIds.has(category.id))
+      const allActiveCategories = (categoriesResult.data ?? []) as Category[]
+      const trackedCategories = allActiveCategories.filter((category) => selectedIds.has(category.id))
 
       const trackedIds = new Set(
         trackedCategories.map((category) => category.id),
@@ -311,6 +311,7 @@ export default function ExpensesScreen() {
           amount: Number(budget.amount),
         }))
 
+      setAvailableCategories(allActiveCategories)
       setCategories(trackedCategories)
       setExpenses(trackedExpenses)
       setBudgets(activeBudgets)
@@ -403,6 +404,13 @@ export default function ExpensesScreen() {
     setPage(1)
   }, [search, selectedCategory])
 
+  useEffect(() => {
+    const categoryId = Number(params.category)
+    if (params.category && Number.isInteger(categoryId) && categoryId > 0) {
+      setSelectedCategory(categoryId)
+    }
+  }, [params.category])
+
   // ------------------------------------------------
   // FORM ACTIONS
   // ------------------------------------------------
@@ -431,7 +439,7 @@ export default function ExpensesScreen() {
 
     try {
       const draft = JSON.parse(params.receiptDraft) as import('@/services/receiptParser').ParsedReceipt
-      const category = categories.find(
+      const category = availableCategories.find(
         (item) => item.name.toLowerCase() === draft.suggestedCategory.toLowerCase(),
       )
       const itemSummary = draft.items.map((item) => item.item_name.trim()).filter(Boolean).slice(0, 5).join(', ')
@@ -463,7 +471,7 @@ export default function ExpensesScreen() {
     } finally {
       router.setParams({ receiptDraft: undefined, receiptPath: undefined, receiptModel: undefined, receiptRawText: undefined })
     }
-  }, [loading, params.receiptDraft, params.receiptPath, params.receiptModel, params.receiptRawText, categories])
+  }, [loading, params.receiptDraft, params.receiptPath, params.receiptModel, params.receiptRawText, availableCategories])
 
   const openEdit = (expense: Expense) => {
     setEditing(expense)
@@ -576,8 +584,9 @@ export default function ExpensesScreen() {
       return
     }
 
-    if (!categories.some((item) => item.id === form.category_id)) {
-      setFormError('Please select a valid tracked category.')
+    const selectableCategories = receiptContext ? availableCategories : categories
+    if (!selectableCategories.some((item) => item.id === form.category_id)) {
+      setFormError('Please select a valid category.')
       return
     }
 
@@ -613,6 +622,15 @@ export default function ExpensesScreen() {
       }
 
       if (receiptContext && !editing) {
+        // A receipt can reveal a valid category (for example Medicine) that
+        // the user has not tracked yet. Add it to their tracked categories
+        // before calling the receipt RPC, which enforces that relationship.
+        if (!categories.some((item) => item.id === form.category_id)) {
+          const { error: categoryError } = await supabase
+            .from('user_categories')
+            .insert({ user_id: profile.id, category_id: form.category_id })
+          if (categoryError) throw categoryError
+        }
         const { error } = await supabase.rpc('save_receipt_expense', {
           p_storage_path: receiptContext.path,
           p_merchant_name: receiptContext.draft.merchant_name.trim(),
@@ -1118,11 +1136,11 @@ export default function ExpensesScreen() {
 
                   {/* CATEGORY */}
                   <Text style={styles.fieldLabel}>Category</Text>
-                  {categories.length === 0 ? (
-                    <Text style={styles.fieldHint}>You have no tracked categories. Select categories in your account settings first.</Text>
+                  {availableCategories.length === 0 ? (
+                    <Text style={styles.fieldHint}>No active categories are available right now.</Text>
                   ) : (
                     <View style={styles.categoryChoices}>
-                      {categories.map((category) => {
+                      {availableCategories.map((category) => {
                         const active = form.category_id === category.id
                         return (
                           <Pressable
@@ -1143,6 +1161,9 @@ export default function ExpensesScreen() {
                       })}
                     </View>
                   )}
+                  <Text style={styles.fieldHint}>
+                    Your receipt's suggested category is selected automatically. Choosing a category you do not track yet will add it to your dashboard when you save.
+                  </Text>
 
                   {/* DATE */}
                   <Text style={styles.fieldLabel}>Date</Text>
