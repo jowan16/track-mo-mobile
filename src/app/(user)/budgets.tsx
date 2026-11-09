@@ -512,14 +512,12 @@ export default function BudgetsScreen() {
         {/* HEADER */}
 
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <UserMenuButton />
-            <View style={styles.headerText}>
-              <Text style={styles.pageTitle}>Budgets</Text>
-              <Text style={styles.pageSubtitle}>
-                Manage your monthly spending limits.
-              </Text>
-            </View>
+          <UserMenuButton />
+          <View style={styles.headerText}>
+            <Text style={styles.pageTitle}>Budgets</Text>
+            <Text style={styles.pageSubtitle}>
+              Manage your monthly spending limits.
+            </Text>
           </View>
 
           <View style={styles.brandMark}>
@@ -968,10 +966,12 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   header: {
+    position: 'relative',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 15,
+    minHeight: 44,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -980,18 +980,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerText: {
-    flex: 1,
+    position: 'absolute',
+    left: 54,
+    right: 54,
+    alignItems: 'center',
   },
   pageTitle: {
     fontSize: 27,
     fontWeight: '800',
     color: COLORS.ink,
-  },
+   textAlign: 'center' },
   pageSubtitle: {
     fontSize: 12,
     color: COLORS.muted,
     marginTop: 5,
-  },
+   textAlign: 'center' },
   brandMark: {
     width: 43,
     height: 43,
