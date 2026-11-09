@@ -72,13 +72,25 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
   const isPercent = (line: string) => /^[-+]?\s*\d+(?:\.\d+)?\s*%$/.test(line)
   const isQuantity = (line: string) => /^\d+(?:\.\d+)?\s*(?:PCS?|PIECES?|EA|EACH|UNIT|UNITS)?$/i.test(line)
 
+  const isLikelyItemName = (value: string) => {
+    const candidate = cleanLine(value)
+    const letters = candidate.match(/[A-Za-z]/g) ?? []
+    const digits = candidate.match(/\d/g) ?? []
+    if (candidate.length < 3 || letters.length < 3 || letters.length < digits.length) return false
+    if (ignored.test(candidate)) return false
+    if (/\b\d{1,2}:\d{2}(?::\d{2})?\b|\b(?:AM|PM)\b/i.test(candidate)) return false
+    if (/\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/.test(candidate)) return false
+    if (/^[-+\d.,\s:]+$/.test(candidate)) return false
+    return true
+  }
+
   const add = (nameValue: string, quantity: number, priceLine: string) => {
     const name = cleanLine(nameValue)
       .replace(/\b\d+(?:\.\d+)?\s*(?:PCS?|PIECES?)\b/ig, '')
       .replace(/^[\d.,\s]+/, '')
       .replace(/[-:]+$/g, '')
       .trim()
-    if (name.length < 3 || (name.match(/[A-Za-z]/g) ?? []).length < 3 || ignored.test(name)) return
+    if (!isLikelyItemName(name)) return
     const prices = amountTokens(priceLine)
     if (prices.length < 2) return
     const unit = money(prices[0].raw)
@@ -123,11 +135,9 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
       let name = prefix
       if (name.length < 3 || (name.match(/[A-Za-z]/g) ?? []).length < 3) {
         for (let back = i - 1; back >= Math.max(0, i - 4); back -= 1) {
-          if (isPercent(lines[back]) || isQuantity(lines[back]) || ignored.test(lines[back])) continue
-          if ((lines[back].match(/[A-Za-z]/g) ?? []).length >= 3) {
-            name = lines[back]
-            break
-          }
+          if (isPercent(lines[back]) || isQuantity(lines[back]) || !isLikelyItemName(lines[back])) continue
+          name = lines[back]
+          break
         }
       }
       add(name, 1, current)
@@ -139,30 +149,49 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
   return items
 }
 
-const totalFromReceiptLines = (lines: string[], items: ParsedReceiptItem[]) => {
-  const full = lines.join(' ')
-  // Match TOTAL / GRAND TOTAL / TOTAL DUE even when OCR splits the label and
-  // amount across adjacent visual lines.
-  const patterns = [
-    /\bGRAND\s+TOTAL\b\s*[:：-]?\s*(?:₱|PHP|P)?\s*([\d,]+\.\d{2})/i,
-    /\bTOTAL\s+DUE\b\s*[:：-]?\s*(?:₱|PHP|P)?\s*([\d,]+\.\d{2})/i,
-    /\bAMOUNT\s+DUE\b\s*[:：-]?\s*(?:₱|PHP|P)?\s*([\d,]+\.\d{2})/i,
-    /\bTOTAL\b\s*[:：-]?\s*(?:₱|PHP|P)?\s*([\d,]+\.\d{2})/i,
+const totalFromReceiptLines = (lines: string[]) => {
+  // Only a printed receipt-total label can populate the Receipt Total field.
+  // Never substitute an item price or a sum of extracted item prices.
+  const labels = [
+    /\\bGRAND\\s+TOTAL\\b/i,
+    /\\bTOTAL\\s+DUE\\b/i,
+    /\\bAMOUNT\\s+DUE\\b/i,
+    /\\bBALANCE\\s+DUE\\b/i,
+    /\\bNET\\s+TOTAL\\b/i,
+    /\\bTOTAL\\s+AMOUNT\\b/i,
+    /\\bTOTAL\\b/i,
   ]
-  for (const pattern of patterns) {
-    const match = full.match(pattern)
-    if (match) {
-      const value = money(match[1])
-      if (value !== null && value > 0) return value
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    if (/\\bSUB\\s*TOTAL\\b/i.test(line)) continue
+
+    for (const label of labels) {
+      const match = label.exec(line)
+      if (!match) continue
+
+      const afterLabel = line.slice((match.index ?? 0) + match[0].length)
+      const sameLineAmounts = amountTokens(afterLabel)
+      if (sameLineAmounts.length > 0) {
+        const value = money(sameLineAmounts[0].raw)
+        if (value !== null && value > 0) return value
+      }
+
+      // Some receipt OCR layouts put the total amount on the next line.
+      // Accept only a single amount on that line to avoid mistaking item rows
+      // containing unit price + line price for the receipt total.
+      for (let next = i + 1; next <= Math.min(i + 2, lines.length - 1); next += 1) {
+        if (/\\b(?:CASH|CHANGE|TENDERED|VAT|TAX|SUB\\s*TOTAL)\\b/i.test(lines[next])) break
+        const nextAmounts = amountTokens(lines[next])
+        if (nextAmounts.length === 1) {
+          const value = money(nextAmounts[0].raw)
+          if (value !== null && value > 0) return value
+        }
+        if (nextAmounts.length > 1) break
+      }
     }
   }
 
-  // If the printed total was not recognized, use the sum of confidently
-  // extracted item line totals. Never substitute VAT, cash received or change.
-  if (items.length > 0) {
-    const sum = Math.round(items.reduce((total, item) => total + (item.line_total ?? 0), 0) * 100) / 100
-    if (sum > 0) return sum
-  }
   return null
 }
 
@@ -172,7 +201,7 @@ export const parseReceiptText = (text: string): ParsedReceipt => {
   const merchant_name = merchantFromLines(lines)
   const receipt_date = dateFromText(full)
   const items = extractItems(lines)
-  const total = totalFromReceiptLines(lines, items)
+  const total = totalFromReceiptLines(lines)
   const payment_method =
     /\b(GCASH|MAYA|PAYMAYA|E-WALLET)\b/i.test(full) ? 'E-wallet'
     : /\b(VISA|MASTERCARD|MASTER CARD|DEBIT|CREDIT)\b/i.test(full) ? 'Card'
