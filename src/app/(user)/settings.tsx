@@ -537,8 +537,8 @@ function makeStyles(C: {
       alignItems: 'center',
     },
     headerSpacer: { width: 44, height: 44 },
-    title: { fontSize: 24, fontWeight: '800', color: C.text  textAlign: 'center' },
-    subtitle: { fontSize: 12, color: C.muted, marginTop: 3  textAlign: 'center' },
+    title: { fontSize: 24, fontWeight: '800', color: C.text, textAlign: 'center' },
+    subtitle: { fontSize: 12, color: C.muted, marginTop: 3, textAlign: 'center' },
     content: { padding: 18, paddingBottom: 40, gap: 20 },
     section: { gap: 10 },
     sectionTitle: {
