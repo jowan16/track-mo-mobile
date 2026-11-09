@@ -617,7 +617,7 @@ export default function ExpensesScreen() {
           p_storage_path: receiptContext.path,
           p_merchant_name: receiptContext.draft.merchant_name.trim(),
           p_receipt_date: form.spent_on,
-          p_subtotal: receiptContext.draft.items.reduce((sum, item) => sum + (Number(item.line_total) || 0), 0),
+          p_subtotal: receiptContext.draft.subtotal,
           p_tax: receiptContext.draft.tax,
           p_total: Number(form.amount),
           p_currency: 'PHP',
@@ -1081,7 +1081,7 @@ export default function ExpensesScreen() {
                   {editing
                     ? 'Update your expense information.'
                     : receiptContext
-                      ? 'Review the details extracted from your receipt.'
+                      ? 'Review and edit the receipt details before saving.'
                       : 'Enter the details of your expense.'}
                 </Text>
               </View>
