@@ -790,15 +790,33 @@ export default function ExpensesScreen() {
           </View>
         </View>
 
-        {/* ADD BUTTON */}
+        {/* EXPENSE ACTIONS */}
 
-        <Pressable
-          style={styles.addButton}
-          onPress={openAdd}
-          accessibilityRole="button"
-        >
-          <Text style={styles.addButtonText}>＋ Add Expense</Text>
-        </Pressable>
+        <View style={styles.expenseActions}>
+          <Pressable
+            style={[styles.expenseActionCard, styles.addExpenseCard]}
+            onPress={openAdd}
+            accessibilityRole="button"
+          >
+            <Text style={styles.expenseActionIcon}>＋</Text>
+            <Text style={styles.expenseActionTitle}>Add Expense</Text>
+            <Text style={styles.expenseActionDescription}>
+              Record an expense manually
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.expenseActionCard, styles.scanReceiptCard]}
+            onPress={() => router.push('/(user)/scan-receipt')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.expenseActionIcon}>▧</Text>
+            <Text style={styles.expenseActionTitle}>Scan Receipts</Text>
+            <Text style={styles.expenseActionDescription}>
+              Scan or upload a receipt
+            </Text>
+          </Pressable>
+        </View>
 
         {/* ERROR */}
 
@@ -1556,6 +1574,48 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 25,
     fontWeight: '800',
+  },
+  expenseActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 17,
+  },
+  expenseActionCard: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 132,
+    borderRadius: 15,
+    padding: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  addExpenseCard: {
+    backgroundColor: '#e8f5f1',
+    borderColor: '#c9e7dd',
+  },
+  scanReceiptCard: {
+    backgroundColor: '#ffffff',
+    borderColor: COLORS.line,
+  },
+  expenseActionIcon: {
+    color: COLORS.brand,
+    fontSize: 25,
+    fontWeight: '800',
+    marginBottom: 7,
+  },
+  expenseActionTitle: {
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  expenseActionDescription: {
+    color: COLORS.muted,
+    fontSize: 10,
+    lineHeight: 15,
+    textAlign: 'center',
+    marginTop: 5,
   },
   addButton: {
     backgroundColor: COLORS.brand,
