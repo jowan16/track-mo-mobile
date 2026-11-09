@@ -182,7 +182,7 @@ export default {
       // Keep receipt rows intact: word-level OCR detections are ordered
       // back into visual lines using their bounding-box coordinates.
       const words = detections
-        .map((item) => {
+        .map((item, index) => {
           const points = (item.bounding_box as {
             points?: Array<{ x?: number; y?: number }>;
           } | undefined)?.points ?? [];
@@ -190,7 +190,10 @@ export default {
             (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
           );
           const text = item.text_prediction?.text?.trim() ?? "";
-          if (!text || validPoints.length === 0) return null;
+          if (!text) return null;
+          if (validPoints.length === 0) {
+            return { text, centerY: index, height: 0, left: index };
+          }
           const ys = validPoints.map((point) => point.y as number);
           const xs = validPoints.map((point) => point.x as number);
           return {
