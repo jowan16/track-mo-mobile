@@ -777,15 +777,12 @@ export default function ExpensesScreen() {
         {/* HEADER */}
 
         <View style={styles.header}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <UserMenuButton />
-
-            <View>
-              <Text style={styles.pageTitle}>Expenses</Text>
-              <Text style={styles.pageSubtitle}>
-                Keep track of your spending and transactions.
-              </Text>
-            </View>
+          <UserMenuButton />
+          <View style={styles.headerText}>
+            <Text style={styles.pageTitle}>Expenses</Text>
+            <Text style={styles.pageSubtitle}>
+              Keep track of your spending and transactions.
+            </Text>
           </View>
 
           <View style={styles.brandMark}>
@@ -1530,21 +1527,23 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   header: {
+    position: 'relative',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 19,
+    minHeight: 44,
   },
   pageTitle: {
     fontSize: 27,
     fontWeight: '800',
     color: COLORS.ink,
-  },
+   textAlign: 'center' },
   pageSubtitle: {
     fontSize: 12,
     color: COLORS.muted,
     marginTop: 5,
-  },
+   textAlign: 'center' },
   brandMark: {
     width: 43,
     height: 43,
