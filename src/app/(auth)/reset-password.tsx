@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -36,30 +37,67 @@ export default function ResetPasswordScreen() {
     strength < 40 ? 'weak' : strength < 80 ? 'fair' : 'strong'
 
   useEffect(() => {
-    const verifyResetLink = async () => {
+    let mounted = true
+
+    const verifyResetLink = async (incomingCode?: string) => {
       if (hasExchangedCode.current) return
+      if (!incomingCode) return
+
       hasExchangedCode.current = true
 
-      if (!code) {
-        setVerifying(false)
-        setVerified(false)
+      try {
+        const { error } = await supabase.auth.exchangeCodeForSession(incomingCode)
+        if (error) throw error
+        if (mounted) setVerified(true)
+      } catch (error) {
+        console.warn('Password reset link verification failed:', error)
+        if (mounted) setVerified(false)
+      } finally {
+        if (mounted) setVerifying(false)
+      }
+    }
+
+    const readIncomingLink = async () => {
+      const routeCode = Array.isArray(code) ? code[0] : code
+      if (routeCode) {
+        await verifyResetLink(routeCode)
         return
       }
 
       try {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        const initialUrl = await Linking.getInitialURL()
+        const parsed = initialUrl ? Linking.parse(initialUrl) : null
+        const queryCode = parsed?.queryParams?.code
+        const incomingCode = Array.isArray(queryCode) ? queryCode[0] : queryCode
+        if (typeof incomingCode === 'string' && incomingCode) {
+          await verifyResetLink(incomingCode)
+          return
+        }
+      } catch (error) {
+        console.warn('Unable to read password reset link:', error)
+      }
 
-        if (error) throw error
-
-        setVerified(true)
-      } catch {
+      if (mounted && !hasExchangedCode.current) {
         setVerified(false)
-      } finally {
         setVerifying(false)
       }
     }
 
-    void verifyResetLink()
+    void readIncomingLink()
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      const parsed = Linking.parse(url)
+      const queryCode = parsed.queryParams?.code
+      const incomingCode = Array.isArray(queryCode) ? queryCode[0] : queryCode
+      if (typeof incomingCode === 'string' && incomingCode) {
+        void verifyResetLink(incomingCode)
+      }
+    })
+
+    return () => {
+      mounted = false
+      subscription.remove()
+    }
   }, [code])
 
   const handleUpdatePassword = async () => {
