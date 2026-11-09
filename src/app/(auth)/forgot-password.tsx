@@ -14,7 +14,7 @@ import {
 
 import { supabase } from '@/services/supabase'
 
-const EMAIL_PATTERN = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('')
