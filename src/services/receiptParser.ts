@@ -70,8 +70,8 @@ const merchantFromLines = (lines: string[]) => {
   const explicit = headerLines.find((line) => /^(?:merchant|store\s+name|store|establishment)\s*[:：-]\s*.+/i.test(line))
   if (explicit) return explicit.replace(/^(?:merchant|store\s+name|store|establishment)\s*[:：-]\s*/i, '').trim().slice(0, 100)
 
-  const brandLine = headerLines.find((line) => knownMerchant.test(line))
-  if (brandLine) return brandLine.slice(0, 100)
+  const brandMatch = headerLines.join(' ').match(knownMerchant)
+  if (brandMatch) return brandMatch[0].replace(/\\s+/g, ' ').trim().replace(/\\b\\w/g, (letter) => letter.toUpperCase())
 
   const ignored = /\b(receipt|invoice|official\s+receipt|sales\s+invoice|vat\s+reg|tin|cashier|terminal|date|time|tel|telephone|address|branch\s+no|transaction|customer|thank\s+you|bir|pos|serial|order\s+no|table\s+no|queue)\b/i
   const candidates = headerLines
@@ -110,6 +110,22 @@ const amountAfterLabel = (lines: string[], label: RegExp) => {
   return null
 }
 
+const totalFromReceiptLines = (lines: string[]) => {
+  const paymentOrTax = /\\b(cash|change|tendered|vat|tax|non[- ]taxable|vatable|transaction|customer|cashier)\\b/i
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (!/^total\\b/i.test(line) || /\\b(items?|qty|quantity|discount|savings|before\\s+tax)\\b/i.test(line)) continue
+    const sameLine = amountTokens(line.replace(/^total\\b/i, ''))
+    if (sameLine.length) return money(sameLine[0].raw)
+    for (let next = index + 1; next < Math.min(lines.length, index + 4); next += 1) {
+      if (paymentOrTax.test(lines[next])) continue
+      const values = amountTokens(lines[next])
+      if (values.length) return money(values[0].raw)
+    }
+  }
+  return null
+}
+
 const extractItems = (lines: string[]): ParsedReceiptItem[] => {
   const ignored = /\b(sub\s*total|subtotal|grand\s+total|total\s+due|amount\s+due|net\s+total|total\s+amount|total|vat|tax|change|cash|tendered|discount|receipt|invoice|cashier|terminal|date|time|address|phone|thank\s+you|balance|payment|tin|vatable|senior|pwd|approval|reference|auth\s+code|card\s+no|transaction)\b/i
   const items: ParsedReceiptItem[] = []
@@ -117,6 +133,7 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
 
   for (const line of lines) {
     if (ignored.test(line) || line.length < 3) continue
+    if (/[-+]?\\s*\\d+(?:\\.\\d+)?\\s*%/.test(line)) continue
     const amounts = amountTokens(line)
     if (!amounts.length) continue
     const last = amounts[amounts.length - 1]
