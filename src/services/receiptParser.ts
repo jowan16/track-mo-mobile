@@ -71,7 +71,7 @@ const merchantFromLines = (lines: string[]) => {
   if (explicit) return explicit.replace(/^(?:merchant|store\s+name|store|establishment)\s*[:：-]\s*/i, '').trim().slice(0, 100)
 
   const brandMatch = headerLines.join(' ').match(knownMerchant)
-  if (brandMatch) return brandMatch[0].replace(/\\s+/g, ' ').trim().replace(/\\b\\w/g, (letter) => letter.toUpperCase())
+  if (brandMatch) return brandMatch[0].replace(/\s+/g, ' ').trim().replace(/\b\w/g, (letter) => letter.toUpperCase())
 
   const ignored = /\b(receipt|invoice|official\s+receipt|sales\s+invoice|vat\s+reg|tin|cashier|terminal|date|time|tel|telephone|address|branch\s+no|transaction|customer|thank\s+you|bir|pos|serial|order\s+no|table\s+no|queue)\b/i
   const candidates = headerLines
@@ -86,6 +86,7 @@ const merchantFromLines = (lines: string[]) => {
 }
 
 const amountTokens = (line: string) => {
+  if (/[-+]?\s*\d+(?:\.\d+)?\s*%/.test(line)) return []
   const pattern = /(?:₱|PHP\s*|P\s*)(\d[\d,]*(?:\.\d{1,2})?)|(\d[\d,]*(?:\.\d{1,2})?)/gi
   return [...line.matchAll(pattern)].map((match) => ({
     raw: match[1] ?? match[2],
@@ -111,11 +112,11 @@ const amountAfterLabel = (lines: string[], label: RegExp) => {
 }
 
 const totalFromReceiptLines = (lines: string[]) => {
-  const paymentOrTax = /\\b(cash|change|tendered|vat|tax|non[- ]taxable|vatable|transaction|customer|cashier)\\b/i
+  const paymentOrTax = /\b(cash|change|tendered|vat|tax|non[- ]taxable|vatable|transaction|customer|cashier)\b/i
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]
-    if (!/^total\\b/i.test(line) || /\\b(items?|qty|quantity|discount|savings|before\\s+tax)\\b/i.test(line)) continue
-    const sameLine = amountTokens(line.replace(/^total\\b/i, ''))
+    if (!/^total\b/i.test(line) || /\b(items?|qty|quantity|discount|savings|before\s+tax)\b/i.test(line)) continue
+    const sameLine = amountTokens(line.replace(/^total\b/i, ''))
     if (sameLine.length) return money(sameLine[0].raw)
     for (let next = index + 1; next < Math.min(lines.length, index + 4); next += 1) {
       if (paymentOrTax.test(lines[next])) continue
@@ -134,6 +135,7 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
   for (const line of lines) {
     if (ignored.test(line) || line.length < 3) continue
     if (/[-+]?\\s*\\d+(?:\\.\\d+)?\\s*%/.test(line)) continue
+    if (/[-+]?\s*\d+(?:\.\d+)?\s*%/.test(line)) continue
     const amounts = amountTokens(line)
     if (!amounts.length) continue
     const last = amounts[amounts.length - 1]
@@ -176,20 +178,20 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
   // quantity, and a separate two-column price row on successive lines.
   // Example: ITEM NAME / -16.67% / 3 PCS / 107.40 322.20V.
   for (let index = 0; index < lines.length; index += 1) {
-    const quantityMatch = lines[index].match(/^\\s*(\\d+(?:\\.\\d+)?)\\s*(?:PCS?|PIECES?)\\s*$/i)
+    const quantityMatch = lines[index].match(/^\s*(\d+(?:\.\d+)?)\s*(?:PCS?|PIECES?)\s*$/i)
     if (!quantityMatch) continue
 
     let nameIndex = index - 1
-    while (nameIndex >= 0 && /^[-+]?\\s*\\d+(?:\\.\\d+)?\\s*%$/.test(lines[nameIndex])) nameIndex -= 1
+    while (nameIndex >= 0 && /^[-+]?\s*\d+(?:\.\d+)?\s*%$/.test(lines[nameIndex])) nameIndex -= 1
     if (nameIndex < 0) continue
 
-    const name = lines[nameIndex].replace(/^[\\d.,\\s]+/, '').trim()
+    const name = lines[nameIndex].replace(/^[\d.,\s]+/, '').trim()
     const letters = (name.match(/[A-Za-z]/g) ?? []).length
     if (letters < 2 || name.length < 2 || name.length > 120) continue
-    if (/\\b(receipt|invoice|cashier|terminal|customer|transaction|total|vat|tax|change|cash|address|date|time)\\b/i.test(name)) continue
+    if (/\b(receipt|invoice|cashier|terminal|customer|transaction|total|vat|tax|change|cash|address|date|time)\b/i.test(name)) continue
 
     let priceLineIndex = index + 1
-    while (priceLineIndex < Math.min(lines.length, index + 3) && /^[-+]?\\s*\\d+(?:\\.\\d+)?\\s*%$/.test(lines[priceLineIndex])) priceLineIndex += 1
+    while (priceLineIndex < Math.min(lines.length, index + 3) && /^[-+]?\s*\d+(?:\.\d+)?\s*%$/.test(lines[priceLineIndex])) priceLineIndex += 1
     if (priceLineIndex >= lines.length) continue
 
     const priceTokens = amountTokens(lines[priceLineIndex])
