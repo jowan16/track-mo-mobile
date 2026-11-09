@@ -1186,7 +1186,7 @@ export default function ExpensesScreen() {
                   <Text style={styles.fieldHint}>Use YYYY-MM-DD format. Future dates are not allowed.</Text>
 
                   {/* AMOUNT */}
-                  <Text style={styles.fieldLabel}>Amount (₱)</Text>
+                  <Text style={styles.fieldLabel}>Receipt Total (₱)</Text>
                   <TextInput
                     style={styles.input}
                     value={form.amount}
