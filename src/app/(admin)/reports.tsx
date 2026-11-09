@@ -10,6 +10,7 @@ import {
 } from 'react-native'
 import * as Print from 'expo-print'
 import * as Sharing from 'expo-sharing'
+import * as FileSystem from 'expo-file-system/legacy'
 
 import { AdminShell, adminColors } from '@/components/admin/AdminShell'
 import { supabase } from '@/services/supabase'
@@ -80,6 +81,32 @@ export default function AdminReportsScreen() {
   ]
   const maxGrowth = Math.max(1, ...growth.map((item) => item.total))
 
+  const exportCsv = async () => {
+    if (!stats || exporting) return
+    setExporting(true)
+    try {
+      const rows = [
+        ['Metric', 'Value'],
+        ...cards.map((card) => [card.label, String(card.value)]),
+      ]
+      const csv = rows
+        .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
+        .join('\\n')
+      if (!FileSystem.cacheDirectory) throw new Error('File storage is unavailable.')
+      const uri = `${FileSystem.cacheDirectory}trackmo-system-report-${start}.csv`
+      await FileSystem.writeAsStringAsync(uri, csv, { encoding: FileSystem.EncodingType.UTF8 })
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'text/csv', dialogTitle: 'Share system report CSV' })
+      } else {
+        Alert.alert('CSV created', uri)
+      }
+    } catch (err) {
+      Alert.alert('Export failed', err instanceof Error ? err.message : 'Unable to export CSV.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const exportPdf = async () => {
     if (!stats || exporting) return
     setExporting(true)
@@ -123,9 +150,14 @@ export default function AdminReportsScreen() {
         ))}
       </View>
 
-      <Pressable style={styles.exportButton} onPress={exportPdf} disabled={loading || exporting || !stats}>
-        <Text style={styles.exportText}>{exporting ? 'Preparing PDF…' : 'Export / Share PDF'}</Text>
-      </Pressable>
+      <View style={styles.exportRow}>
+        <Pressable style={styles.exportButton} onPress={exportPdf} disabled={loading || exporting || !stats}>
+          <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export PDF'}</Text>
+        </Pressable>
+        <Pressable style={[styles.exportButton, styles.csvButton]} onPress={exportCsv} disabled={loading || exporting || !stats}>
+          <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export CSV'}</Text>
+        </Pressable>
+      </View>
 
       {loading ? <ActivityIndicator color={adminColors.primary} style={{ margin: 30 }} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -182,7 +214,9 @@ const styles = StyleSheet.create({
   periodActive: { backgroundColor: '#FFFFFF' },
   periodText: { color: adminColors.muted, fontSize: 10, fontWeight: '700' },
   periodTextActive: { color: adminColors.primary },
-  exportButton: { alignSelf: 'flex-end', backgroundColor: adminColors.primary, borderRadius: 9, paddingHorizontal: 13, paddingVertical: 10 },
+  exportRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  exportButton: { backgroundColor: adminColors.primary, borderRadius: 9, paddingHorizontal: 13, paddingVertical: 10 },
+  csvButton: { backgroundColor: '#334155' },
   exportText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
   error: { color: adminColors.danger, backgroundColor: '#FEECEC', padding: 11, borderRadius: 9, fontSize: 11 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
