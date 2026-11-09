@@ -25,7 +25,6 @@ export default function RegisterScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
   const [banner, setBanner] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -105,26 +104,6 @@ export default function RegisterScreen() {
     } finally {
       setLoading(false)
     }
-  }
-
-  if (done) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.logo}>Track Mo, Pake Ko!</Text>
-          <Text style={styles.title}>Check your email</Text>
-          <Text style={styles.description}>
-            We sent a confirmation link. Open it, then log in.
-          </Text>
-          <Pressable
-            style={styles.button}
-            onPress={() => router.replace('/(auth)/login')}
-          >
-            <Text style={styles.buttonText}>Go to log in</Text>
-          </Pressable>
-        </View>
-      </View>
-    )
   }
 
   return (
