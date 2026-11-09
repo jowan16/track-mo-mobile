@@ -93,7 +93,7 @@ export default function RegisterScreen() {
       }
 
       if (data.session) {
-        router.replace('/(user)')
+        router.replace('/')
         return
       }
 
