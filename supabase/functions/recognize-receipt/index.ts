@@ -131,7 +131,7 @@ export default {
                 url: imageDataUrl,
               },
             ],
-            merge_levels: ["word"],
+            merge_levels: ["paragraph"],
           }),
         });
       } catch {
@@ -182,7 +182,7 @@ export default {
       const text = detections
         .map((item) => item.text_prediction?.text ?? "")
         .filter((value) => value.length > 0)
-        .join(" ");
+        .join("\n");
 
       return Response.json({
         success: true,
