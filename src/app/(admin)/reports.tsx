@@ -34,10 +34,9 @@ export default function AdminReportsScreen() {
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
 
-  const now = new Date()
+  const year = new Date().getFullYear()
+  const month = new Date().getMonth()
   const { start, end } = useMemo(() => {
-    const year = now.getFullYear()
-    const month = now.getMonth()
     if (period === 'year') return { start: `${year}-01-01`, end: `${year + 1}-01-01` }
     if (period === 'last') {
       const first = new Date(year, month - 1, 1)
@@ -45,7 +44,7 @@ export default function AdminReportsScreen() {
       return { start: dateKey(first), end: dateKey(next) }
     }
     return { start: dateKey(new Date(year, month, 1)), end: dateKey(new Date(year, month + 1, 1)) }
-  }, [period])
+  }, [period, year, month])
 
   useEffect(() => {
     let active = true
