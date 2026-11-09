@@ -75,7 +75,7 @@ const merchantFromLines = (lines: string[]) => {
 
   const ignored = /\b(receipt|invoice|official\s+receipt|sales\s+invoice|vat\s+reg|tin|cashier|terminal|date|time|tel|telephone|address|branch\s+no|transaction|customer|thank\s+you|bir|pos|serial|order\s+no|table\s+no|queue)\b/i
   const candidates = headerLines
-    .map((line, index) => ({ line, index }))
+    .map((line) => ({ line }))
     .filter(({ line }) => {
       const letters = (line.match(/[A-Za-z]/g) ?? []).length
       return line.length >= 3 && line.length <= 70 && letters >= 3 && !ignored.test(line) && !/\d{4,}/.test(line) && !/^(?:www\.|https?:|[a-z0-9._%+-]+@[a-z0-9.-]+)/i.test(line)
@@ -86,7 +86,7 @@ const merchantFromLines = (lines: string[]) => {
 }
 
 const amountTokens = (line: string) => {
-  const pattern = /(?:₱|PHP\s*|P\s*)(\d[\d,]*(?:\.\d{1,2})?)|(\d[\d,]*\.\d{2})/gi
+  const pattern = /(?:₱|PHP\s*|P\s*)(\d[\d,]*(?:\.\d{1,2})?)|(\d[\d,]*(?:\.\d{1,2})?)/gi
   return [...line.matchAll(pattern)].map((match) => ({
     raw: match[1] ?? match[2],
     index: match.index ?? 0,
@@ -129,7 +129,7 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
     name = name.replace(/[|*•\-:]+$/g, '').trim()
 
     let quantity = 1
-    const quantityPrefix = name.match(/^(\d+(?:\.\d+)?)\s*[xX]\s*(.+)$/)
+    const quantityPrefix = name.match(/^(\d+(?:\.\d+)?)\s*(?:[xX]\s*|\s+)(.+)$/)
     const quantitySuffix = name.match(/^(.+?)\s+(\d+(?:\.\d+)?)$/)
     if (quantityPrefix) {
       quantity = Number(quantityPrefix[1])
