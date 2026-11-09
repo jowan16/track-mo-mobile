@@ -187,3 +187,49 @@ export async function getUserReceipts(
 
   return receipts
 }
+
+export type ReceiptOCRDetection = {
+  text_prediction?: {
+    text?: string
+    confidence?: number
+  }
+  bounding_box?: unknown
+}
+
+export type ReceiptOCRResult = {
+  success: boolean
+  model: string
+  text: string
+  detections: ReceiptOCRDetection[]
+  usage: unknown | null
+}
+
+export async function recognizeReceipt(
+  path: string,
+): Promise<ReceiptOCRResult> {
+  if (!path) {
+    throw new Error('A receipt path is required for OCR.')
+  }
+
+  const { data, error } =
+    await supabase.functions.invoke<ReceiptOCRResult>(
+      'recognize-receipt',
+      {
+        body: { path },
+      },
+    )
+
+  if (error) {
+    throw new Error(
+      `Receipt recognition failed: ${error.message}`,
+    )
+  }
+
+  if (!data || !data.success) {
+    throw new Error(
+      'The OCR service returned an invalid response.',
+    )
+  }
+
+  return data
+}

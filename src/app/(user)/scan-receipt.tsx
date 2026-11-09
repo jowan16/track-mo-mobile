@@ -19,7 +19,9 @@ import {
   deleteReceipt,
   getUserReceipts,
   uploadReceipt,
+  recognizeReceipt,
   type ReceiptRecord,
+  type ReceiptOCRResult,
 } from '@/services/receiptStorage'
 import { UserMenuButton } from '@/components/user-navigation'
 
@@ -42,6 +44,10 @@ export default function ScanReceiptScreen() {
 
   const [uploading, setUploading] = useState(false)
   const [uploadedPath, setUploadedPath] = useState<string | null>(null)
+
+  const [recognizing, setRecognizing] = useState(false)
+  const [ocrResult, setOcrResult] = useState<ReceiptOCRResult | null>(null)
+  const [ocrError, setOcrError] = useState<string | null>(null)
 
   const [receipts, setReceipts] = useState<ReceiptRecord[]>([])
   const [loadingReceipts, setLoadingReceipts] = useState(true)
@@ -215,6 +221,33 @@ export default function ScanReceiptScreen() {
     }
   }
 
+  const runOCR = async (path: string) => {
+    if (!path) return
+
+    setRecognizing(true)
+    setOcrError(null)
+    setOcrResult(null)
+
+    try {
+      const result = await recognizeReceipt(path)
+      setOcrResult(result)
+
+      if (!result.text.trim()) {
+        setOcrError(
+          'No readable text was detected. Try a clearer receipt image.',
+        )
+      }
+    } catch (error) {
+      setOcrError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to recognize this receipt. Please try again.',
+      )
+    } finally {
+      setRecognizing(false)
+    }
+  }
+
   const handleUpload = async () => {
     if (!profile?.id || !image) {
       Alert.alert(
@@ -232,9 +265,13 @@ export default function ScanReceiptScreen() {
       setUploadedPath(result.path)
       await loadReceipts()
 
+      // OCR is a separate operation. An OCR failure does not undo
+      // or delete the successfully uploaded receipt.
+      await runOCR(result.path)
+
       Alert.alert(
         'Receipt uploaded!',
-        'Your receipt has been securely stored. AI recognition and category identification will be available in the next implementation stage.',
+        'Your receipt image has been securely stored. Check the recognition results on this screen.',
       )
     } catch (error) {
       Alert.alert(
@@ -251,6 +288,8 @@ export default function ScanReceiptScreen() {
   const resetSelection = () => {
     setImage(null)
     setUploadedPath(null)
+    setOcrResult(null)
+    setOcrError(null)
   }
 
   return (
@@ -369,9 +408,56 @@ export default function ScanReceiptScreen() {
                   ✓ Receipt securely uploaded
                 </Text>
                 <Text style={styles.successDescription}>
-                  Your image is ready for the next OCR and AI
-                  processing stage.
+                  Your receipt is stored securely. OCR can be run again
+                  without uploading the image again.
                 </Text>
+
+                <Pressable
+                  style={styles.ocrButton}
+                  onPress={() => void runOCR(uploadedPath)}
+                  disabled={recognizing || uploading}
+                >
+                  {recognizing ? (
+                    <>
+                      <ActivityIndicator color="#ffffff" />
+                      <Text style={styles.ocrButtonText}>
+                        Reading receipt...
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.ocrButtonText}>
+                      {ocrResult ? 'Recognize Again' : 'Recognize Receipt'}
+                    </Text>
+                  )}
+                </Pressable>
+
+                {ocrError ? (
+                  <View style={styles.ocrErrorContainer}>
+                    <Text style={styles.ocrErrorTitle}>
+                      Recognition needs attention
+                    </Text>
+                    <Text style={styles.ocrErrorText}>
+                      {ocrError}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {ocrResult?.text ? (
+                  <View style={styles.ocrResultContainer}>
+                    <Text style={styles.ocrResultTitle}>
+                      Extracted Receipt Text
+                    </Text>
+                    <Text style={styles.ocrModel}>
+                      Model: {ocrResult.model}
+                    </Text>
+                    <Text style={styles.ocrResultText} selectable>
+                      {ocrResult.text}
+                    </Text>
+                    <Text style={styles.ocrDetectionCount}>
+                      {ocrResult.detections.length} text detections
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             ) : (
               <>
@@ -711,6 +797,68 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 19,
     marginTop: 5,
+  },
+  ocrButton: {
+    minHeight: 46,
+    borderRadius: 10,
+    backgroundColor: COLORS.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 9,
+    marginTop: 14,
+    paddingHorizontal: 14,
+  },
+  ocrButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  ocrErrorContainer: {
+    backgroundColor: '#fff1f0',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 13,
+  },
+  ocrErrorTitle: {
+    color: COLORS.danger,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  ocrErrorText: {
+    color: COLORS.ink,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 5,
+  },
+  ocrResultContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    padding: 12,
+    marginTop: 14,
+  },
+  ocrResultTitle: {
+    color: COLORS.ink,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  ocrModel: {
+    color: COLORS.muted,
+    fontSize: 10,
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  ocrResultText: {
+    color: COLORS.ink,
+    fontSize: 12,
+    lineHeight: 20,
+  },
+  ocrDetectionCount: {
+    color: COLORS.muted,
+    fontSize: 10,
+    marginTop: 10,
   },
   historyCard: {
     backgroundColor: COLORS.white,
