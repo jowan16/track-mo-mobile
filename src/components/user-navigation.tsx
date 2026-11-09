@@ -202,7 +202,7 @@ export function UserDrawerProvider({
                     {item.label}
                   </Text>
                 </Pressable>
-              ))}       ))}
+              ))}
             </ScrollView>
 
             {/* ACCOUNT FOOTER */}
