@@ -92,12 +92,14 @@ export default function RegisterScreen() {
         return
       }
 
+      // Registration must always return the user to the login screen.
+      // Supabase may create a session immediately when email confirmation is disabled.
       if (data.session) {
-        router.replace('/')
-        return
+        const { error: signOutError } = await supabase.auth.signOut()
+        if (signOutError) throw signOutError
       }
 
-      setDone(true)
+      router.replace('/(auth)/login')
     } catch {
       setBanner('Something went wrong. Please try again.')
     } finally {
