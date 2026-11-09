@@ -73,6 +73,12 @@ export const supabase = createClient(
 )
 
 if (Platform.OS !== 'web') {
+  // Start immediately when the app is already foregrounded; AppState may not
+  // emit an initial "active" event after a cold launch.
+  if (AppState.currentState === 'active') {
+    supabase.auth.startAutoRefresh()
+  }
+
   AppState.addEventListener('change', (state) => {
     if (state === 'active') {
       supabase.auth.startAutoRefresh()
