@@ -1,1020 +1,389 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+  ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet,
+  Text, TextInput, View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 
 import { useAuth } from '@/context/AuthContext'
-import {
-  deleteReceipt,
-  getUserReceipts,
-  uploadReceipt,
-  recognizeReceipt,
-  type ReceiptRecord,
-  type ReceiptOCRResult,
-} from '@/services/receiptStorage'
 import { UserMenuButton } from '@/components/user-navigation'
+import { supabase } from '@/services/supabase'
+import { recognizeReceipt, uploadReceipt, type ReceiptOCRResult } from '@/services/receiptStorage'
+import { parseReceiptText, type ParsedReceipt, type ParsedReceiptItem } from '@/services/receiptParser'
 
 const COLORS = {
-  canvas: '#f6f7f5',
-  white: '#ffffff',
-  ink: '#14201c',
-  muted: '#68756f',
-  line: '#e4e8e5',
-  brand: '#0f766e',
-  brandLight: '#e6f4f1',
-  danger: '#b42318',
+  canvas: '#f6f7f5', white: '#ffffff', ink: '#14201c', muted: '#68756f',
+  line: '#e4e8e5', brand: '#0f766e', brandLight: '#e6f4f1', danger: '#b42318',
 }
+type Category = { id: number; name: string; icon: string; color: string; bg: string }
+
+const METHODS = ['Cash', 'E-wallet', 'Card', 'Bank transfer']
+const today = () => {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+const amountText = (value: number | null) => value === null ? '' : String(value)
 
 export default function ScanReceiptScreen() {
   const { profile } = useAuth()
-
-  const [image, setImage] =
-    useState<ImagePicker.ImagePickerAsset | null>(null)
-
+  const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null)
+  const [storagePath, setStoragePath] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [uploadedPath, setUploadedPath] = useState<string | null>(null)
-
   const [recognizing, setRecognizing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [ocrResult, setOcrResult] = useState<ReceiptOCRResult | null>(null)
-  const [ocrError, setOcrError] = useState<string | null>(null)
-
-  const [receipts, setReceipts] = useState<ReceiptRecord[]>([])
-  const [loadingReceipts, setLoadingReceipts] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [deletingPath, setDeletingPath] = useState<string | null>(null)
-
-  const loadReceipts = useCallback(async () => {
-    if (!profile?.id) {
-      setReceipts([])
-      setLoadingReceipts(false)
-      return
-    }
-
-    try {
-      const result = await getUserReceipts(profile.id)
-      setReceipts(result)
-    } catch (error) {
-      Alert.alert(
-        'Unable to load receipts',
-        error instanceof Error
-          ? error.message
-          : 'Please try again.',
-      )
-    } finally {
-      setLoadingReceipts(false)
-      setRefreshing(false)
-    }
-  }, [profile?.id])
+  const [ocrError, setOcrError] = useState('')
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [draft, setDraft] = useState<ParsedReceipt | null>(null)
+  const [amount, setAmount] = useState('')
+  const [formError, setFormError] = useState('')
 
   useEffect(() => {
-    setLoadingReceipts(true)
-    void loadReceipts()
-  }, [loadReceipts])
-
-  const handleRefresh = () => {
-    setRefreshing(true)
-    void loadReceipts()
-  }
-
-  const handleDeleteReceipt = (receipt: ReceiptRecord) => {
-    Alert.alert(
-      'Delete receipt?',
-      'This will permanently delete this uploaded receipt image.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setDeletingPath(receipt.path)
-
-            try {
-              await deleteReceipt(receipt.path)
-
-              setReceipts((current) =>
-                current.filter((item) => item.path !== receipt.path),
-              )
-
-              if (uploadedPath === receipt.path) {
-                setUploadedPath(null)
-                setImage(null)
-              }
-
-              Alert.alert('Receipt deleted', 'The receipt was successfully deleted.')
-            } catch (error) {
-              Alert.alert(
-                'Delete failed',
-                error instanceof Error
-                  ? error.message
-                  : 'Unable to delete this receipt.',
-              )
-            } finally {
-              setDeletingPath(null)
-            }
-          },
-        },
-      ],
-    )
-  }
-
-  const formatReceiptDate = (value: string | null) => {
-    if (!value) return 'Upload date unavailable'
-
-    const date = new Date(value)
-
-    if (Number.isNaN(date.getTime())) {
-      return 'Upload date unavailable'
+    let active = true
+    const load = async () => {
+      if (!profile?.id) { setLoadingCategories(false); return }
+      try {
+        const [categoryResult, trackedResult] = await Promise.all([
+          supabase.from('categories').select('id,name,icon,color,bg,is_active,show_in_picker,sort_order').eq('is_active', true).eq('show_in_picker', true).order('sort_order'),
+          supabase.from('user_categories').select('category_id').eq('user_id', profile.id),
+        ])
+        if (categoryResult.error) throw categoryResult.error
+        if (trackedResult.error) throw trackedResult.error
+        const tracked = new Set((trackedResult.data ?? []).map((row) => Number(row.category_id)))
+        if (active) setCategories(((categoryResult.data ?? []) as Category[]).filter((category) => tracked.has(category.id)))
+      } catch (error) {
+        if (active) Alert.alert('Unable to load categories', error instanceof Error ? error.message : 'Please try again.')
+      } finally {
+        if (active) setLoadingCategories(false)
+      }
     }
+    void load()
+    return () => { active = false }
+  }, [profile?.id])
 
-    return date.toLocaleString()
-  }
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.name === draft?.suggestedCategory) ?? null,
+    [categories, draft?.suggestedCategory],
+  )
 
-  const chooseImage = async (
-    source: 'camera' | 'gallery',
-  ) => {
+  const chooseImage = async (source: 'camera' | 'gallery') => {
     try {
-      let result: ImagePicker.ImagePickerResult
-
-      if (source === 'camera') {
-        const permission =
-          await ImagePicker.requestCameraPermissionsAsync()
-
-        if (!permission.granted) {
-          Alert.alert(
-            'Camera permission required',
-            'Allow Track Mo to access your camera to take a receipt photo.',
-          )
-          return
-        }
-
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [3, 4],
-          quality: 0.85,
-        })
-      } else {
-        const permission =
-          await ImagePicker.requestMediaLibraryPermissionsAsync()
-
-        if (!permission.granted) {
-          Alert.alert(
-            'Gallery permission required',
-            'Allow Track Mo to access your photos to select a receipt.',
-          )
-          return
-        }
-
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [3, 4],
-          quality: 0.85,
-        })
-      }
-
-      if (result.canceled || !result.assets?.length) {
+      const permission = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert('Permission required', source === 'camera'
+          ? 'Allow camera access to take a receipt photo.'
+          : 'Allow photo library access to select a receipt.')
         return
       }
-
-      const selectedImage = result.assets[0]
-
-      if (
-        selectedImage.mimeType &&
-        !selectedImage.mimeType.startsWith('image/')
-      ) {
-        Alert.alert('Invalid file', 'Please select an image.')
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [3, 4], quality: 0.85 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [3, 4], quality: 0.85 })
+      if (result.canceled || !result.assets?.length) return
+      const selected = result.assets[0]
+      if (selected.fileSize && selected.fileSize > 10 * 1024 * 1024) {
+        Alert.alert('Image too large', 'Please choose an image smaller than 10 MB.')
         return
       }
-
-      if (
-        selectedImage.fileSize &&
-        selectedImage.fileSize > 10 * 1024 * 1024
-      ) {
-        Alert.alert(
-          'Image too large',
-          'Please select a receipt image smaller than 10 MB.',
-        )
-        return
-      }
-
-      setImage(selectedImage)
-      setUploadedPath(null)
+      setImage(selected)
+      setStoragePath(null)
+      setOcrResult(null)
+      setOcrError('')
+      setDraft(null)
+      setFormError('')
     } catch (error) {
-      Alert.alert(
-        'Unable to select image',
-        error instanceof Error
-          ? error.message
-          : 'Please try again.',
-      )
+      Alert.alert('Unable to select image', error instanceof Error ? error.message : 'Please try again.')
     }
   }
 
-  const runOCR = async (path: string) => {
-    if (!path) return
-
+  const runRecognition = async (path: string) => {
     setRecognizing(true)
-    setOcrError(null)
-    setOcrResult(null)
-
+    setOcrError('')
+    setDraft(null)
     try {
       const result = await recognizeReceipt(path)
       setOcrResult(result)
-
-      if (!result.text.trim()) {
-        setOcrError(
-          'No readable text was detected. Try a clearer receipt image.',
-        )
-      }
+      if (!result.text.trim()) throw new Error('No readable text was detected. Try a clearer receipt image.')
+      const parsed = parseReceiptText(result.text)
+      setDraft(parsed)
+      setAmount(amountText(parsed.total))
+      if (!parsed.total) setFormError('The total was not confidently detected. Enter the receipt total before saving.')
     } catch (error) {
-      setOcrError(
-        error instanceof Error
-          ? error.message
-          : 'Unable to recognize this receipt. Please try again.',
-      )
+      setOcrError(error instanceof Error ? error.message : 'Unable to recognize this receipt.')
     } finally {
       setRecognizing(false)
     }
   }
 
   const handleUpload = async () => {
-    if (!profile?.id || !image) {
-      Alert.alert(
-        'Missing information',
-        'Please select a receipt image first.',
-      )
-      return
-    }
-
+    if (!profile?.id || !image) return
     setUploading(true)
-
+    setFormError('')
     try {
-      const result = await uploadReceipt(profile.id, image)
-
-      setUploadedPath(result.path)
-      await loadReceipts()
-
-      // OCR is a separate operation. An OCR failure does not undo
-      // or delete the successfully uploaded receipt.
-      await runOCR(result.path)
-
-      Alert.alert(
-        'Receipt uploaded!',
-        'Your receipt image has been securely stored. Check the recognition results on this screen.',
-      )
+      const uploaded = await uploadReceipt(profile.id, image)
+      setStoragePath(uploaded.path)
+      await runRecognition(uploaded.path)
     } catch (error) {
-      Alert.alert(
-        'Upload failed',
-        error instanceof Error
-          ? error.message
-          : 'Unable to upload receipt. Please try again.',
-      )
+      Alert.alert('Upload failed', error instanceof Error ? error.message : 'Unable to upload receipt.')
     } finally {
       setUploading(false)
     }
   }
 
-  const resetSelection = () => {
-    setImage(null)
-    setUploadedPath(null)
-    setOcrResult(null)
-    setOcrError(null)
+  const updateItem = (index: number, patch: Partial<ParsedReceiptItem>) => {
+    setDraft((current) => current ? ({
+      ...current,
+      items: current.items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item),
+    }) : current)
+  }
+
+  const saveConfirmedExpense = async () => {
+    if (!profile?.id || !storagePath || !draft) return
+    const parsedAmount = Number(amount)
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || parsedAmount > 9999999.99) {
+      setFormError('Enter a valid total amount greater than zero.')
+      return
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.receipt_date) || draft.receipt_date > today()) {
+      setFormError('Enter a valid receipt date that is not in the future.')
+      return
+    }
+    if (!selectedCategory) {
+      setFormError('Choose an active category that you are tracking.')
+      return
+    }
+    if (!METHODS.includes(draft.payment_method)) {
+      setFormError('Please select the payment method shown on your receipt or choose the correct one.')
+      return
+    }
+    if (draft.items.some((item) => !item.item_name.trim() || item.quantity <= 0)) {
+      setFormError('Check each item name and quantity before saving.')
+      return
+    }
+    setSaving(true)
+    setFormError('')
+    try {
+      const { data, error } = await supabase.rpc('save_receipt_expense', {
+        p_storage_path: storagePath,
+        p_merchant_name: draft.merchant_name,
+        p_receipt_date: draft.receipt_date,
+        p_subtotal: draft.subtotal,
+        p_tax: draft.tax,
+        p_total: parsedAmount,
+        p_currency: 'PHP',
+        p_category_id: selectedCategory.id,
+        p_amount: parsedAmount,
+        p_spent_on: draft.receipt_date,
+        p_payment_method: draft.payment_method,
+        p_note: draft.items.map((item) => item.item_name.trim()).filter(Boolean).join(', ').slice(0, 200) || draft.merchant_name.slice(0, 200),
+        p_items: draft.items.map((item) => ({
+          item_name: item.item_name.trim(),
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          line_total: item.line_total,
+        })),
+        p_recognition_data: {
+          model: ocrResult?.model ?? 'unknown',
+          raw_text: ocrResult?.text ?? '',
+          detections: ocrResult?.detections ?? [],
+          confirmed_at: new Date().toISOString(),
+        },
+      })
+      if (error) throw error
+      Alert.alert('Expense saved', 'Your confirmed receipt and expense have been saved.', [
+        { text: 'View Expenses', onPress: () => router.replace('/(user)/expenses') },
+      ])
+      setImage(null)
+      setStoragePath(null)
+      setOcrResult(null)
+      setDraft(null)
+      setAmount('')
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Unable to save this receipt. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const reset = () => {
+    if (saving || uploading || recognizing) return
+    setImage(null); setStoragePath(null); setOcrResult(null); setOcrError(''); setDraft(null); setAmount(''); setFormError('')
   }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
         <UserMenuButton />
-
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Scan Receipt</Text>
-          <Text style={styles.headerSubtitle}>
-            AI-powered expense recognition
-          </Text>
+          <Text style={styles.headerSubtitle}>AI-powered expense recognition</Text>
         </View>
       </View>
-
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={COLORS.brand}
-          />
-        }
-      >
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.intro}>
-          <View style={styles.introIcon}>
-            <Text style={styles.introIconText}>✦</Text>
-          </View>
-
-          <Text style={styles.title}>
-            Let AI organize your expenses
-          </Text>
-
-          <Text style={styles.description}>
-            Take a photo or upload your receipt. Track Mo will
-            extract the receipt details and suggest the appropriate
-            expense category.
-          </Text>
+          <View style={styles.introIcon}><Text style={styles.introIconText}>✦</Text></View>
+          <Text style={styles.title}>Let AI organize your expenses</Text>
+          <Text style={styles.description}>Take a photo or upload a receipt. Review and edit the extracted details before anything is added to your expenses.</Text>
         </View>
 
         {!image ? (
-          <View style={styles.selectionCard}>
-            <View style={styles.receiptIcon}>
-              <Text style={styles.receiptIconText}>▤</Text>
-            </View>
-
-            <Text style={styles.selectionTitle}>
-              Add your receipt
-            </Text>
-
-            <Text style={styles.selectionDescription}>
-              Make sure the receipt is clear, readable, and
-              completely visible.
-            </Text>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.pressed,
-              ]}
-              onPress={() => chooseImage('camera')}
-            >
-              <Text style={styles.primaryButtonIcon}>▣</Text>
-              <Text style={styles.primaryButtonText}>
-                Take a Photo
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                pressed && styles.pressed,
-              ]}
-              onPress={() => chooseImage('gallery')}
-            >
-              <Text style={styles.secondaryButtonIcon}>▧</Text>
-              <Text style={styles.secondaryButtonText}>
-                Upload from Gallery
-              </Text>
-            </Pressable>
-
-            <Text style={styles.fileHint}>
-              JPG, PNG, WEBP or HEIC · Maximum 10 MB
-            </Text>
+          <View style={styles.card}>
+            <Text style={styles.selectionTitle}>Add your receipt</Text>
+            <Text style={styles.description}>Use a clear, readable photo with the full receipt visible.</Text>
+            <Pressable style={styles.primaryButton} onPress={() => void chooseImage('camera')}><Text style={styles.primaryText}>▣  Take a Photo</Text></Pressable>
+            <Pressable style={styles.secondaryButton} onPress={() => void chooseImage('gallery')}><Text style={styles.secondaryText}>▧  Upload from Gallery</Text></Pressable>
+            <Text style={styles.hint}>JPG, PNG, WEBP or HEIC · Maximum 10 MB</Text>
           </View>
         ) : (
-          <View style={styles.previewCard}>
-            <View style={styles.previewHeader}>
-              <Text style={styles.previewTitle}>
-                Receipt Preview
-              </Text>
-
-              <Pressable
-                onPress={resetSelection}
-                disabled={uploading}
-              >
-                <Text style={styles.removeText}>Remove</Text>
-              </Pressable>
+          <View style={styles.card}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionTitle}>Receipt Preview</Text>
+              <Pressable onPress={reset}><Text style={styles.removeText}>Remove</Text></Pressable>
             </View>
-
-            <Image
-              source={{ uri: image.uri }}
-              style={styles.previewImage}
-              resizeMode="contain"
-            />
-
-            <Text style={styles.fileName} numberOfLines={2}>
-              {image.fileName || 'Selected receipt image'}
-            </Text>
-
-            {uploadedPath ? (
-              <View style={styles.successContainer}>
-                <Text style={styles.successTitle}>
-                  ✓ Receipt securely uploaded
-                </Text>
-                <Text style={styles.successDescription}>
-                  Your receipt is stored securely. OCR can be run again
-                  without uploading the image again.
-                </Text>
-
-                <Pressable
-                  style={styles.ocrButton}
-                  onPress={() => void runOCR(uploadedPath)}
-                  disabled={recognizing || uploading}
-                >
-                  {recognizing ? (
-                    <>
-                      <ActivityIndicator color="#ffffff" />
-                      <Text style={styles.ocrButtonText}>
-                        Reading receipt...
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={styles.ocrButtonText}>
-                      {ocrResult ? 'Recognize Again' : 'Recognize Receipt'}
-                    </Text>
-                  )}
-                </Pressable>
-
-                {ocrError ? (
-                  <View style={styles.ocrErrorContainer}>
-                    <Text style={styles.ocrErrorTitle}>
-                      Recognition needs attention
-                    </Text>
-                    <Text style={styles.ocrErrorText}>
-                      {ocrError}
-                    </Text>
-                  </View>
-                ) : null}
-
-                {ocrResult?.text ? (
-                  <View style={styles.ocrResultContainer}>
-                    <Text style={styles.ocrResultTitle}>
-                      Extracted Receipt Text
-                    </Text>
-                    <Text style={styles.ocrModel}>
-                      Model: {ocrResult.model}
-                    </Text>
-                    <Text style={styles.ocrResultText} selectable>
-                      {ocrResult.text}
-                    </Text>
-                    <Text style={styles.ocrDetectionCount}>
-                      {ocrResult.detections.length} text detections
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
+            <Image source={{ uri: image.uri }} style={styles.previewImage} resizeMode="contain" />
+            <Text style={styles.fileName}>{image.fileName || 'Selected receipt image'}</Text>
+            {!storagePath ? (
+              <Pressable style={[styles.primaryButton, uploading && styles.disabled]} onPress={() => void handleUpload()} disabled={uploading}>
+                {uploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Upload & Read Receipt</Text>}
+              </Pressable>
             ) : (
               <>
-                <Pressable
-                  style={styles.secondaryButton}
-                  onPress={() => chooseImage('camera')}
-                  disabled={uploading}
-                >
-                  <Text style={styles.secondaryButtonText}>
-                    Retake Photo
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={styles.primaryButton}
-                  onPress={handleUpload}
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <ActivityIndicator color="#ffffff" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>
-                      Upload Receipt
-                    </Text>
-                  )}
+                <Text style={styles.successText}>✓ Receipt securely uploaded</Text>
+                <Pressable style={[styles.secondaryButton, recognizing && styles.disabled]} onPress={() => void runRecognition(storagePath)} disabled={recognizing || uploading}>
+                  {recognizing ? <ActivityIndicator color={COLORS.brand} /> : <Text style={styles.secondaryText}>{ocrResult ? 'Recognize Again' : 'Recognize Receipt'}</Text>}
                 </Pressable>
               </>
             )}
+            {ocrError ? <View style={styles.errorCard}><Text style={styles.errorText}>{ocrError}</Text></View> : null}
           </View>
         )}
 
-        <View style={styles.historyCard}>
-          <View style={styles.historyHeader}>
-            <View>
-              <Text style={styles.historyTitle}>My Uploaded Receipts</Text>
-              <Text style={styles.historySubtitle}>
-                {receipts.length} {receipts.length === 1 ? 'receipt' : 'receipts'} stored securely
-              </Text>
+        {recognizing ? <View style={styles.card}><ActivityIndicator color={COLORS.brand} /><Text style={styles.centerText}>Reading receipt text...</Text></View> : null}
+
+        {draft && storagePath ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Review extracted details</Text>
+            <Text style={styles.sectionHint}>OCR suggestions can be inaccurate. Check every field before confirming.</Text>
+
+            <Text style={styles.label}>Merchant / Store</Text>
+            <TextInput style={styles.input} value={draft.merchant_name} onChangeText={(value) => setDraft((current) => current ? { ...current, merchant_name: value } : current)} placeholder="Store name" />
+
+            <Text style={styles.label}>Receipt Date (YYYY-MM-DD)</Text>
+            <TextInput style={styles.input} value={draft.receipt_date} onChangeText={(value) => setDraft((current) => current ? { ...current, receipt_date: value } : current)} placeholder="2026-11-08" />
+
+            <Text style={styles.label}>Total Amount (₱)</Text>
+            <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0.00" />
+
+            <Text style={styles.label}>Suggested Category</Text>
+            {loadingCategories ? <ActivityIndicator color={COLORS.brand} /> : (
+              <View style={styles.chips}>
+                {categories.map((category) => {
+                  const active = selectedCategory?.id === category.id
+                  return <Pressable key={category.id} style={[styles.chip, active && styles.chipActive]} onPress={() => setDraft((current) => current ? { ...current, suggestedCategory: category.name } : current)}>
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{category.name}</Text>
+                  </Pressable>
+                })}
+              </View>
+            )}
+
+            <Text style={styles.label}>Payment Method</Text>
+            <Text style={styles.sectionHint}>{draft.payment_method ? 'Detected from receipt. Change if incorrect.' : 'Not detected. Please select the correct method.'}</Text>
+            <View style={styles.chips}>
+              {METHODS.map((method) => <Pressable key={method} style={[styles.chip, draft.payment_method === method && styles.chipActive]} onPress={() => setDraft((current) => current ? { ...current, payment_method: method } : current)}>
+                <Text style={[styles.chipText, draft.payment_method === method && styles.chipTextActive]}>{method}</Text>
+              </Pressable>)}
             </View>
 
-            <Pressable
-              onPress={handleRefresh}
-              disabled={refreshing || loadingReceipts}
-              style={styles.refreshButton}
-            >
-              <Text style={styles.refreshButtonText}>
-                {refreshing ? 'Refreshing...' : '↻ Refresh'}
-              </Text>
-            </Pressable>
-          </View>
-
-          {loadingReceipts ? (
-            <View style={styles.historyMessage}>
-              <ActivityIndicator color={COLORS.brand} />
-              <Text style={styles.historyEmptyText}>
-                Loading your receipts...
-              </Text>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionTitle}>Purchased Items</Text>
+              <Pressable onPress={() => setDraft((current) => current ? { ...current, items: [...current.items, { item_name: '', quantity: 1, unit_price: null, line_total: null }] } : current)}><Text style={styles.addText}>+ Add item</Text></Pressable>
             </View>
-          ) : receipts.length === 0 ? (
-            <View style={styles.historyMessage}>
-              <Text style={styles.historyEmptyIcon}>▤</Text>
-              <Text style={styles.historyEmptyTitle}>
-                No uploaded receipts yet
-              </Text>
-              <Text style={styles.historyEmptyText}>
-                Receipts you upload will appear here.
-              </Text>
-            </View>
-          ) : (
-            receipts.map((receipt) => (
-              <View style={styles.receiptRow} key={receipt.path}>
-                <Image
-                  source={{ uri: receipt.signedUrl }}
-                  style={styles.historyImage}
-                  resizeMode="cover"
-                />
-
-                <View style={styles.receiptDetails}>
-                  <Text style={styles.receiptName} numberOfLines={2}>
-                    {receipt.fileName}
-                  </Text>
-
-                  <Text style={styles.receiptDate}>
-                    {formatReceiptDate(receipt.createdAt)}
-                  </Text>
-
-                  <Text style={styles.receiptPrivate}>
-                    ✓ Privately stored
-                  </Text>
+            {draft.items.length === 0 ? <Text style={styles.sectionHint}>No line items could be confidently extracted. Add them manually if you want item-level receipt details.</Text> : null}
+            {draft.items.map((item, index) => (
+              <View key={index} style={styles.itemCard}>
+                <TextInput style={[styles.input, styles.itemName]} value={item.item_name} onChangeText={(value) => updateItem(index, { item_name: value })} placeholder="Item name" />
+                <View style={styles.itemFields}>
+                  <View style={styles.itemField}><Text style={styles.smallLabel}>Qty</Text><TextInput style={styles.input} value={String(item.quantity)} keyboardType="decimal-pad" onChangeText={(value) => updateItem(index, { quantity: Number(value) || 0 })} /></View>
+                  <View style={styles.itemField}><Text style={styles.smallLabel}>Unit price</Text><TextInput style={styles.input} value={amountText(item.unit_price)} keyboardType="decimal-pad" onChangeText={(value) => updateItem(index, { unit_price: value ? Number(value) : null })} placeholder="0.00" /></View>
+                  <View style={styles.itemField}><Text style={styles.smallLabel}>Line total</Text><TextInput style={styles.input} value={amountText(item.line_total)} keyboardType="decimal-pad" onChangeText={(value) => updateItem(index, { line_total: value ? Number(value) : null })} placeholder="0.00" /></View>
                 </View>
-
-                <Pressable
-                  onPress={() => handleDeleteReceipt(receipt)}
-                  disabled={deletingPath === receipt.path}
-                  style={styles.deleteButton}
-                >
-                  {deletingPath === receipt.path ? (
-                    <ActivityIndicator color={COLORS.danger} size="small" />
-                  ) : (
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  )}
-                </Pressable>
+                <Pressable onPress={() => setDraft((current) => current ? { ...current, items: current.items.filter((_, itemIndex) => itemIndex !== index) } : current)}><Text style={styles.removeText}>Remove item</Text></Pressable>
               </View>
-            ))
-          )}
-        </View>
+            ))}
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>
-            How receipt scanning works
-          </Text>
+            <Text style={styles.label}>Subtotal (₱)</Text>
+            <TextInput style={styles.input} value={amountText(draft.subtotal)} keyboardType="decimal-pad" onChangeText={(value) => setDraft((current) => current ? { ...current, subtotal: value ? Number(value) : null } : current)} placeholder="Not detected" />
+            <Text style={styles.label}>Tax (₱)</Text>
+            <TextInput style={styles.input} value={amountText(draft.tax)} keyboardType="decimal-pad" onChangeText={(value) => setDraft((current) => current ? { ...current, tax: value ? Number(value) : null } : current)} placeholder="Not detected" />
 
-          {[
-            ['01', 'Capture or upload', 'Select a clear receipt image.'],
-            ['02', 'AI reads your receipt', 'Extract merchant, items, date and total.'],
-            ['03', 'Automatic categorization', 'AI suggests the matching expense category.'],
-            ['04', 'Review and confirm', 'Edit details and approve before saving.'],
-          ].map(([number, title, description]) => (
-            <View style={styles.stepRow} key={number}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>{number}</Text>
-              </View>
+            {formError ? <View style={styles.errorCard}><Text style={styles.errorText}>{formError}</Text></View> : null}
+            <Pressable style={[styles.primaryButton, saving && styles.disabled]} onPress={() => void saveConfirmedExpense()} disabled={saving || loadingCategories}>
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Confirm & Save Expense</Text>}
+            </Pressable>
+            <Text style={styles.privacyNote}>Nothing is added to your expenses until you press Confirm & Save. The receipt image remains privately stored.</Text>
+          </View>
+        ) : null}
 
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>{title}</Text>
-                <Text style={styles.stepDescription}>
-                  {description}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        <Text style={styles.privacyText}>
-          Your receipt images are stored in private Supabase
-          Storage. Only the authenticated owner can access
-          their files.
-        </Text>
+        {ocrResult?.text ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Original OCR Text</Text>
+            <Text style={styles.sectionHint}>Reference only — edit the extracted fields above if anything is incorrect.</Text>
+            <Text selectable style={styles.ocrText}>{ocrResult.text}</Text>
+          </View>
+        ) : null}
+        <Text style={styles.privacyNote}>Receipt images are stored in private Supabase Storage. Only the authenticated owner can access their files.</Text>
       </ScrollView>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.canvas,
-  },
-  header: {
-    minHeight: 76,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    gap: 13,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: COLORS.ink,
-  },
-  headerSubtitle: {
-    color: COLORS.muted,
-    fontSize: 12,
-    marginTop: 3,
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-    gap: 18,
-  },
-  intro: {
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  introIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 17,
-    backgroundColor: COLORS.brandLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 13,
-  },
-  introIconText: {
-    color: COLORS.brand,
-    fontSize: 30,
-    fontWeight: '800',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.ink,
-    textAlign: 'center',
-  },
-  description: {
-    color: COLORS.muted,
-    textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 22,
-    marginTop: 9,
-  },
-  selectionCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    padding: 23,
-    alignItems: 'center',
-  },
-  receiptIcon: {
-    width: 76,
-    height: 76,
-    borderRadius: 20,
-    backgroundColor: COLORS.brandLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  receiptIconText: {
-    fontSize: 43,
-    color: COLORS.brand,
-  },
-  selectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.ink,
-  },
-  selectionDescription: {
-    fontSize: 13,
-    color: COLORS.muted,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginTop: 8,
-    marginBottom: 22,
-  },
-  primaryButton: {
-    minHeight: 51,
-    width: '100%',
-    borderRadius: 12,
-    backgroundColor: COLORS.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 9,
-    marginTop: 10,
-  },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  primaryButtonIcon: {
-    color: '#ffffff',
-    fontSize: 19,
-  },
-  secondaryButton: {
-    minHeight: 49,
-    width: '100%',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    backgroundColor: COLORS.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 9,
-    marginTop: 11,
-  },
-  secondaryButtonText: {
-    color: COLORS.brand,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  secondaryButtonIcon: {
-    color: COLORS.brand,
-    fontSize: 20,
-  },
-  fileHint: {
-    color: COLORS.muted,
-    fontSize: 11,
-    marginTop: 17,
-  },
-  previewCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 17,
-    padding: 17,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-  },
-  previewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  previewTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.ink,
-  },
-  removeText: {
-    color: COLORS.danger,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  previewImage: {
-    width: '100%',
-    height: 340,
-    borderRadius: 12,
-    backgroundColor: '#f1f5f3',
-  },
-  fileName: {
-    color: COLORS.muted,
-    fontSize: 12,
-    marginTop: 12,
-    marginBottom: 5,
-  },
-  successContainer: {
-    backgroundColor: COLORS.brandLight,
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 15,
-  },
-  successTitle: {
-    color: COLORS.brand,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  successDescription: {
-    color: COLORS.muted,
-    fontSize: 12,
-    lineHeight: 19,
-    marginTop: 5,
-  },
-  ocrButton: {
-    minHeight: 46,
-    borderRadius: 10,
-    backgroundColor: COLORS.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 9,
-    marginTop: 14,
-    paddingHorizontal: 14,
-  },
-  ocrButtonText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  ocrErrorContainer: {
-    backgroundColor: '#fff1f0',
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 13,
-  },
-  ocrErrorTitle: {
-    color: COLORS.danger,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  ocrErrorText: {
-    color: COLORS.ink,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 5,
-  },
-  ocrResultContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    padding: 12,
-    marginTop: 14,
-  },
-  ocrResultTitle: {
-    color: COLORS.ink,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  ocrModel: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  ocrResultText: {
-    color: COLORS.ink,
-    fontSize: 12,
-    lineHeight: 20,
-  },
-  ocrDetectionCount: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 10,
-  },
-  historyCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 17,
-    padding: 17,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    gap: 10,
-  },
-  historyTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.ink,
-  },
-  historySubtitle: {
-    fontSize: 11,
-    color: COLORS.muted,
-    marginTop: 4,
-  },
-  refreshButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 9,
-    backgroundColor: COLORS.brandLight,
-  },
-  refreshButtonText: {
-    color: COLORS.brand,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  historyMessage: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  historyEmptyIcon: {
-    fontSize: 32,
-    color: COLORS.brand,
-    marginBottom: 8,
-  },
-  historyEmptyTitle: {
-    color: COLORS.ink,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  historyEmptyText: {
-    color: COLORS.muted,
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 6,
-  },
-  receiptRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.line,
-    gap: 11,
-  },
-  historyImage: {
-    width: 62,
-    height: 76,
-    borderRadius: 9,
-    backgroundColor: '#f1f5f3',
-  },
-  receiptDetails: {
-    flex: 1,
-    minWidth: 0,
-  },
-  receiptName: {
-    color: COLORS.ink,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  receiptDate: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 5,
-  },
-  receiptPrivate: {
-    color: COLORS.brand,
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 5,
-  },
-  deleteButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 9,
-    borderRadius: 8,
-    backgroundColor: '#fff1f0',
-  },
-  deleteButtonText: {
-    color: COLORS.danger,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  infoCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 17,
-    padding: 19,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.ink,
-    marginBottom: 18,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 13,
-    marginBottom: 17,
-  },
-  stepNumber: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: COLORS.brandLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepNumberText: {
-    color: COLORS.brand,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  stepContent: {
-    flex: 1,
-    paddingTop: 1,
-  },
-  stepTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.ink,
-  },
-  stepDescription: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  privacyText: {
-    fontSize: 11,
-    lineHeight: 18,
-    color: COLORS.muted,
-    textAlign: 'center',
-    paddingHorizontal: 12,
-  },
-  pressed: {
-    opacity: 0.75,
-  },
+  safeArea: { flex: 1, backgroundColor: COLORS.canvas },
+  header: { minHeight: 76, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 13, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.line },
+  headerText: { flex: 1 },
+  headerTitle: { fontSize: 19, fontWeight: '800', color: COLORS.ink },
+  headerSubtitle: { color: COLORS.muted, fontSize: 12, marginTop: 3 },
+  content: { padding: 20, paddingBottom: 44, gap: 17 },
+  intro: { alignItems: 'center', paddingVertical: 12 },
+  introIcon: { width: 54, height: 54, borderRadius: 17, backgroundColor: COLORS.brandLight, alignItems: 'center', justifyContent: 'center', marginBottom: 13 },
+  introIconText: { color: COLORS.brand, fontSize: 30, fontWeight: '800' },
+  title: { fontSize: 22, fontWeight: '800', color: COLORS.ink, textAlign: 'center' },
+  description: { color: COLORS.muted, textAlign: 'center', fontSize: 13, lineHeight: 21, marginTop: 8 },
+  card: { backgroundColor: COLORS.white, borderRadius: 17, padding: 17, borderWidth: 1, borderColor: COLORS.line },
+  selectionTitle: { fontSize: 18, fontWeight: '800', color: COLORS.ink, textAlign: 'center', marginBottom: 4 },
+  primaryButton: { minHeight: 49, borderRadius: 11, backgroundColor: COLORS.brand, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15, marginTop: 13 },
+  primaryText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  secondaryButton: { minHeight: 47, borderRadius: 11, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15, marginTop: 10 },
+  secondaryText: { color: COLORS.brand, fontSize: 13, fontWeight: '800' },
+  hint: { color: COLORS.muted, fontSize: 10, textAlign: 'center', marginTop: 14 },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 },
+  sectionTitle: { color: COLORS.ink, fontSize: 16, fontWeight: '800' },
+  sectionHint: { color: COLORS.muted, fontSize: 11, lineHeight: 17, marginTop: 5, marginBottom: 5 },
+  previewImage: { width: '100%', height: 300, borderRadius: 11, backgroundColor: '#f1f5f3' },
+  fileName: { color: COLORS.muted, fontSize: 11, marginTop: 9 },
+  removeText: { color: COLORS.danger, fontSize: 12, fontWeight: '700' },
+  successText: { color: COLORS.brand, fontWeight: '800', fontSize: 12, marginTop: 12 },
+  disabled: { opacity: 0.55 },
+  centerText: { color: COLORS.muted, textAlign: 'center', marginTop: 10, fontSize: 12 },
+  label: { color: COLORS.ink, fontSize: 12, fontWeight: '800', marginTop: 15, marginBottom: 7 },
+  input: { minHeight: 45, borderWidth: 1, borderColor: COLORS.line, borderRadius: 10, backgroundColor: '#fff', paddingHorizontal: 11, color: COLORS.ink, fontSize: 13 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 6 },
+  chip: { borderWidth: 1, borderColor: COLORS.line, backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 9 },
+  chipActive: { borderColor: COLORS.brand, backgroundColor: COLORS.brand },
+  chipText: { color: COLORS.muted, fontSize: 11, fontWeight: '700' },
+  chipTextActive: { color: '#fff' },
+  addText: { color: COLORS.brand, fontSize: 12, fontWeight: '800' },
+  itemCard: { backgroundColor: '#f8faf9', borderWidth: 1, borderColor: COLORS.line, borderRadius: 12, padding: 10, marginTop: 10 },
+  itemName: { marginBottom: 8 },
+  itemFields: { flexDirection: 'row', gap: 8 },
+  itemField: { flex: 1 },
+  smallLabel: { color: COLORS.muted, fontSize: 10, fontWeight: '700', marginBottom: 5 },
+  errorCard: { backgroundColor: '#fff1f0', borderRadius: 10, borderWidth: 1, borderColor: '#f2c4c0', padding: 11, marginTop: 12 },
+  errorText: { color: COLORS.danger, fontSize: 12, lineHeight: 18 },
+  privacyNote: { color: COLORS.muted, fontSize: 10, lineHeight: 16, textAlign: 'center', marginTop: 12 },
+  ocrText: { color: COLORS.ink, fontSize: 11, lineHeight: 18, marginTop: 10 },
 })
