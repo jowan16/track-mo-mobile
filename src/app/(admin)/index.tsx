@@ -1,164 +1,176 @@
-
-import { router } from 'expo-router'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
-  Alert,
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { useAuth } from '@/context/AuthContext'
+import { AdminShell, adminColors } from '@/components/admin/AdminShell'
+import { supabase } from '@/services/supabase'
 
-export default function AdminDashboard() {
-  const { signOut, profile } = useAuth()
-  const [isSigningOut, setIsSigningOut] = useState(false)
+type Stats = {
+  total_users: number
+  active_users: number
+  admins: number
+  expenses_count: number
+}
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out of your admin account?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsSigningOut(true)
-              await signOut()
-              router.replace('/(auth)/login')
-            } catch (error) {
-              setIsSigningOut(false)
-              Alert.alert(
-                'Sign Out Failed',
-                error instanceof Error
-                  ? error.message
-                  : 'Unable to sign out. Please try again.',
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
+type Account = {
+  id: string
+  full_name: string | null
+  email: string | null
+  role: string
+  status: string
+  created_at: string
+}
+
+type Category = {
+  id: number
+  name: string
+  icon: string
+  color: string
+}
+
+export default function AdminOverviewScreen() {
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError('')
+
+    try {
+      const [statsResult, accountsResult, categoriesResult] = await Promise.all([
+        supabase.rpc('admin_stats'),
+        supabase
+          .from('profiles')
+          .select('id, full_name, email, role, status, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('categories')
+          .select('id, name, icon, color, is_active')
+          .eq('is_active', true)
+          .order('sort_order')
+          .limit(4),
+      ])
+
+      if (statsResult.error) throw statsResult.error
+      if (accountsResult.error) throw accountsResult.error
+      if (categoriesResult.error) throw categoriesResult.error
+
+      setStats((statsResult.data?.[0] ?? null) as Stats | null)
+      setAccounts((accountsResult.data ?? []) as Account[])
+      setCategories((categoriesResult.data ?? []) as Category[])
+    } catch (err) {
+      console.error('Admin overview error:', err)
+      setError(err instanceof Error ? err.message : 'Unable to load admin overview.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
+  const cards = [
+    { label: 'Registered users', value: stats?.total_users },
+    { label: 'Active users', value: stats?.active_users },
+    { label: 'Admins', value: stats?.admins },
+    { label: 'Expenses logged', value: stats?.expenses_count },
+  ]
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.brand}>Track Mo, Pake Ko!</Text>
-          <Text style={styles.headerSubtitle}>Administration</Text>
-        </View>
+    <AdminShell title="Overview" subtitle="A summary of Track Mo, Pake Ko! system activity.">
+      <Pressable style={styles.refresh} onPress={loadData} disabled={loading}>
+        <Text style={styles.refreshText}>{loading ? 'Refreshing…' : '↻ Refresh overview'}</Text>
+      </Pressable>
 
-        <Pressable
-          style={[
-            styles.signOutButton,
-            isSigningOut && styles.disabledButton,
-          ]}
-          onPress={handleSignOut}
-          disabled={isSigningOut}
-        >
-          <Text style={styles.signOutText}>
-            {isSigningOut ? 'Signing out...' : 'Sign Out'}
-          </Text>
-        </Pressable>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <View style={styles.grid}>
+        {cards.map((card) => (
+          <View key={card.label} style={styles.statCard}>
+            <Text style={styles.statLabel}>{card.label}</Text>
+            <Text style={styles.statValue}>
+              {loading ? '—' : (card.value ?? '—').toLocaleString()}
+            </Text>
+          </View>
+        ))}
       </View>
 
-      <View style={styles.content}>
-        <Text style={styles.welcome}>Admin Dashboard</Text>
-        <Text style={styles.description}>
-          Welcome{profile?.full_name ? `, ${profile.full_name}` : ''}!
-        </Text>
-
-        <View style={styles.placeholder}>
-          <Text style={styles.placeholderTitle}>
-            Administrative Dashboard
-          </Text>
-          <Text style={styles.placeholderDescription}>
-            Your administrative features will appear here.
-          </Text>
-        </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recent registered accounts</Text>
+        <Text style={styles.sectionHint}>The five most recently registered accounts.</Text>
+        {loading ? (
+          <ActivityIndicator color={adminColors.primary} style={{ margin: 22 }} />
+        ) : accounts.length === 0 ? (
+          <Text style={styles.empty}>No registered accounts available.</Text>
+        ) : accounts.map((account) => (
+          <View key={account.id} style={styles.accountRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {(account.full_name || account.email || '?').slice(0, 1).toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.accountInfo}>
+              <Text style={styles.accountName}>{account.full_name || 'No name provided'}</Text>
+              <Text style={styles.accountEmail}>{account.email || 'No email'}</Text>
+              <Text style={styles.accountMeta}>
+                {account.role === 'admin' ? 'Administrator' : 'User'} · {account.status}
+              </Text>
+            </View>
+            <Text style={styles.accountDate}>
+              {new Date(account.created_at).toLocaleDateString('en-PH', {
+                month: 'short', day: 'numeric', year: 'numeric',
+              })}
+            </Text>
+          </View>
+        ))}
       </View>
-    </SafeAreaView>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Default categories</Text>
+        {categories.length === 0 && !loading ? (
+          <Text style={styles.empty}>No active categories.</Text>
+        ) : categories.map((category) => (
+          <View key={category.id} style={styles.categoryRow}>
+            <View style={[styles.categoryDot, { backgroundColor: category.color || adminColors.primary }]} />
+            <Text style={styles.categoryName}>{category.name}</Text>
+          </View>
+        ))}
+      </View>
+    </AdminShell>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F6F7F5',
-  },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E4E8E5',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  brand: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#0F766E',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 3,
-  },
-  signOutButton: {
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  signOutText: {
-    color: '#B42318',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  welcome: {
-    fontSize: 25,
-    fontWeight: '800',
-    color: '#14201C',
-  },
-  description: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 6,
-  },
-  placeholder: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: '#E4E8E5',
-  },
-  placeholderTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#14201C',
-  },
-  placeholderDescription: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 8,
-    lineHeight: 21,
-  },
+  refresh: { alignSelf: 'flex-end', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 9, backgroundColor: '#E8EAFE' },
+  refreshText: { color: adminColors.primary, fontSize: 11, fontWeight: '800' },
+  error: { color: adminColors.danger, backgroundColor: '#FEECEC', padding: 12, borderRadius: 9, fontSize: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statCard: { width: '48%', minHeight: 104, backgroundColor: '#FFFFFF', borderRadius: 13, borderWidth: 1, borderColor: adminColors.border, padding: 14 },
+  statLabel: { color: adminColors.muted, fontSize: 11, fontWeight: '600' },
+  statValue: { color: adminColors.text, fontSize: 27, fontWeight: '900', marginTop: 12 },
+  section: { backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: adminColors.border, padding: 15 },
+  sectionTitle: { color: adminColors.text, fontSize: 15, fontWeight: '900' },
+  sectionHint: { color: adminColors.muted, fontSize: 11, marginTop: 4, marginBottom: 8 },
+  empty: { color: adminColors.muted, fontSize: 12, paddingVertical: 18, textAlign: 'center' },
+  accountRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderTopWidth: 1, borderTopColor: '#EEF0F5', gap: 9 },
+  avatar: { width: 35, height: 35, borderRadius: 18, backgroundColor: '#E8EAFE', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: adminColors.primary, fontSize: 14, fontWeight: '900' },
+  accountInfo: { flex: 1 },
+  accountName: { color: adminColors.text, fontSize: 12, fontWeight: '800' },
+  accountEmail: { color: adminColors.muted, fontSize: 10, marginTop: 2 },
+  accountMeta: { color: adminColors.muted, fontSize: 10, marginTop: 3, textTransform: 'capitalize' },
+  accountDate: { color: adminColors.muted, fontSize: 9 },
+  categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 12 },
+  categoryDot: { width: 11, height: 11, borderRadius: 6 },
+  categoryName: { color: adminColors.text, fontSize: 12, fontWeight: '700' },
 })
