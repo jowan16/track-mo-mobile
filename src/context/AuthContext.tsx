@@ -31,15 +31,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userId = session?.user.id
 
   const fetchProfile = useCallback(async (id: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle()
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle()
 
-    if (error) throw error
+      return { data, error }
+    }
 
-    return data as Profile | null
+    // Refresh proactively if the saved access token is expired or about to
+    // expire, rather than sending a known-stale JWT to PostgREST.
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession()
+
+    if (sessionError) throw sessionError
+
+    if (
+      sessionData.session?.expires_at &&
+      sessionData.session.expires_at <= Math.floor(Date.now() / 1000) + 60
+    ) {
+      const { error: refreshError } = await supabase.auth.refreshSession()
+      if (refreshError) throw refreshError
+    }
+
+    let result = await load()
+
+    // A request can still race with token expiry. Refresh once and retry only
+    // for an expired-JWT response; do not hide unrelated database errors.
+    if (
+      result.error &&
+      (result.error.code === 'PGRST303' ||
+        /jwt expired|token expired/i.test(result.error.message))
+    ) {
+      const { error: refreshError } = await supabase.auth.refreshSession()
+      if (refreshError) throw refreshError
+      result = await load()
+    }
+
+    if (result.error) throw result.error
+
+    return result.data as Profile | null
   }, [])
 
   const validateProfile = useCallback(async (id: string) => {
