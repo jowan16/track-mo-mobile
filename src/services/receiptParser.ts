@@ -73,15 +73,16 @@ export function parseReceiptText(rawText: string): ParsedReceipt {
   const ignored = /\b(sub\s*total|subtotal|grand\s+total|total\s+due|amount\s+due|\btotal\b|vat|tax|change|cash|tendered|discount|receipt|invoice|cashier|terminal|date|time|address|phone|thank you|balance|payment)\b/i
   for (const line of lines) {
     if (ignored.test(line) || line.length < 3) continue
-    const amountMatches = [...line.matchAll(/(?:₱|PHP\s*)?([0-9][0-9,]*\.\d{2})\s*$/gi)]
+    const amountMatches = [...line.matchAll(/(?:₱|PHP\s*)?([0-9][0-9,]*(?:\.\d{2})?)\s*$/gi)]
     if (!amountMatches.length) continue
     const match = amountMatches[amountMatches.length - 1]
     const lineTotal = money(match[1])
     const name = line.slice(0, match.index).replace(/[|*•-]+$/g, '').trim()
     if (!name || name.length < 2 || lineTotal === null || lineTotal <= 0) continue
-    const qtyMatch = name.match(/^([0-9]+(?:\.[0-9]+)?)\s*[xX]\s*(.+)$/)
-    const quantity = qtyMatch ? Number(qtyMatch[1]) : 1
-    const itemName = (qtyMatch ? qtyMatch[2] : name).replace(/\s{2,}/g, ' ').trim()
+    const qtyPrefix = name.match(/^([0-9]+(?:\.[0-9]+)?)\s*[xX]\s*(.+)$/)
+    const qtySuffix = name.match(/^(.+?)\s+([0-9]+(?:\.[0-9]+)?)$/)
+    const quantity = qtyPrefix ? Number(qtyPrefix[1]) : qtySuffix ? Number(qtySuffix[2]) : 1
+    const itemName = (qtyPrefix ? qtyPrefix[2] : qtySuffix ? qtySuffix[1] : name).replace(/\s{2,}/g, ' ').trim()
     if (/^(cash|change|tendered|balance)$/i.test(itemName)) continue
     itemLines.push({ item_name: itemName.slice(0, 200), quantity: quantity > 0 ? quantity : 1, unit_price: quantity > 0 ? Math.round((lineTotal! / quantity) * 100) / 100 : lineTotal, line_total: lineTotal })
   }
