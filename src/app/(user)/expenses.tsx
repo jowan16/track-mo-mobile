@@ -615,9 +615,9 @@ export default function ExpensesScreen() {
       if (receiptContext && !editing) {
         const { error } = await supabase.rpc('save_receipt_expense', {
           p_storage_path: receiptContext.path,
-          p_merchant_name: receiptContext.draft.merchant_name,
+          p_merchant_name: receiptContext.draft.merchant_name.trim(),
           p_receipt_date: form.spent_on,
-          p_subtotal: receiptContext.draft.subtotal,
+          p_subtotal: receiptContext.draft.items.reduce((sum, item) => sum + (Number(item.line_total) || 0), 0),
           p_tax: receiptContext.draft.tax,
           p_total: Number(form.amount),
           p_currency: 'PHP',
@@ -626,7 +626,7 @@ export default function ExpensesScreen() {
           p_spent_on: form.spent_on,
           p_payment_method: form.payment_method,
           p_note: form.note.trim() || null,
-          p_items: receiptContext.draft.items.map((item) => ({
+          p_items: receiptContext.draft.items.filter((item) => item.item_name.trim()).map((item) => ({
             item_name: item.item_name.trim(),
             quantity: item.quantity,
             unit_price: item.unit_price,
@@ -1101,229 +1101,275 @@ export default function ExpensesScreen() {
               contentContainerStyle={styles.formContent}
             >
               {receiptContext ? (
-                <View style={styles.receiptReview}>
-                  <Text style={styles.receiptSectionTitle}>Extracted items</Text>
-                  <View style={styles.receiptTableHeader}>
-                    <Text style={[styles.receiptTableHeading, styles.receiptItemColumn]}>Item</Text>
-                    <Text style={[styles.receiptTableHeading, styles.receiptAmountColumn]}>Amount</Text>
-                  </View>
-                  {receiptContext.draft.items.length > 0 ? (
-                    receiptContext.draft.items.map((item, index) => (
-                      <View key={`${item.item_name}-${index}`} style={styles.receiptTableRow}>
-                        <View style={styles.receiptItemColumn}>
-                          <Text style={styles.receiptItemName}>{item.item_name}</Text>
-                          {item.quantity > 1 ? (
-                            <Text style={styles.receiptItemQuantity}>Qty: {item.quantity}</Text>
-                          ) : null}
-                        </View>
-                        <Text style={[styles.receiptItemAmount, styles.receiptAmountColumn]}>
-                          {peso(item.line_total ?? item.unit_price ?? 0)}
-                        </Text>
-                      </View>
-                    ))
+                <>
+                  {/* RECEIPT MERCHANT */}
+                  <Text style={styles.fieldLabel}>Merchant</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={receiptContext.draft.merchant_name}
+                    onChangeText={(value) => setReceiptContext((current) => current ? ({
+                      ...current,
+                      draft: { ...current.draft, merchant_name: value },
+                    }) : current)}
+                    placeholder="Enter merchant name"
+                    placeholderTextColor="#84908b"
+                    editable={!saving}
+                  />
+
+                  {/* CATEGORY */}
+                  <Text style={styles.fieldLabel}>Category</Text>
+                  {categories.length === 0 ? (
+                    <Text style={styles.fieldHint}>You have no tracked categories. Select categories in your account settings first.</Text>
                   ) : (
-                    <Text style={styles.receiptEmptyItems}>No individual items were detected. You can still save the expense total.</Text>
+                    <View style={styles.categoryChoices}>
+                      {categories.map((category) => {
+                        const active = form.category_id === category.id
+                        return (
+                          <Pressable
+                            key={category.id}
+                            style={[styles.categoryChoice, active && styles.categoryChoiceActive]}
+                            onPress={() => updateForm({ category_id: category.id })}
+                            disabled={saving}
+                          >
+                            <View style={[styles.choiceIcon, { backgroundColor: category.bg || '#e6f4f1' }]}>
+                              <Text style={{ color: category.color || COLORS.brand, fontWeight: '800', fontSize: 17 }}>
+                                {categorySymbol(category.icon)}
+                              </Text>
+                            </View>
+                            <Text style={[styles.categoryChoiceText, active && styles.categoryChoiceTextActive]}>{category.name}</Text>
+                            {active ? <Text style={styles.selectedCheck}>✓</Text> : null}
+                          </Pressable>
+                        )
+                      })}
+                    </View>
                   )}
-                  <View style={styles.receiptTotalRow}>
-                    <Text style={styles.receiptTotalLabel}>Total</Text>
-                    <Text style={styles.receiptTotalValue}>
-                      {peso(Number(form.amount) || receiptContext.draft.total || 0)}
-                    </Text>
+
+                  {/* DATE */}
+                  <Text style={styles.fieldLabel}>Date</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={form.spent_on}
+                    onChangeText={(value) => updateForm({ spent_on: value })}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#84908b"
+                    keyboardType="numbers-and-punctuation"
+                    editable={!saving}
+                    maxLength={10}
+                  />
+                  <Text style={styles.fieldHint}>Use YYYY-MM-DD format. Future dates are not allowed.</Text>
+
+                  {/* AMOUNT */}
+                  <Text style={styles.fieldLabel}>Amount (₱)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={form.amount}
+                    onChangeText={(value) => updateForm({ amount: cleanAmount(value) })}
+                    placeholder="0.00"
+                    placeholderTextColor="#84908b"
+                    keyboardType="decimal-pad"
+                    editable={!saving}
+                  />
+
+                  {/* PAYMENT METHOD */}
+                  <Text style={styles.fieldLabel}>Payment Method</Text>
+                  <View style={styles.methodChoices}>
+                    {METHODS.map((method) => {
+                      const active = form.payment_method === method
+                      return (
+                        <Pressable
+                          key={method}
+                          style={[styles.methodChip, active && styles.methodChipActive]}
+                          onPress={() => updateForm({ payment_method: method })}
+                          disabled={saving}
+                        >
+                          <Text style={[styles.methodText, active && styles.methodTextActive]}>{method}</Text>
+                        </Pressable>
+                      )
+                    })}
                   </View>
 
-                  <Text style={[styles.receiptSectionTitle, styles.receiptInfoHeading]}>Expense information</Text>
-                  <View style={styles.receiptInfoCard}>
-                    <View style={styles.receiptInfoRow}>
-                      <Text style={styles.receiptInfoLabel}>Category</Text>
-                      <Text style={styles.receiptInfoValue}>
-                        {categoryMap.get(form.category_id ?? 0)?.name ?? receiptContext.draft.suggestedCategory}
-                      </Text>
-                    </View>
-                    <View style={styles.receiptInfoRow}>
-                      <Text style={styles.receiptInfoLabel}>Merchant</Text>
-                      <Text style={styles.receiptInfoValue}>
-                        {receiptContext.draft.merchant_name || 'Not detected'}
-                      </Text>
-                    </View>
-                    <View style={styles.receiptInfoRow}>
-                      <Text style={styles.receiptInfoLabel}>Date</Text>
-                      <Text style={styles.receiptInfoValue}>
-                        {form.spent_on ? new Date(`${form.spent_on}T00:00:00`).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not detected'}
-                      </Text>
-                    </View>
-                    <View style={[styles.receiptInfoRow, styles.receiptInfoLastRow]}>
-                      <Text style={styles.receiptInfoLabel}>Amount</Text>
-                      <Text style={styles.receiptInfoValue}>
-                        {peso(Number(form.amount) || 0)}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.receiptEditHint}>Review and edit the expense details below before adding it.</Text>
-                </View>
-              ) : null}
-
-              {/* AMOUNT */}
-
-              <Text style={styles.fieldLabel}>Amount (₱)</Text>
-
-              <TextInput
-                style={styles.input}
-                value={form.amount}
-                onChangeText={(value) =>
-                  updateForm({ amount: cleanAmount(value) })
-                }
-                placeholder="0.00"
-                placeholderTextColor="#84908b"
-                keyboardType="decimal-pad"
-                editable={!saving}
-              />
-
-              <Text style={styles.fieldHint}>
-                Enter a positive amount. Up to 2 decimal places.
-              </Text>
-
-              {/* DATE */}
-
-              <Text style={styles.fieldLabel}>Date</Text>
-
-              <TextInput
-                style={styles.input}
-                value={form.spent_on}
-                onChangeText={(value) =>
-                  updateForm({ spent_on: value })
-                }
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#84908b"
-                keyboardType="numbers-and-punctuation"
-                editable={!saving}
-                maxLength={10}
-              />
-
-              <Text style={styles.fieldHint}>
-                Use YYYY-MM-DD format. Future dates are not allowed.
-              </Text>
-
-              {/* CATEGORY */}
-
-              <Text style={styles.fieldLabel}>Category</Text>
-
-              {categories.length === 0 ? (
-                <Text style={styles.fieldHint}>
-                  You have no tracked categories. Select categories in your
-                  account settings first.
-                </Text>
-              ) : (
-                <View style={styles.categoryChoices}>
-                  {categories.map((category) => {
-                    const active = form.category_id === category.id
-
-                    return (
+                  {/* EDITABLE EXTRACTED ITEMS */}
+                  <View style={styles.receiptItemsEditor}>
+                    <View style={styles.receiptItemsTitleRow}>
+                      <Text style={styles.fieldLabel}>Extracted Items</Text>
                       <Pressable
-                        key={category.id}
-                        style={[
-                          styles.categoryChoice,
-                          active && styles.categoryChoiceActive,
-                        ]}
-                        onPress={() =>
-                          updateForm({ category_id: category.id })
-                        }
+                        onPress={() => setReceiptContext((current) => current ? ({
+                          ...current,
+                          draft: {
+                            ...current.draft,
+                            items: [...current.draft.items, { item_name: '', quantity: 1, unit_price: 0, line_total: 0 }],
+                          },
+                        }) : current)}
                         disabled={saving}
                       >
-                        <View
-                          style={[
-                            styles.choiceIcon,
-                            {
-                              backgroundColor:
-                                category.bg || '#e6f4f1',
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={{
-                              color: category.color || COLORS.brand,
-                              fontWeight: '800',
-                              fontSize: 17,
-                            }}
-                          >
-                            {categorySymbol(category.icon)}
-                          </Text>
-                        </View>
-
-                        <Text
-                          style={[
-                            styles.categoryChoiceText,
-                            active && styles.categoryChoiceTextActive,
-                          ]}
-                        >
-                          {category.name}
-                        </Text>
-
-                        {active ? (
-                          <Text style={styles.selectedCheck}>✓</Text>
-                        ) : null}
+                        <Text style={styles.addReceiptItemText}>+ Add item</Text>
                       </Pressable>
-                    )
-                  })}
-                </View>
-              )}
-
-              {/* PAYMENT METHOD */}
-
-              <Text style={styles.fieldLabel}>Payment Method</Text>
-
-              <View style={styles.methodChoices}>
-                {METHODS.map((method) => {
-                  const active = form.payment_method === method
-
-                  return (
-                    <Pressable
-                      key={method}
-                      style={[
-                        styles.methodChip,
-                        active && styles.methodChipActive,
-                      ]}
-                      onPress={() =>
-                        updateForm({ payment_method: method })
-                      }
-                      disabled={saving}
-                    >
-                      <Text
-                        style={[
-                          styles.methodText,
-                          active && styles.methodTextActive,
-                        ]}
-                      >
-                        {method}
+                    </View>
+                    <View style={styles.receiptTableHeader}>
+                      <Text style={[styles.receiptTableHeading, styles.receiptItemColumn]}>Item</Text>
+                      <Text style={[styles.receiptTableHeading, styles.receiptAmountColumn]}>Amount (₱)</Text>
+                      <View style={styles.receiptRemoveColumn} />
+                    </View>
+                    {receiptContext.draft.items.length > 0 ? receiptContext.draft.items.map((item, index) => (
+                      <View key={`receipt-item-${index}`} style={styles.receiptEditableRow}>
+                        <TextInput
+                          style={[styles.input, styles.receiptEditableName]}
+                          value={item.item_name}
+                          onChangeText={(value) => setReceiptContext((current) => {
+                            if (!current) return current
+                            const items = [...current.draft.items]
+                            items[index] = { ...items[index], item_name: value }
+                            return { ...current, draft: { ...current.draft, items } }
+                          })}
+                          placeholder="Item name"
+                          placeholderTextColor="#84908b"
+                          editable={!saving}
+                        />
+                        <TextInput
+                          style={[styles.input, styles.receiptEditableAmount]}
+                          value={String(item.line_total ?? item.unit_price ?? 0)}
+                          onChangeText={(value) => setReceiptContext((current) => {
+                            if (!current) return current
+                            const items = [...current.draft.items]
+                            const amount = Number(cleanAmount(value)) || 0
+                            items[index] = { ...items[index], unit_price: amount, line_total: amount, quantity: 1 }
+                            return { ...current, draft: { ...current.draft, items } }
+                          })}
+                          placeholder="0.00"
+                          placeholderTextColor="#84908b"
+                          keyboardType="decimal-pad"
+                          editable={!saving}
+                        />
+                        <Pressable
+                          style={styles.removeReceiptItem}
+                          onPress={() => setReceiptContext((current) => current ? ({
+                            ...current,
+                            draft: { ...current.draft, items: current.draft.items.filter((_, itemIndex) => itemIndex !== index) },
+                          }) : current)}
+                          disabled={saving}
+                        >
+                          <Text style={styles.removeReceiptItemText}>×</Text>
+                        </Pressable>
+                      </View>
+                    )) : (
+                      <Text style={styles.receiptEmptyItems}>No items detected. Add the items you want to include.</Text>
+                    )}
+                    <View style={styles.receiptTotalRow}>
+                      <Text style={styles.receiptTotalLabel}>Extracted items total</Text>
+                      <Text style={styles.receiptTotalValue}>
+                        {peso(receiptContext.draft.items.reduce((sum, item) => sum + (Number(item.line_total) || 0), 0))}
                       </Text>
-                    </Pressable>
-                  )
-                })}
-              </View>
+                    </View>
+                  </View>
 
-              {/* NOTE */}
+                  {/* OPTIONAL NOTE */}
+                  <Text style={styles.fieldLabel}>Note (Optional)</Text>
+                  <TextInput
+                    style={[styles.input, styles.noteInput]}
+                    value={form.note}
+                    onChangeText={(value) => updateForm({ note: value.slice(0, 200) })}
+                    placeholder="Add a short description..."
+                    placeholderTextColor="#84908b"
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    editable={!saving}
+                    maxLength={200}
+                  />
+                  <Text style={styles.characterCount}>{form.note.length}/200 characters</Text>
+                </>
+              ) : (
+                <>
+                  {/* AMOUNT */}
+                  <Text style={styles.fieldLabel}>Amount (₱)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={form.amount}
+                    onChangeText={(value) => updateForm({ amount: cleanAmount(value) })}
+                    placeholder="0.00"
+                    placeholderTextColor="#84908b"
+                    keyboardType="decimal-pad"
+                    editable={!saving}
+                  />
+                  <Text style={styles.fieldHint}>Enter a positive amount. Up to 2 decimal places.</Text>
 
-              <Text style={styles.fieldLabel}>
-                Note (Optional)
-              </Text>
+                  {/* DATE */}
+                  <Text style={styles.fieldLabel}>Date</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={form.spent_on}
+                    onChangeText={(value) => updateForm({ spent_on: value })}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#84908b"
+                    keyboardType="numbers-and-punctuation"
+                    editable={!saving}
+                    maxLength={10}
+                  />
+                  <Text style={styles.fieldHint}>Use YYYY-MM-DD format. Future dates are not allowed.</Text>
 
-              <TextInput
-                style={[styles.input, styles.noteInput]}
-                value={form.note}
-                onChangeText={(value) =>
-                  updateForm({ note: value.slice(0, 200) })
-                }
-                placeholder="Add a short description..."
-                placeholderTextColor="#84908b"
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                editable={!saving}
-                maxLength={200}
-              />
+                  {/* CATEGORY */}
+                  <Text style={styles.fieldLabel}>Category</Text>
+                  {categories.length === 0 ? (
+                    <Text style={styles.fieldHint}>You have no tracked categories. Select categories in your account settings first.</Text>
+                  ) : (
+                    <View style={styles.categoryChoices}>
+                      {categories.map((category) => {
+                        const active = form.category_id === category.id
+                        return (
+                          <Pressable
+                            key={category.id}
+                            style={[styles.categoryChoice, active && styles.categoryChoiceActive]}
+                            onPress={() => updateForm({ category_id: category.id })}
+                            disabled={saving}
+                          >
+                            <View style={[styles.choiceIcon, { backgroundColor: category.bg || '#e6f4f1' }]}>
+                              <Text style={{ color: category.color || COLORS.brand, fontWeight: '800', fontSize: 17 }}>
+                                {categorySymbol(category.icon)}
+                              </Text>
+                            </View>
+                            <Text style={[styles.categoryChoiceText, active && styles.categoryChoiceTextActive]}>{category.name}</Text>
+                            {active ? <Text style={styles.selectedCheck}>✓</Text> : null}
+                          </Pressable>
+                        )
+                      })}
+                    </View>
+                  )}
 
-              <Text style={styles.characterCount}>
-                {form.note.length}/200 characters
-              </Text>
+                  {/* PAYMENT METHOD */}
+                  <Text style={styles.fieldLabel}>Payment Method</Text>
+                  <View style={styles.methodChoices}>
+                    {METHODS.map((method) => {
+                      const active = form.payment_method === method
+                      return (
+                        <Pressable
+                          key={method}
+                          style={[styles.methodChip, active && styles.methodChipActive]}
+                          onPress={() => updateForm({ payment_method: method })}
+                          disabled={saving}
+                        >
+                          <Text style={[styles.methodText, active && styles.methodTextActive]}>{method}</Text>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+
+                  {/* NOTE */}
+                  <Text style={styles.fieldLabel}>Note (Optional)</Text>
+                  <TextInput
+                    style={[styles.input, styles.noteInput]}
+                    value={form.note}
+                    onChangeText={(value) => updateForm({ note: value.slice(0, 200) })}
+                    placeholder="Add a short description..."
+                    placeholderTextColor="#84908b"
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    editable={!saving}
+                    maxLength={200}
+                  />
+                  <Text style={styles.characterCount}>{form.note.length}/200 characters</Text>
+                </>
+              )}
 
               {/* BUDGET CHECK */}
 
@@ -1836,6 +1882,55 @@ const styles = StyleSheet.create({
   },
   formContent: {
     paddingBottom: 22,
+  },
+  receiptItemsEditor: {
+    marginTop: 12,
+  },
+  receiptItemsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  addReceiptItemText: {
+    color: COLORS.brand,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  receiptEditableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: 8,
+  },
+  receiptEditableName: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 43,
+    fontSize: 11,
+    paddingHorizontal: 9,
+  },
+  receiptEditableAmount: {
+    width: 100,
+    minHeight: 43,
+    fontSize: 11,
+    paddingHorizontal: 8,
+    textAlign: 'right',
+  },
+  receiptRemoveColumn: {
+    width: 28,
+  },
+  removeReceiptItem: {
+    width: 28,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: '#fff0ef',
+  },
+  removeReceiptItemText: {
+    color: COLORS.danger,
+    fontSize: 21,
+    fontWeight: '700',
   },
   receiptReview: {
     backgroundColor: '#ffffff',
