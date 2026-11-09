@@ -112,11 +112,11 @@ const amountAfterLabel = (lines: string[], label: RegExp) => {
 }
 
 const totalFromReceiptLines = (lines: string[]) => {
-  const excluded = /\\b(cash|change|tendered|vat|tax|non[- ]taxable|vatable|transaction|customer|cashier)\\b/i
-  const totalLabel = /^(?:(?:grand\\s+)?total(?:\\s+due|\\s+amount)?|amount\\s+due|net\\s+(?:amount|total)|balance\\s+due)\\b/i
+  const excluded = /\b(cash|change|tendered|vat|tax|non[- ]taxable|vatable|transaction|customer|cashier)\b/i
+  const totalLabel = /^(?:(?:grand\s+)?total(?:\s+due|\s+amount)?|amount\s+due|net\s+(?:amount|total)|balance\s+due)\b/i
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]
-    if (!totalLabel.test(line) || /\\b(items?|qty|quantity|discount|savings|before\\s+tax)\\b/i.test(line)) continue
+    if (!totalLabel.test(line) || /\b(items?|qty|quantity|discount|savings|before\s+tax)\b/i.test(line)) continue
     const label = totalLabel.exec(line)
     const sameLine = amountTokens(line.slice(label?.[0].length ?? 0))
     if (sameLine.length) return money(sameLine[0].raw)
