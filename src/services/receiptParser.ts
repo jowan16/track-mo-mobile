@@ -59,12 +59,12 @@ const dateFromText = (text: string) => {
   }
 
   const monthNames = 'JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER'
-  const namedDate = text.match(new RegExp(`\\b(\\d{1,2})[\\s,/-]+(${monthNames})[\\s,/-]+(20\\d{2}|\\d{2})\\b`, 'i'))
-    ?? text.match(new RegExp(`\\b(${monthNames})[\\s,/-]+(\\d{1,2}),?[\\s,/-]+(20\\d{2}|\\d{2})\\b`, 'i'))
-  if (namedDate) {
-    const monthToken = namedDate[2] && /^\\d/.test(namedDate[2]) ? namedDate[1] : namedDate[1]
-    const dayToken = namedDate[2] && /^\\d/.test(namedDate[2]) ? namedDate[2] : namedDate[2]
-    const yearToken = namedDate[3]
+  const dayFirstDate = text.match(new RegExp(`\\b(\\d{1,2})[\\s,/-]+(${monthNames})[\\s,/-]+(20\\d{2}|\\d{2})\\b`, 'i'))
+  const monthFirstDate = dayFirstDate ? null : text.match(new RegExp(`\\b(${monthNames})[\\s,/-]+(\\d{1,2}),?[\\s,/-]+(20\\d{2}|\\d{2})\\b`, 'i'))
+  if (dayFirstDate || monthFirstDate) {
+    const monthToken = dayFirstDate ? dayFirstDate[2] : monthFirstDate![1]
+    const dayToken = dayFirstDate ? dayFirstDate[1] : monthFirstDate![2]
+    const yearToken = dayFirstDate ? dayFirstDate[3] : monthFirstDate![3]
     const monthIndex = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'].findIndex((month) => month === monthToken.slice(0, 3).toUpperCase()) + 1
     const yearNumber = Number(yearToken)
     const year = yearToken.length === 2 ? (yearNumber <= 79 ? 2000 + yearNumber : 1900 + yearNumber) : yearNumber
