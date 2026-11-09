@@ -1,5 +1,5 @@
 import { router, useSegments } from 'expo-router'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   Alert,
   Pressable,
@@ -27,7 +27,7 @@ export function AdminShell({
 }: {
   title: string
   subtitle?: string
-  children: React.ReactNode
+  children: ReactNode
 }) {
   const { profile, signOut } = useAuth()
   const segments = useSegments()
