@@ -27,7 +27,7 @@ const money = (value: string): number | null => {
 
 const amountTokens = (line: string) => {
   if (/[-+]?\s*\d+(?:\.\d+)?\s*%/.test(line)) return []
-  const pattern = /(?:₱|PHP\s*|P\s*)?(\d[\d,]*\.\d{2})(?=[A-Za-z]|\\b)/gi
+  const pattern = /(?:₱|PHP\s*|P\s*)?(\d[\d,]*\.\d{2})(?=[A-Za-z]|\b)/gi
   return [...line.matchAll(pattern)].map((match) => ({
     raw: match[1],
     index: match.index ?? 0,
