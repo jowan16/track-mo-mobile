@@ -311,7 +311,7 @@ export default function ExpensesScreen() {
           amount: Number(budget.amount),
         }))
 
-      setAvailableCategories(allActiveCategories)
+      setAvailableCategories(trackedCategories)
       setCategories(trackedCategories)
       setExpenses(trackedExpenses)
       setBudgets(activeBudgets)
@@ -584,7 +584,7 @@ export default function ExpensesScreen() {
       return
     }
 
-    const selectableCategories = receiptContext ? availableCategories : categories
+    const selectableCategories = categories
     if (!selectableCategories.some((item) => item.id === form.category_id)) {
       setFormError('Please select a valid category.')
       return
@@ -622,15 +622,6 @@ export default function ExpensesScreen() {
       }
 
       if (receiptContext && !editing) {
-        // A receipt can reveal a valid category (for example Medicine) that
-        // the user has not tracked yet. Add it to their tracked categories
-        // before calling the receipt RPC, which enforces that relationship.
-        if (!categories.some((item) => item.id === form.category_id)) {
-          const { error: categoryError } = await supabase
-            .from('user_categories')
-            .insert({ user_id: profile.id, category_id: form.category_id })
-          if (categoryError) throw categoryError
-        }
         const { error } = await supabase.rpc('save_receipt_expense', {
           p_storage_path: receiptContext.path,
           p_merchant_name: receiptContext.draft.merchant_name.trim(),
@@ -1177,7 +1168,7 @@ export default function ExpensesScreen() {
                     </View>
                   )}
                   <Text style={styles.fieldHint}>
-                    Your receipt's suggested category is selected automatically. Choosing a category you do not track yet will add it to your dashboard when you save.
+                    Only categories you selected on your dashboard are available here. The closest matching selected category is preselected when detected.
                   </Text>
 
                   {/* DATE */}
