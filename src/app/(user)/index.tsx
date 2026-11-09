@@ -197,7 +197,6 @@ export default function UserDashboard() {
   const [availableCategories, setAvailableCategories] = useState<Category[]>([])
   const [categoryModalVisible, setCategoryModalVisible] = useState(false)
   const [addingCategoryId, setAddingCategoryId] = useState<number | null>(null)
-  const [editCategoryModalVisible, setEditCategoryModalVisible] = useState(false)
 
   // ------------------------------------------------
   // FETCH DASHBOARD DATA
@@ -424,28 +423,34 @@ export default function UserDashboard() {
   const expenseEntryCount = currentMonthExpenses.length
 
   // ------------------------------------------------
-  // ADD CATEGORY
+  // TOGGLE TRACKED CATEGORY
   // ------------------------------------------------
 
-  const handleAddCategory = async (category: Category) => {
+  const handleToggleCategory = async (category: Category) => {
     if (!profile?.id || addingCategoryId !== null) return
 
+    const isSelected = data.categories.some((item) => item.id === category.id)
     setAddingCategoryId(category.id)
 
     try {
-      const { error } = await supabase.from('user_categories').insert({
-        user_id: profile.id,
-        category_id: category.id,
-      })
+      const query = supabase.from('user_categories')
+
+      const { error } = isSelected
+        ? await query
+            .delete()
+            .eq('user_id', profile.id)
+            .eq('category_id', category.id)
+        : await query.insert({
+            user_id: profile.id,
+            category_id: category.id,
+          })
 
       if (error) throw error
 
-      setCategoryModalVisible(false)
       await loadDashboard()
-      Alert.alert('Category added', `${category.name} is now included in your dashboard.`)
     } catch (error) {
       Alert.alert(
-        'Unable to add category',
+        isSelected ? 'Unable to deselect category' : 'Unable to select category',
         error instanceof Error ? error.message : 'Please try again.',
       )
     } finally {
@@ -834,33 +839,6 @@ export default function UserDashboard() {
               </Text>
             </Pressable>
 
-            <Pressable
-              onPress={() => setEditCategoryModalVisible(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Edit tracked categories"
-              style={{ width: 76, alignItems: 'center' }}
-            >
-              <View
-                style={{
-                  width: 68,
-                  height: 68,
-                  borderRadius: 34,
-                  borderWidth: 1.5,
-                  borderColor: '#0f766e',
-                  backgroundColor: '#e8f5f1',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ color: COLORS.brand, fontSize: 25, fontWeight: '700' }}>✎</Text>
-              </View>
-              <Text style={{ color: COLORS.brand, fontSize: 11, fontWeight: '700', marginTop: 8, textAlign: 'center' }}>
-                Edit category
-              </Text>
-              <Text style={{ color: COLORS.muted, fontSize: 9, marginTop: 3, textAlign: 'center' }}>
-                Manage
-              </Text>
-            </Pressable>
           </ScrollView>
         </View>
 
@@ -1244,71 +1222,45 @@ export default function UserDashboard() {
           <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 30, maxHeight: '78%' }}>
             <View style={{ alignSelf: 'center', width: 42, height: 5, borderRadius: 3, backgroundColor: '#d8e0dc', marginBottom: 18 }} />
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ color: COLORS.ink, fontSize: 20, fontWeight: '800' }}>Add a Category</Text>
+              <Text style={{ color: COLORS.ink, fontSize: 20, fontWeight: '800' }}>Select Categories</Text>
               <Pressable onPress={() => setCategoryModalVisible(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close category picker">
                 <Text style={{ color: COLORS.muted, fontSize: 26, lineHeight: 30 }}>×</Text>
               </Pressable>
             </View>
-            <Text style={{ color: COLORS.muted, fontSize: 13, marginBottom: 14 }}>Choose which spending categories you want to track.</Text>
+            <Text style={{ color: COLORS.muted, fontSize: 13, marginBottom: 14 }}>Select the categories you want to show on your dashboard. Tap again to deselect.</Text>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
-              {availableCategories.filter((category) => !data.categories.some((tracked) => tracked.id === category.id)).map((category) => (
-                <Pressable key={category.id} onPress={() => handleAddCategory(category)} disabled={addingCategoryId !== null} accessibilityRole="button" accessibilityLabel={`Add ${category.name} category`} style={{ flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: 1, borderColor: '#e4e8e5', backgroundColor: '#fbfcfb', opacity: addingCategoryId !== null && addingCategoryId !== category.id ? 0.55 : 1 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}><Text style={{ color: category.color || COLORS.brand, fontSize: 22, fontWeight: '800' }}>{getCategorySymbol(category.icon)}</Text></View>
-                  <View style={{ flex: 1 }}><Text style={{ color: COLORS.ink, fontSize: 14, fontWeight: '800' }}>{category.name}</Text><Text style={{ color: COLORS.muted, fontSize: 11, marginTop: 3 }}>Add to your tracked categories</Text></View>
-                  {addingCategoryId === category.id ? <ActivityIndicator color={COLORS.brand} /> : <Text style={{ color: COLORS.brand, fontSize: 23, fontWeight: '700' }}>＋</Text>}
-                </Pressable>
-              ))}
-              {availableCategories.every((category) => data.categories.some((tracked) => tracked.id === category.id)) ? <View style={{ paddingVertical: 16, alignItems: 'center' }}><Text style={{ color: COLORS.muted, fontSize: 12 }}>All categories are already added.</Text></View> : null}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+              {availableCategories.map((category) => {
+                const isSelected = data.categories.some((tracked) => tracked.id === category.id)
+                const isBusy = addingCategoryId === category.id
 
-      <Modal
-        visible={editCategoryModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setEditCategoryModalVisible(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(10, 25, 20, 0.48)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 30, maxHeight: '78%' }}>
-            <View style={{ alignSelf: 'center', width: 42, height: 5, borderRadius: 3, backgroundColor: '#d8e0dc', marginBottom: 18 }} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ color: COLORS.ink, fontSize: 20, fontWeight: '800' }}>Edit Categories</Text>
-              <Pressable onPress={() => setEditCategoryModalVisible(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close edit categories">
-                <Text style={{ color: COLORS.muted, fontSize: 26, lineHeight: 30 }}>×</Text>
-              </Pressable>
-            </View>
-            <Text style={{ color: COLORS.muted, fontSize: 13, marginBottom: 14 }}>Remove categories you no longer want on your dashboard.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
-              {data.categories.map((category) => (
-                <View key={category.id} style={{ flexDirection: 'row', alignItems: 'center', padding: 11, borderRadius: 14, borderWidth: 1, borderColor: '#e4e8e5', backgroundColor: '#fbfcfb' }}>
-                  <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    <Text style={{ color: category.color || COLORS.brand, fontSize: 21, fontWeight: '800' }}>{getCategorySymbol(category.icon)}</Text>
-                  </View>
-                  <Text style={{ flex: 1, color: COLORS.ink, fontSize: 14, fontWeight: '800' }}>{category.name}</Text>
+                return (
                   <Pressable
-                    onPress={() => Alert.alert('Remove category?', `Remove ${category.name} from your dashboard? Your existing expenses and budgets will not be deleted.`, [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Remove', style: 'destructive', onPress: async () => {
-                        if (!profile?.id) return
-                        const { error } = await supabase.from('user_categories').delete().eq('user_id', profile.id).eq('category_id', category.id)
-                        if (error) {
-                          Alert.alert('Unable to remove category', error.message)
-                          return
-                        }
-                        await loadDashboard()
-                      } },
-                    ])}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove ${category.name} from dashboard`}
-                    style={{ paddingHorizontal: 13, paddingVertical: 8, borderRadius: 9, backgroundColor: '#fff1f0' }}
+                    key={category.id}
+                    onPress={() => handleToggleCategory(category)}
+                    disabled={addingCategoryId !== null}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: isSelected, disabled: addingCategoryId !== null }}
+                    accessibilityLabel={`${category.name}, ${isSelected ? 'selected' : 'not selected'}`}
+                    style={{ flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: 1, borderColor: isSelected ? '#9acfc2' : '#e4e8e5', backgroundColor: isSelected ? '#f0faf7' : '#fbfcfb', opacity: addingCategoryId !== null && !isBusy ? 0.55 : 1 }}
                   >
-                    <Text style={{ color: COLORS.danger, fontSize: 12, fontWeight: '800' }}>Remove</Text>
+                    <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                      <Text style={{ color: category.color || COLORS.brand, fontSize: 22, fontWeight: '800' }}>{getCategorySymbol(category.icon)}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: COLORS.ink, fontSize: 14, fontWeight: '800' }}>{category.name}</Text>
+                      <Text style={{ color: COLORS.muted, fontSize: 11, marginTop: 3 }}>{isSelected ? 'Shown on your dashboard' : 'Not shown on your dashboard'}</Text>
+                    </View>
+                    {isBusy ? (
+                      <ActivityIndicator color={COLORS.brand} />
+                    ) : (
+                      <View style={{ width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: isSelected ? COLORS.brand : '#aeb9b3', backgroundColor: isSelected ? COLORS.brand : '#ffffff', alignItems: 'center', justifyContent: 'center' }}>
+                        {isSelected ? <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '800', lineHeight: 19 }}>✓</Text> : null}
+                      </View>
+                    )}
                   </Pressable>
-                </View>
-              ))}
-              {data.categories.length === 0 ? <Text style={{ color: COLORS.muted, fontSize: 12, paddingVertical: 12 }}>No categories to edit.</Text> : null}
+                )
+              })}
+              {availableCategories.length === 0 ? <Text style={{ color: COLORS.muted, fontSize: 12, paddingVertical: 12 }}>No categories are currently available.</Text> : null}
             </ScrollView>
           </View>
         </View>
