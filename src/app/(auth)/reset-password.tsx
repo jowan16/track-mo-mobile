@@ -25,6 +25,16 @@ export default function ResetPasswordScreen() {
   const [verified, setVerified] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  const strength = Math.min(
+    100,
+    (password.length >= 8 ? 40 : password.length * 4) +
+      (/[A-Za-z]/.test(password) ? 20 : 0) +
+      (/\\d/.test(password) ? 20 : 0) +
+      (/[^A-Za-z0-9]/.test(password) ? 20 : 0),
+  )
+  const strengthLabel =
+    strength < 40 ? 'weak' : strength < 80 ? 'fair' : 'strong'
+
   useEffect(() => {
     const verifyResetLink = async () => {
       if (hasExchangedCode.current) return
@@ -53,16 +63,21 @@ export default function ResetPasswordScreen() {
   }, [code])
 
   const handleUpdatePassword = async () => {
-    if (password.length < 8) {
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\\d/.test(password)) {
       Alert.alert(
         'Invalid password',
-        'Your new password must contain at least 8 characters.',
+        'Password must be at least 8 characters and include a letter and a number.',
       )
       return
     }
 
+    if (!confirmPassword) {
+      Alert.alert('Missing confirmation', 'Please confirm your password.')
+      return
+    }
+
     if (password !== confirmPassword) {
-      Alert.alert('Password mismatch', 'Your passwords do not match.')
+      Alert.alert('Password mismatch', 'Passwords do not match.')
       return
     }
 
@@ -164,6 +179,21 @@ export default function ResetPasswordScreen() {
           </Pressable>
         </View>
 
+        <View style={styles.strengthContainer}>
+          <View style={styles.strengthTrack}>
+            <View
+              style={[
+                styles.strengthFill,
+                {
+                  width: `${strength}%`,
+                  backgroundColor: strength < 60 ? '#B42318' : '#0F766E',
+                },
+              ]}
+            />
+          </View>
+          <Text style={styles.strengthText}>Strength: {strengthLabel}</Text>
+        </View>
+
         <Text style={styles.label}>Confirm new password</Text>
         <TextInput
           style={styles.input}
@@ -240,6 +270,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#334155',
     marginBottom: 8,
+  },
+  strengthContainer: {
+    marginTop: -10,
+    marginBottom: 18,
+  },
+  strengthTrack: {
+    height: 7,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 99,
+    overflow: 'hidden',
+  },
+  strengthFill: {
+    height: 7,
+    borderRadius: 99,
+  },
+  strengthText: {
+    color: '#64748B',
+    fontSize: 12,
+    marginTop: 5,
   },
   input: {
     height: 50,
