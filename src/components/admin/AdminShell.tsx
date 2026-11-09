@@ -2,6 +2,7 @@ import { router, useSegments } from 'expo-router'
 import { useState, type ReactNode } from 'react'
 import {
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,11 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAuth } from '@/context/AuthContext'
 
 const links = [
-  { label: 'Overview', route: '/(admin)' },
-  { label: 'Users', route: '/(admin)/users' },
-  { label: 'Default categories', route: '/(admin)/categories' },
-  { label: 'Reports', route: '/(admin)/reports' },
-  { label: 'Audit log', route: '/(admin)/audit' },
+  { label: 'Overview', route: '/(admin)', icon: '⌂' },
+  { label: 'Users', route: '/(admin)/users', icon: '♙' },
+  { label: 'Default categories', route: '/(admin)/categories', icon: '▦' },
+  { label: 'Reports', route: '/(admin)/reports', icon: '▥' },
+  { label: 'Audit log', route: '/(admin)/audit', icon: '▤' },
 ] as const
 
 export function AdminShell({
@@ -32,12 +33,15 @@ export function AdminShell({
   const { profile, signOut } = useAuth()
   const segments = useSegments()
   const [signingOut, setSigningOut] = useState(false)
+  const [drawerVisible, setDrawerVisible] = useState(false)
   const current = segments[1] ?? 'index'
-
   const activeRoute =
     current === 'index' ? '/(admin)' : `/(admin)/${current}`
 
+  const closeDrawer = () => setDrawerVisible(false)
+
   const confirmSignOut = () => {
+    closeDrawer()
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -65,11 +69,16 @@ export function AdminShell({
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.brandRow}>
-          <View style={styles.brandMark}>
-            <Text style={styles.brandMarkText}>₱</Text>
-          </View>
+          <Pressable
+            style={styles.menuButton}
+            onPress={() => setDrawerVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open admin navigation menu"
+          >
+            <Text style={styles.menuButtonText}>☰</Text>
+          </Pressable>
           <View style={styles.brandText}>
-            <Text style={styles.brand}>Track Mo, Pake Ko!</Text>
+            <Text style={styles.brand} numberOfLines={1}>Track Mo, Pake Ko!</Text>
             <Text style={styles.brandSubtitle}>Administration</Text>
           </View>
           <Pressable
@@ -85,26 +94,6 @@ export function AdminShell({
         <Text style={styles.adminName}>
           {profile?.full_name || profile?.email || 'Administrator'}
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.nav}
-        >
-          {links.map((item) => {
-            const active = item.route === activeRoute
-            return (
-              <Pressable
-                key={item.route}
-                onPress={() => router.replace(item.route)}
-                style={[styles.navItem, active && styles.navItemActive]}
-              >
-                <Text style={[styles.navText, active && styles.navTextActive]}>
-                  {item.label}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </ScrollView>
       </View>
 
       <ScrollView
@@ -119,6 +108,95 @@ export function AdminShell({
         </View>
         {children}
       </ScrollView>
+
+      <Modal
+        visible={drawerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDrawer}
+        statusBarTranslucent
+      >
+        <View style={styles.drawerOverlay}>
+          <Pressable
+            style={styles.backdrop}
+            onPress={closeDrawer}
+            accessibilityLabel="Close navigation menu"
+          />
+          <View style={styles.drawer}>
+            <View style={styles.drawerBrandRow}>
+              <View style={styles.drawerBrandMark}>
+                <Text style={styles.drawerBrandMarkText}>₱</Text>
+              </View>
+              <View style={styles.drawerBrandText}>
+                <Text style={styles.drawerBrand}>Track Mo, Pake Ko!</Text>
+                <Text style={styles.drawerBrandSubtitle}>Administration</Text>
+              </View>
+              <Pressable
+                onPress={closeDrawer}
+                style={styles.closeButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close menu"
+              >
+                <Text style={styles.closeText}>×</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.separator} />
+
+            <ScrollView
+              style={styles.menuScroll}
+              contentContainerStyle={styles.menuContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {links.map((item) => {
+                const active = item.route === activeRoute
+                return (
+                  <Pressable
+                    key={item.route}
+                    onPress={() => {
+                      closeDrawer()
+                      router.replace(item.route)
+                    }}
+                    style={({ pressed }) => [
+                      styles.menuItem,
+                      active && styles.activeMenuItem,
+                      pressed && styles.menuItemPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text style={[styles.menuIcon, active && styles.activeMenuIcon]}>
+                      {item.icon}
+                    </Text>
+                    <Text style={[styles.menuText, active && styles.activeMenuText]}>
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+
+            <View style={styles.accountFooter}>
+              <View style={styles.separator} />
+              <Text style={styles.signedInLabel}>Signed in as</Text>
+              <Text style={styles.profileName} numberOfLines={2}>
+                {profile?.full_name || profile?.email || 'Administrator'}
+              </Text>
+              <Pressable
+                style={styles.drawerSignOutButton}
+                onPress={confirmSignOut}
+                disabled={signingOut}
+                accessibilityRole="button"
+              >
+                <Text style={styles.drawerSignOutIcon}>↪</Text>
+                <Text style={styles.drawerSignOutText}>
+                  {signingOut ? 'Signing out…' : 'Sign out'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -140,6 +218,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: adminColors.border,
     paddingTop: 10,
+    paddingBottom: 10,
   },
   brandRow: {
     flexDirection: 'row',
@@ -147,15 +226,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 10,
   },
-  brandMark: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    backgroundColor: adminColors.primary,
+  menuButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  brandMarkText: { color: '#FFFFFF', fontSize: 21, fontWeight: '900' },
+  menuButtonText: { color: adminColors.primary, fontSize: 22, fontWeight: '800' },
   brandText: { flex: 1 },
   brand: { color: adminColors.text, fontSize: 15, fontWeight: '900' },
   brandSubtitle: { color: adminColors.muted, fontSize: 10, marginTop: 2 },
@@ -172,19 +251,87 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 9,
   },
-  nav: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 10, gap: 7 },
-  navItem: {
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    borderRadius: 9,
-    backgroundColor: '#F1F3F9',
-  },
-  navItemActive: { backgroundColor: adminColors.primary },
-  navText: { color: '#475569', fontSize: 11, fontWeight: '700' },
-  navTextActive: { color: '#FFFFFF' },
   body: { flex: 1 },
   bodyContent: { padding: 16, paddingBottom: 36, gap: 15 },
   pageHeading: { marginBottom: 1 },
   pageTitle: { color: adminColors.text, fontSize: 24, fontWeight: '900' },
   pageSubtitle: { color: adminColors.muted, fontSize: 12, lineHeight: 18, marginTop: 5 },
+  drawerOverlay: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(10, 20, 17, 0.42)',
+  },
+  backdrop: { ...StyleSheet.absoluteFillObject },
+  drawer: {
+    width: '82%',
+    maxWidth: 340,
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    paddingTop: 58,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    zIndex: 1,
+  },
+  drawerBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 22,
+  },
+  drawerBrandMark: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: adminColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerBrandMarkText: { color: '#FFFFFF', fontSize: 24, fontWeight: '800' },
+  drawerBrandText: { flex: 1, marginLeft: 11 },
+  drawerBrand: { color: adminColors.text, fontSize: 15, fontWeight: '800' },
+  drawerBrandSubtitle: { color: adminColors.muted, fontSize: 10, marginTop: 2 },
+  closeButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeText: { color: '#475569', fontSize: 25, lineHeight: 29 },
+  separator: { height: 1, backgroundColor: '#E8EEEB' },
+  menuScroll: { flex: 1, marginTop: 18 },
+  menuContent: { gap: 6, paddingBottom: 20 },
+  menuItem: {
+    minHeight: 49,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 13,
+    borderRadius: 11,
+  },
+  activeMenuItem: { backgroundColor: '#EEF2FF' },
+  menuItemPressed: { backgroundColor: '#F1F5F9' },
+  menuIcon: { width: 30, color: '#68756F', fontSize: 21, fontWeight: '700' },
+  activeMenuIcon: { color: adminColors.primary },
+  menuText: { color: '#34413B', fontSize: 14, fontWeight: '600' },
+  activeMenuText: { color: adminColors.primary, fontWeight: '800' },
+  accountFooter: { paddingTop: 15 },
+  signedInLabel: { color: '#7B8782', fontSize: 12, marginTop: 17 },
+  profileName: {
+    color: adminColors.text,
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 5,
+    marginBottom: 16,
+  },
+  drawerSignOutButton: {
+    minHeight: 45,
+    borderRadius: 10,
+    backgroundColor: '#FFF1F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 13,
+    gap: 10,
+  },
+  drawerSignOutIcon: { color: adminColors.danger, fontSize: 19, fontWeight: '800' },
+  drawerSignOutText: { color: adminColors.danger, fontSize: 14, fontWeight: '700' },
 })
