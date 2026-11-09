@@ -272,14 +272,7 @@ export default function ReportsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headingRow}>
-          <View>
-            <Text style={styles.title}>Reports</Text>
-            <Text style={styles.muted}>Understand where your money goes.</Text>
-          </View>
-        </View>
-
-        <View style={styles.toggle}>
+                <View style={styles.toggle}>
           {(['monthly', 'yearly'] as Mode[]).map((item) => (
             <Pressable
               key={item}
@@ -468,9 +461,8 @@ const styles = StyleSheet.create({
     right: 72,
     alignItems: 'center',
   },
-  headerText: { flex: 1 },
-  brand: { color: C.ink, fontSize: 15, fontWeight: '800'  textAlign: 'center' },
-  subtitle: { color: C.muted, fontSize: 12, marginTop: 2  textAlign: 'center' },
+  brand: { color: C.ink, fontSize: 15, fontWeight: '800', textAlign: 'center' },
+  subtitle: { color: C.muted, fontSize: 12, marginTop: 2, textAlign: 'center' },
   content: { padding: 18, paddingBottom: 40, gap: 14 },
   headingRow: { marginBottom: 2 },
   title: { color: C.ink, fontSize: 25, fontWeight: '900' },
