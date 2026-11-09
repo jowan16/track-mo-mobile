@@ -239,24 +239,39 @@ export default function RegisterScreen() {
           </View>
           {errors.confirmPassword ? <Text style={styles.fieldError}>{errors.confirmPassword}</Text> : null}
 
-          <Pressable
-            style={styles.termsRow}
-            onPress={() => {
-              setAcceptedTerms((previous) => !previous)
-              setErrors((previous) => ({ ...previous, terms: '' }))
-            }}
-            disabled={loading}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: acceptedTerms }}
-          >
-            <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
+          <View style={styles.termsRow}>
+            <Pressable
+              onPress={() => {
+                setAcceptedTerms((previous) => !previous)
+                setErrors((previous) => ({ ...previous, terms: '' }))
+              }}
+              disabled={loading}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: acceptedTerms }}
+              style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}
+            >
               {acceptedTerms ? <Text style={styles.checkmark}>✓</Text> : null}
-            </View>
+            </Pressable>
             <Text style={styles.termsText}>
-              I agree to the <Text style={styles.termsEmphasis}>Terms</Text> and{' '}
-              <Text style={styles.termsEmphasis}>Privacy Policy</Text>.
+              I agree to the{' '}
+              <Text
+                style={styles.termsEmphasis}
+                onPress={() => router.push('/(auth)/terms')}
+                suppressHighlighting={false}
+              >
+                Terms
+              </Text>
+              {' '}and{' '}
+              <Text
+                style={styles.termsEmphasis}
+                onPress={() => router.push('/(auth)/privacy-policy')}
+                suppressHighlighting={false}
+              >
+                Privacy Policy
+              </Text>
+              .
             </Text>
-          </Pressable>
+          </View>
           {errors.terms ? <Text style={styles.fieldError}>{errors.terms}</Text> : null}
 
           <Pressable
