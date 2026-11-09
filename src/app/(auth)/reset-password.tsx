@@ -29,7 +29,7 @@ export default function ResetPasswordScreen() {
     100,
     (password.length >= 8 ? 40 : password.length * 4) +
       (/[A-Za-z]/.test(password) ? 20 : 0) +
-      (/\\d/.test(password) ? 20 : 0) +
+      (/\d/.test(password) ? 20 : 0) +
       (/[^A-Za-z0-9]/.test(password) ? 20 : 0),
   )
   const strengthLabel =
@@ -63,7 +63,7 @@ export default function ResetPasswordScreen() {
   }, [code])
 
   const handleUpdatePassword = async () => {
-    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\\d/.test(password)) {
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
       Alert.alert(
         'Invalid password',
         'Password must be at least 8 characters and include a letter and a number.',
