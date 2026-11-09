@@ -442,8 +442,9 @@ export default function ExpensesScreen() {
       const category = availableCategories.find(
         (item) => item.name.toLowerCase() === draft.suggestedCategory.toLowerCase(),
       )
-      const itemSummary = draft.items.map((item) => item.item_name.trim()).filter(Boolean).slice(0, 5).join(', ')
-      const note = [draft.merchant_name.trim(), itemSummary].filter(Boolean).join(' — ').slice(0, 200)
+      // Merchant and purchased items have dedicated fields in this receipt form.
+      // Keep the optional note clean instead of copying raw OCR/header text into it.
+      const note = ''
 
       setEditing(null)
       setReceiptContext({
