@@ -1,4 +1,3 @@
-
 import { Redirect, Stack } from 'expo-router'
 import { ActivityIndicator, StyleSheet, View } from 'react-native'
 
@@ -10,7 +9,7 @@ export default function AdminLayout() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#4F46E5" />
       </View>
     )
   }
@@ -20,10 +19,22 @@ export default function AdminLayout() {
   }
 
   if (profile.role !== 'admin') {
-    return <Redirect href="/(user)" />
+    return <Redirect href="/" />
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />
+  if (profile.status !== 'active') {
+    return <Redirect href="/(auth)/login" />
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="users" />
+      <Stack.Screen name="categories" />
+      <Stack.Screen name="reports" />
+      <Stack.Screen name="audit" />
+    </Stack>
+  )
 }
 
 const styles = StyleSheet.create({
