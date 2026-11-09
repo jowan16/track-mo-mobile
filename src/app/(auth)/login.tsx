@@ -57,22 +57,22 @@ export default function LoginScreen() {
 
     const normalizedEmail = email.trim()
 
+    let hasValidationError = false
+
     if (!normalizedEmail) {
       setEmailError('Please enter your email address.')
-      return
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      hasValidationError = true
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       setEmailError('Please enter a valid email address.')
-      return
+      hasValidationError = true
     }
 
-    if (!password) {
+    if (!password.trim()) {
       setPasswordError('Please enter your password.')
-      return
+      hasValidationError = true
     }
 
-    if (loading) return
+    if (hasValidationError || loading) return
 
     const lock = await readLock()
     if (lock.until && lock.until > Date.now()) {
