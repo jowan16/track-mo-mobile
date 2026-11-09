@@ -112,14 +112,16 @@ const amountAfterLabel = (lines: string[], label: RegExp) => {
 }
 
 const totalFromReceiptLines = (lines: string[]) => {
-  const paymentOrTax = /\b(cash|change|tendered|vat|tax|non[- ]taxable|vatable|transaction|customer|cashier)\b/i
+  const excluded = /\\b(cash|change|tendered|vat|tax|non[- ]taxable|vatable|transaction|customer|cashier)\\b/i
+  const totalLabel = /^(?:(?:grand\\s+)?total(?:\\s+due|\\s+amount)?|amount\\s+due|net\\s+(?:amount|total)|balance\\s+due)\\b/i
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]
-    if (!/^total\b/i.test(line) || /\b(items?|qty|quantity|discount|savings|before\s+tax)\b/i.test(line)) continue
-    const sameLine = amountTokens(line.replace(/^total\b/i, ''))
+    if (!totalLabel.test(line) || /\\b(items?|qty|quantity|discount|savings|before\\s+tax)\\b/i.test(line)) continue
+    const label = totalLabel.exec(line)
+    const sameLine = amountTokens(line.slice(label?.[0].length ?? 0))
     if (sameLine.length) return money(sameLine[0].raw)
     for (let next = index + 1; next < Math.min(lines.length, index + 4); next += 1) {
-      if (paymentOrTax.test(lines[next])) continue
+      if (excluded.test(lines[next])) continue
       const values = amountTokens(lines[next])
       if (values.length) return money(values[0].raw)
     }
@@ -139,9 +141,7 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
     const amounts = amountTokens(line)
     if (!amounts.length) continue
     const last = amounts[amounts.length - 1]
-    const total =
-    amountAfterLabel(lines, /\\b(?:grand\\s+total|total\\s+due|amount\\s+due|balance\\s+due|net\\s+amount|net\\s+total|total\\s+amount)\\b\\s*[:：-]?/i) ??
-    totalFromReceiptLines(lines)
+    const total = totalFromReceiptLines(lines)
 
   const subtotal = amountAfterLabel(lines, /\b(?:sub\s*total|subtotal)\b\s*[:：-]?/i)
   const tax = amountAfterLabel(lines, /\b(?:vat|tax)\b\s*[:：-]?/i)
