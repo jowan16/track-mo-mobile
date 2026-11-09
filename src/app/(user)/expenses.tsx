@@ -204,7 +204,7 @@ function getDateError(value: string) {
 
 export default function ExpensesScreen() {
   const { profile } = useAuth()
-  const params = useLocalSearchParams<{ openForm?: string; receiptDraft?: string; receiptPath?: string }>()
+  const params = useLocalSearchParams<{ openForm?: string; receiptDraft?: string; receiptPath?: string; receiptModel?: string; receiptRawText?: string }>()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -409,6 +409,7 @@ export default function ExpensesScreen() {
 
   const openAdd = () => {
     setEditing(null)
+    setReceiptContext(null)
     setForm(emptyForm())
     setFormError('')
     setBudgetWarning(false)
@@ -440,13 +441,13 @@ export default function ExpensesScreen() {
       setReceiptContext({
         path: params.receiptPath,
         draft,
-        model: typeof draft === 'object' ? 'receipt-ocr' : 'unknown',
-        rawText: '',
+        model: params.receiptModel || 'unknown',
+        rawText: params.receiptRawText || '',
         detections: [],
       })
       setForm({
         amount: draft.total === null ? '' : String(draft.total),
-        spent_on: draft.receipt_date || localDateString(new Date()),
+        spent_on: draft.receipt_date,
         category_id: category?.id ?? null,
         payment_method: METHODS.includes(draft.payment_method) ? draft.payment_method : '',
         note,
@@ -466,6 +467,7 @@ export default function ExpensesScreen() {
 
   const openEdit = (expense: Expense) => {
     setEditing(expense)
+    setReceiptContext(null)
 
     setForm({
       amount: String(expense.amount),
@@ -485,6 +487,7 @@ export default function ExpensesScreen() {
 
     setFormVisible(false)
     setEditing(null)
+    setReceiptContext(null)
     setFormError('')
     setBudgetWarning(false)
   }
@@ -631,6 +634,7 @@ export default function ExpensesScreen() {
           })),
           p_recognition_data: {
             model: receiptContext.model,
+            raw_text: receiptContext.rawText,
             confirmed_at: new Date().toISOString(),
           },
         })
