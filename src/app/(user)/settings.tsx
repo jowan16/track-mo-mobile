@@ -248,6 +248,7 @@ export default function SettingsScreen() {
           <Text style={styles.title}>Settings</Text>
           <Text style={styles.subtitle}>Manage your account and preferences</Text>
         </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       <KeyboardAvoidingView
@@ -518,18 +519,26 @@ function makeStyles(C: {
     screen: { flex: 1, backgroundColor: C.background },
     center: { justifyContent: 'center', alignItems: 'center' },
     header: {
+      position: 'relative',
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
       paddingHorizontal: 18,
       paddingVertical: 14,
-      gap: 14,
+      minHeight: 72,
       backgroundColor: C.card,
       borderBottomWidth: 1,
       borderBottomColor: C.border,
     },
-    headerText: { flex: 1 },
-    title: { fontSize: 24, fontWeight: '800', color: C.text },
-    subtitle: { fontSize: 12, color: C.muted, marginTop: 3 },
+    headerText: {
+      position: 'absolute',
+      left: 72,
+      right: 72,
+      alignItems: 'center',
+    },
+    headerSpacer: { width: 44, height: 44 },
+    title: { fontSize: 24, fontWeight: '800', color: C.text  textAlign: 'center' },
+    subtitle: { fontSize: 12, color: C.muted, marginTop: 3  textAlign: 'center' },
     content: { padding: 18, paddingBottom: 40, gap: 20 },
     section: { gap: 10 },
     sectionTitle: {
