@@ -131,7 +131,7 @@ export default {
                 url: imageDataUrl,
               },
             ],
-            merge_levels: ["paragraph"],
+            merge_levels: ["word"],
           }),
         });
       } catch {
@@ -179,9 +179,65 @@ export default {
       const detections =
         result.data?.[0]?.text_detections ?? [];
 
-      const text = detections
-        .map((item) => item.text_prediction?.text ?? "")
-        .filter((value) => value.length > 0)
+      // Keep receipt rows intact: word-level OCR detections are ordered
+      // back into visual lines using their bounding-box coordinates.
+      const words = detections
+        .map((item) => {
+          const points = (item.bounding_box as {
+            points?: Array<{ x?: number; y?: number }>;
+          } | undefined)?.points ?? [];
+          const validPoints = points.filter(
+            (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
+          );
+          const text = item.text_prediction?.text?.trim() ?? "";
+          if (!text || validPoints.length === 0) return null;
+          const ys = validPoints.map((point) => point.y as number);
+          const xs = validPoints.map((point) => point.x as number);
+          return {
+            text,
+            centerY: (Math.min(...ys) + Math.max(...ys)) / 2,
+            height: Math.max(...ys) - Math.min(...ys),
+            left: Math.min(...xs),
+          };
+        })
+        .filter((word): word is NonNullable<typeof word> => word !== null)
+        .sort((a, b) => a.centerY - b.centerY || a.left - b.left);
+
+      const typicalHeight = words.length
+        ? words.map((word) => word.height).sort((a, b) => a - b)[
+            Math.floor(words.length / 2)
+          ]
+        : 0;
+      const lineTolerance = Math.max(0.006, typicalHeight * 0.75);
+      const lines: Array<{
+        centerY: number;
+        words: typeof words;
+      }> = [];
+
+      for (const word of words) {
+        let line = lines.find(
+          (candidate) =>
+            Math.abs(candidate.centerY - word.centerY) <=
+            Math.max(lineTolerance, word.height * 0.5),
+        );
+        if (!line) {
+          line = { centerY: word.centerY, words: [] };
+          lines.push(line);
+        }
+        line.words.push(word);
+        line.centerY =
+          line.words.reduce((sum, item) => sum + item.centerY, 0) /
+          line.words.length;
+      }
+
+      const text = lines
+        .sort((a, b) => a.centerY - b.centerY)
+        .map((line) =>
+          line.words
+            .sort((a, b) => a.left - b.left)
+            .map((word) => word.text)
+            .join(" "),
+        )
         .join("\n");
 
       return Response.json({
