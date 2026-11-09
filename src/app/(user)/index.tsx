@@ -4,6 +4,7 @@ import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Image,
+  Modal,
   ActivityIndicator,
   Alert,
   Pressable,
@@ -193,6 +194,9 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([])
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false)
+  const [addingCategoryId, setAddingCategoryId] = useState<number | null>(null)
 
   // ------------------------------------------------
   // FETCH DASHBOARD DATA
@@ -268,9 +272,12 @@ export default function UserDashboard() {
         ),
       )
 
-      const trackedCategories = (
-        (categoriesResult.data ?? []) as Category[]
-      ).filter((category) => selectedCategoryIds.has(category.id))
+      const allActiveCategories = (categoriesResult.data ?? []) as Category[]
+      setAvailableCategories(allActiveCategories)
+
+      const trackedCategories = allActiveCategories.filter((category) =>
+        selectedCategoryIds.has(category.id),
+      )
 
       const trackedIds = new Set(
         trackedCategories.map((category) => category.id),
@@ -414,6 +421,36 @@ export default function UserDashboard() {
 
   const trackedCategoryCount = data.categories.length
   const expenseEntryCount = currentMonthExpenses.length
+
+  // ------------------------------------------------
+  // ADD CATEGORY
+  // ------------------------------------------------
+
+  const handleAddCategory = async (category: Category) => {
+    if (!profile?.id || addingCategoryId !== null) return
+
+    setAddingCategoryId(category.id)
+
+    try {
+      const { error } = await supabase.from('user_categories').insert({
+        user_id: profile.id,
+        category_id: category.id,
+      })
+
+      if (error) throw error
+
+      setCategoryModalVisible(false)
+      await loadDashboard()
+      Alert.alert('Category added', `${category.name} is now included in your dashboard.`)
+    } catch (error) {
+      Alert.alert(
+        'Unable to add category',
+        error instanceof Error ? error.message : 'Please try again.',
+      )
+    } finally {
+      setAddingCategoryId(null)
+    }
+  }
 
   // ------------------------------------------------
   // SIGN OUT
@@ -768,9 +805,9 @@ export default function UserDashboard() {
             ))}
 
             <Pressable
-              onPress={() => router.push('/(user)/settings' as any)}
+              onPress={() => setCategoryModalVisible(true)}
               accessibilityRole="button"
-              accessibilityLabel="Add or manage categories in settings"
+              accessibilityLabel="Add a category"
               style={{ width: 76, alignItems: 'center' }}
             >
               <View
@@ -792,7 +829,7 @@ export default function UserDashboard() {
                 Add category
               </Text>
               <Text style={{ color: COLORS.muted, fontSize: 9, marginTop: 3, textAlign: 'center' }}>
-                Manage
+                Choose
               </Text>
             </Pressable>
           </ScrollView>
@@ -1167,6 +1204,53 @@ export default function UserDashboard() {
           <Text style={styles.footerText}>Your money. Your control.</Text>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={categoryModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCategoryModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(10, 25, 20, 0.48)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 30, maxHeight: '78%' }}>
+            <View style={{ alignSelf: 'center', width: 42, height: 5, borderRadius: 3, backgroundColor: '#d8e0dc', marginBottom: 18 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={{ color: COLORS.ink, fontSize: 20, fontWeight: '800' }}>Add a Category</Text>
+              <Pressable onPress={() => setCategoryModalVisible(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close category selector">
+                <Text style={{ color: COLORS.muted, fontSize: 26, lineHeight: 30 }}>×</Text>
+              </Pressable>
+            </View>
+            <Text style={{ color: COLORS.muted, fontSize: 13, marginBottom: 18 }}>Choose which spending categories you want to track.</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
+              {availableCategories.filter((category) => !data.categories.some((tracked) => tracked.id === category.id)).map((category) => (
+                <Pressable
+                  key={category.id}
+                  onPress={() => handleAddCategory(category)}
+                  disabled={addingCategoryId !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${category.name} category`}
+                  style={{ flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: 1, borderColor: '#e4e8e5', backgroundColor: '#fbfcfb', opacity: addingCategoryId !== null && addingCategoryId !== category.id ? 0.55 : 1 }}
+                >
+                  <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    <Text style={{ color: category.color || COLORS.brand, fontSize: 22, fontWeight: '800' }}>{getCategorySymbol(category.icon)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: COLORS.ink, fontSize: 14, fontWeight: '800' }}>{category.name}</Text>
+                    <Text style={{ color: COLORS.muted, fontSize: 11, marginTop: 3 }}>Add to your tracked categories</Text>
+                  </View>
+                  {addingCategoryId === category.id ? <ActivityIndicator color={COLORS.brand} /> : <Text style={{ color: COLORS.brand, fontSize: 23, fontWeight: '700' }}>＋</Text>}
+                </Pressable>
+              ))}
+              {availableCategories.every((category) => data.categories.some((tracked) => tracked.id === category.id)) ? (
+                <View style={{ paddingVertical: 28, alignItems: 'center' }}>
+                  <Text style={{ color: COLORS.ink, fontSize: 15, fontWeight: '800' }}>All categories added</Text>
+                  <Text style={{ color: COLORS.muted, fontSize: 12, marginTop: 5 }}>You are already tracking every available category.</Text>
+                </View>
+              ) : null}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
