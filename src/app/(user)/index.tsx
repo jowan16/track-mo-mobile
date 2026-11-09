@@ -433,19 +433,22 @@ export default function UserDashboard() {
     setAddingCategoryId(category.id)
 
     try {
-      const query = supabase.from('user_categories')
+      if (isSelected) {
+        const { error } = await supabase
+          .from('user_categories')
+          .delete()
+          .eq('user_id', profile.id)
+          .eq('category_id', category.id)
 
-      const { error } = isSelected
-        ? await query
-            .delete()
-            .eq('user_id', profile.id)
-            .eq('category_id', category.id)
-        : await query.insert({
-            user_id: profile.id,
-            category_id: category.id,
-          })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('user_categories').insert({
+          user_id: profile.id,
+          category_id: category.id,
+        })
 
-      if (error) throw error
+        if (error) throw error
+      }
 
       await loadDashboard()
     } catch (error) {
