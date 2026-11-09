@@ -489,6 +489,7 @@ export default function UserDashboard() {
       return
     }
 
+    const wasEditing = editingCategory !== null
     setSavingCustomCategory(true)
     try {
       if (editingCategory) {
@@ -525,7 +526,7 @@ export default function UserDashboard() {
 
       resetCustomCategoryForm()
       await loadDashboard()
-      Alert.alert('Category saved', editingCategory ? 'Your category has been updated.' : 'Your new category has been added to the dashboard.')
+      Alert.alert('Category saved', wasEditing ? 'Your category has been updated.' : 'Your new category has been added to the dashboard.')
     } catch (error) {
       Alert.alert('Unable to save category', error instanceof Error ? error.message : 'Please try again.')
     } finally {
