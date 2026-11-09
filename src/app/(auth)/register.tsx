@@ -14,7 +14,7 @@ import {
 
 import { supabase } from '@/services/supabase'
 
-const EMAIL_PATTERN = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('')
@@ -48,7 +48,7 @@ export default function RegisterScreen() {
     if (
       password.length < 8 ||
       !/[A-Za-z]/.test(password) ||
-      !/\\d/.test(password)
+      !/\d/.test(password)
     ) {
       nextErrors.password = passwordMessage
     }
