@@ -34,7 +34,6 @@ export function UserDrawerProvider({
   children: React.ReactNode
 }) {
   const [visible, setVisible] = useState(false)
-  const [expensesExpanded, setExpensesExpanded] = useState(false)
   const { profile, signOut } = useAuth()
 
   const closeDrawer = () => setVisible(false)
@@ -174,94 +173,36 @@ export function UserDrawerProvider({
               showsVerticalScrollIndicator={false}
             >
               {menuItems.map((item) => (
-                <React.Fragment key={item.label}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.menuItem,
-                      item.label === 'Dashboard' && styles.activeMenuItem,
-                      pressed && styles.menuItemPressed,
+                <Pressable
+                  key={item.label}
+                  style={({ pressed }) => [
+                    styles.menuItem,
+                    item.label === 'Dashboard' && styles.activeMenuItem,
+                    pressed && styles.menuItemPressed,
+                  ]}
+                  onPress={() =>
+                    handleMenuPress(item.label, item.path, item.available)
+                  }
+                  accessibilityRole="button"
+                >
+                  <Text
+                    style={[
+                      styles.menuIcon,
+                      item.label === 'Dashboard' && styles.activeMenuIcon,
                     ]}
-                    onPress={() => {
-                      if (item.label === 'Expenses') {
-                        setExpensesExpanded((previous) => !previous)
-                        return
-                      }
-
-                      handleMenuPress(
-                        item.label,
-                        item.path,
-                        item.available,
-                      )
-                    }}
-                    accessibilityRole="button"
-                    accessibilityState={
-                      item.label === 'Expenses'
-                        ? { expanded: expensesExpanded }
-                        : undefined
-                    }
                   >
-                    <Text
-                      style={[
-                        styles.menuIcon,
-                        item.label === 'Dashboard' && styles.activeMenuIcon,
-                      ]}
-                    >
-                      {item.icon}
-                    </Text>
-
-                    <Text
-                      style={[
-                        styles.menuText,
-                        item.label === 'Dashboard' && styles.activeMenuText,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-
-                    {item.label === 'Expenses' ? (
-                      <Text style={styles.expensesChevron}>
-                        {expensesExpanded ? '⌃' : '⌄'}
-                      </Text>
-                    ) : null}
-                  </Pressable>
-
-                  {item.label === 'Expenses' && expensesExpanded ? (
-                    <View style={styles.expensesSubmenu}>
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.expensesSubmenuItem,
-                          pressed && styles.menuItemPressed,
-                        ]}
-                        onPress={() =>
-                          navigate('/(user)/expenses?openForm=1')
-                        }
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.expensesSubmenuIcon}>＋</Text>
-                        <Text style={styles.expensesSubmenuText}>
-                          Add Expense
-                        </Text>
-                      </Pressable>
-
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.expensesSubmenuItem,
-                          pressed && styles.menuItemPressed,
-                        ]}
-                        onPress={() =>
-                          navigate('/(user)/scan-receipt')
-                        }
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.expensesSubmenuIcon}>▧</Text>
-                        <Text style={styles.expensesSubmenuText}>
-                          Scan Receipts
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
-                </React.Fragment>
-              ))}
+                    {item.icon}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.menuText,
+                      item.label === 'Dashboard' && styles.activeMenuText,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              ))}       ))}
             </ScrollView>
 
             {/* ACCOUNT FOOTER */}
@@ -458,39 +399,5 @@ const styles = StyleSheet.create({
     color: '#0f766e',
     fontSize: 22,
     fontWeight: '800',
-  },
-  expensesChevron: {
-    marginLeft: 'auto',
-    color: '#64736e',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  expensesSubmenu: {
-    marginLeft: 43,
-    marginTop: -2,
-    marginBottom: 8,
-    paddingLeft: 10,
-    borderLeftWidth: 2,
-    borderLeftColor: '#d5e9e3',
-  },
-  expensesSubmenuItem: {
-    minHeight: 42,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    gap: 10,
-  },
-  expensesSubmenuIcon: {
-    width: 18,
-    color: '#0f766e',
-    fontSize: 17,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  expensesSubmenuText: {
-    color: '#43534d',
-    fontSize: 13,
-    fontWeight: '600',
   },
 })
