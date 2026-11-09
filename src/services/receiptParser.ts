@@ -43,6 +43,37 @@ const dateFromText = (text: string) => {
     const month = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'].indexOf(monthMatch[1].toUpperCase()) + 1
     return `${monthMatch[3]}-${String(month).padStart(2, '0')}-${String(Number(monthMatch[2])).padStart(2, '0')}`
   }
+
+  // Many local receipts print dates with a two-digit year or an abbreviated
+  // month name (for example 11/09/26 or 09 NOV 2026).
+  const shortNumeric = text.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})\b/)
+  if (shortNumeric) {
+    const month = Number(shortNumeric[1])
+    const day = Number(shortNumeric[2])
+    const shortYear = Number(shortNumeric[3])
+    const year = shortYear <= 79 ? 2000 + shortYear : 1900 + shortYear
+    const date = new Date(year, month - 1, day)
+    if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    }
+  }
+
+  const monthNames = 'JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER'
+  const namedDate = text.match(new RegExp(`\\b(\\d{1,2})[\\s,/-]+(${monthNames})[\\s,/-]+(20\\d{2}|\\d{2})\\b`, 'i'))
+    ?? text.match(new RegExp(`\\b(${monthNames})[\\s,/-]+(\\d{1,2}),?[\\s,/-]+(20\\d{2}|\\d{2})\\b`, 'i'))
+  if (namedDate) {
+    const monthToken = namedDate[2] && /^\\d/.test(namedDate[2]) ? namedDate[1] : namedDate[1]
+    const dayToken = namedDate[2] && /^\\d/.test(namedDate[2]) ? namedDate[2] : namedDate[2]
+    const yearToken = namedDate[3]
+    const monthIndex = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'].findIndex((month) => month === monthToken.slice(0, 3).toUpperCase()) + 1
+    const yearNumber = Number(yearToken)
+    const year = yearToken.length === 2 ? (yearNumber <= 79 ? 2000 + yearNumber : 1900 + yearNumber) : yearNumber
+    const day = Number(dayToken)
+    const date = new Date(year, monthIndex - 1, day)
+    if (monthIndex > 0 && date.getFullYear() === year && date.getMonth() === monthIndex - 1 && date.getDate() === day) {
+      return `${year}-${String(monthIndex).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    }
+  }
   return ''
 }
 
