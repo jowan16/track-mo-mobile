@@ -153,18 +153,18 @@ const totalFromReceiptLines = (lines: string[]) => {
   // Only a printed receipt-total label can populate the Receipt Total field.
   // Never substitute an item price or a sum of extracted item prices.
   const labels = [
-    /\\bGRAND\\s+TOTAL\\b/i,
-    /\\bTOTAL\\s+DUE\\b/i,
-    /\\bAMOUNT\\s+DUE\\b/i,
-    /\\bBALANCE\\s+DUE\\b/i,
-    /\\bNET\\s+TOTAL\\b/i,
-    /\\bTOTAL\\s+AMOUNT\\b/i,
-    /\\bTOTAL\\b/i,
+    /\bGRAND\s+TOTAL\b/i,
+    /\bTOTAL\s+DUE\b/i,
+    /\bAMOUNT\s+DUE\b/i,
+    /\bBALANCE\s+DUE\b/i,
+    /\bNET\s+TOTAL\b/i,
+    /\bTOTAL\s+AMOUNT\b/i,
+    /\bTOTAL\b/i,
   ]
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]
-    if (/\\bSUB\\s*TOTAL\\b/i.test(line)) continue
+    if (/\bSUB\s*TOTAL\b/i.test(line)) continue
 
     for (const label of labels) {
       const match = label.exec(line)
@@ -181,7 +181,7 @@ const totalFromReceiptLines = (lines: string[]) => {
       // Accept only a single amount on that line to avoid mistaking item rows
       // containing unit price + line price for the receipt total.
       for (let next = i + 1; next <= Math.min(i + 2, lines.length - 1); next += 1) {
-        if (/\\b(?:CASH|CHANGE|TENDERED|VAT|TAX|SUB\\s*TOTAL)\\b/i.test(lines[next])) break
+        if (/\b(?:CASH|CHANGE|TENDERED|VAT|TAX|SUB\s*TOTAL)\b/i.test(lines[next])) break
         const nextAmounts = amountTokens(lines[next])
         if (nextAmounts.length === 1) {
           const value = money(nextAmounts[0].raw)
