@@ -261,9 +261,10 @@ export default function ReportsScreen() {
       <View style={styles.header}>
         <UserMenuButton />
         <View style={styles.headerText}>
-          <Text style={styles.brand}>Track Mo, Pake Ko!</Text>
-          <Text style={styles.subtitle}>Spending reports</Text>
+          <Text style={styles.brand}>Reports</Text>
+          <Text style={styles.subtitle}>Understand where your money goes.</Text>
         </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
@@ -449,13 +450,27 @@ export default function ReportsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.canvas },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 20, paddingVertical: 12,
-    backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line,
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    minHeight: 72,
+    backgroundColor: C.white,
+    borderBottomWidth: 1,
+    borderBottomColor: C.line,
+  },
+  headerSpacer: { width: 44, height: 44 },
+  headerText: {
+    position: 'absolute',
+    left: 72,
+    right: 72,
+    alignItems: 'center',
   },
   headerText: { flex: 1 },
-  brand: { color: C.ink, fontSize: 15, fontWeight: '800' },
-  subtitle: { color: C.muted, fontSize: 12, marginTop: 2 },
+  brand: { color: C.ink, fontSize: 15, fontWeight: '800'  textAlign: 'center' },
+  subtitle: { color: C.muted, fontSize: 12, marginTop: 2  textAlign: 'center' },
   content: { padding: 18, paddingBottom: 40, gap: 14 },
   headingRow: { marginBottom: 2 },
   title: { color: C.ink, fontSize: 25, fontWeight: '900' },
