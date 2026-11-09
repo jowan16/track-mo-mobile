@@ -72,10 +72,11 @@ export default function LearnHubScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <UserMenuButton />
-        <View style={{ flex: 1 }}>
+        <View style={styles.headerText}>
           <Text style={styles.title}>Financial Literacy</Text>
           <Text style={styles.subtitle}>Learn to make better money decisions</Text>
         </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -139,20 +140,17 @@ export default function LearnHubScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18 },
-  title: { color: C.ink, fontSize: 21, fontWeight: '800' },
-  subtitle: { color: C.muted, fontSize: 12, marginTop: 3 },
-  content: { padding: 16, paddingBottom: 40 },
-  hero: { backgroundColor: C.brand, borderRadius: 18, padding: 20, marginBottom: 23 },
-  heroEyebrow: { color: '#c9eee6', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  heroTitle: { color: '#ffffff', fontSize: 24, fontWeight: '900', marginTop: 10 },
-  heroText: { color: '#e5f5f1', fontSize: 13, lineHeight: 20, marginTop: 9 },
-  sectionTitle: { color: C.ink, fontSize: 18, fontWeight: '800', marginBottom: 12 },
-  topicCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 13,
-    backgroundColor: C.card, borderWidth: 1, borderColor: C.line,
-    borderRadius: 15, padding: 14, marginBottom: 10,
+  header: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    minHeight: 72,
   },
+  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
+  headerSpacer: { width: 44, height: 44 },
   topicIcon: { width: 50, height: 50, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   topicTitle: { color: C.ink, fontSize: 15, fontWeight: '800' },
   topicDescription: { color: C.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
