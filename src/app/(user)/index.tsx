@@ -26,6 +26,7 @@ import { UserMenuButton } from '@/components/user-navigation'
 
 type Category = {
   id: number
+  slug: string
   name: string
   icon: string
   color: string
