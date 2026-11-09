@@ -204,7 +204,7 @@ function getDateError(value: string) {
 
 export default function ExpensesScreen() {
   const { profile } = useAuth()
-  const params = useLocalSearchParams<{ openForm?: string }>()
+  const params = useLocalSearchParams<{ openForm?: string; receiptDraft?: string; receiptPath?: string }>()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -226,6 +226,7 @@ export default function ExpensesScreen() {
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const [budgetWarning, setBudgetWarning] = useState(false)
+  const [receiptContext, setReceiptContext] = useState<{ path: string; draft: import('@/services/receiptParser').ParsedReceipt; model: string; rawText: string; detections: unknown[] } | null>(null)
 
   // ------------------------------------------------
   // LOAD EXPENSES, TRACKED CATEGORIES AND BUDGETS
@@ -422,6 +423,47 @@ export default function ExpensesScreen() {
     }
   }, [params.openForm])
 
+  // Receipt OCR hands its parsed draft to this screen so it can reuse
+  // the exact same Add Expense modal and validation as manual entry.
+  useEffect(() => {
+    if (loading || !params.receiptDraft || !params.receiptPath) return
+
+    try {
+      const draft = JSON.parse(params.receiptDraft) as import('@/services/receiptParser').ParsedReceipt
+      const category = categories.find(
+        (item) => item.name.toLowerCase() === draft.suggestedCategory.toLowerCase(),
+      )
+      const itemSummary = draft.items.map((item) => item.item_name.trim()).filter(Boolean).slice(0, 5).join(', ')
+      const note = [draft.merchant_name.trim(), itemSummary].filter(Boolean).join(' — ').slice(0, 200)
+
+      setEditing(null)
+      setReceiptContext({
+        path: params.receiptPath,
+        draft,
+        model: typeof draft === 'object' ? 'receipt-ocr' : 'unknown',
+        rawText: '',
+        detections: [],
+      })
+      setForm({
+        amount: draft.total === null ? '' : String(draft.total),
+        spent_on: draft.receipt_date || localDateString(new Date()),
+        category_id: category?.id ?? null,
+        payment_method: METHODS.includes(draft.payment_method) ? draft.payment_method : '',
+        note,
+      })
+      setFormError('')
+      setBudgetWarning(false)
+      setFormVisible(true)
+    } catch (error) {
+      Alert.alert(
+        'Unable to prepare expense',
+        error instanceof Error ? error.message : 'The scanned receipt could not be opened.',
+      )
+    } finally {
+      router.setParams({ receiptDraft: undefined, receiptPath: undefined })
+    }
+  }, [loading, params.receiptDraft, params.receiptPath, categories])
+
   const openEdit = (expense: Expense) => {
     setEditing(expense)
 
@@ -567,23 +609,52 @@ export default function ExpensesScreen() {
         note: form.note.trim() || null,
       }
 
-      const result = editing
-        ? await supabase
-            .from('expenses')
-            .update(row)
-            .eq('id', editing.id)
-            .eq('user_id', profile.id)
-        : await supabase
-            .from('expenses')
-            .insert({
-              ...row,
-              user_id: profile.id,
-            })
+      if (receiptContext && !editing) {
+        const { error } = await supabase.rpc('save_receipt_expense', {
+          p_storage_path: receiptContext.path,
+          p_merchant_name: receiptContext.draft.merchant_name,
+          p_receipt_date: form.spent_on,
+          p_subtotal: receiptContext.draft.subtotal,
+          p_tax: receiptContext.draft.tax,
+          p_total: Number(form.amount),
+          p_currency: 'PHP',
+          p_category_id: form.category_id,
+          p_amount: Number(form.amount),
+          p_spent_on: form.spent_on,
+          p_payment_method: form.payment_method,
+          p_note: form.note.trim() || null,
+          p_items: receiptContext.draft.items.map((item) => ({
+            item_name: item.item_name.trim(),
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            line_total: item.line_total,
+          })),
+          p_recognition_data: {
+            model: receiptContext.model,
+            confirmed_at: new Date().toISOString(),
+          },
+        })
+        if (error) throw error
+      } else {
+        const result = editing
+          ? await supabase
+              .from('expenses')
+              .update(row)
+              .eq('id', editing.id)
+              .eq('user_id', profile.id)
+          : await supabase
+              .from('expenses')
+              .insert({
+                ...row,
+                user_id: profile.id,
+              })
 
-      if (result.error) throw result.error
+        if (result.error) throw result.error
+      }
 
       setFormVisible(false)
       setEditing(null)
+      setReceiptContext(null)
       setBudgetWarning(false)
       setForm(emptyForm())
 
@@ -593,7 +664,9 @@ export default function ExpensesScreen() {
         'Success',
         editing
           ? 'Your expense has been updated.'
-          : 'Your expense has been recorded.',
+          : receiptContext
+            ? 'Your scanned receipt and expense have been saved.'
+            : 'Your expense has been recorded.',
       )
     } catch (error) {
       setFormError(
@@ -1003,7 +1076,9 @@ export default function ExpensesScreen() {
                 <Text style={styles.modalSubtitle}>
                   {editing
                     ? 'Update your expense information.'
-                    : 'Enter the details of your expense.'}
+                    : receiptContext
+                      ? 'Review the details extracted from your receipt.'
+                      : 'Enter the details of your expense.'}
                 </Text>
               </View>
 
@@ -1280,7 +1355,7 @@ export default function ExpensesScreen() {
                         ? 'Saving...'
                         : editing
                           ? 'Save Changes'
-                          : 'Save Expense'}
+                          : 'Add Expense'}
                     </Text>
                   </Pressable>
                 </View>
