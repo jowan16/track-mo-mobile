@@ -67,6 +67,21 @@ export default function ScanReceiptScreen() {
     try {
       const uploaded = await uploadReceipt(profile.id, asset)
       const result = await recognizeReceipt(uploaded.path)
+
+      // Temporary OCR diagnostics: capture the provider's exact text and
+      // word boxes so we can distinguish OCR recognition errors from parsing.
+      console.log('[Receipt OCR] model:', result.model)
+      console.log('[Receipt OCR] raw text:\n' + result.text)
+      console.log('[Receipt OCR] detections:', JSON.stringify(
+        (result.detections ?? []).map((detection) => ({
+          text: detection.text_prediction?.text ?? '',
+          confidence: detection.text_prediction?.confidence ?? null,
+          bounding_box: detection.bounding_box ?? null,
+        })),
+        null,
+        2,
+      ))
+
       if (!result.text?.trim()) {
         throw new Error('No readable text was detected. Try a clearer receipt photo.')
       }
