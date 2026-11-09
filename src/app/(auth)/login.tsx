@@ -104,7 +104,7 @@ export default function LoginScreen() {
       if (profile.role === 'admin') {
         router.replace('/(admin)')
       } else {
-        router.replace('/(user)')
+        router.replace('/')
       }
     } catch (error) {
       const message =
