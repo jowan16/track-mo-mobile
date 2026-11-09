@@ -2,6 +2,7 @@ import { router } from 'expo-router'
 import { useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -32,7 +33,10 @@ export default function ForgotPasswordScreen() {
       })
 
       // Match the web app: do not reveal whether an email is registered.
-      if (error) return
+      if (error) {
+        Alert.alert('Unable to send reset link', error.message || 'Please try again.')
+        return
+      }
 
       setSentEmail(address)
     } finally {
@@ -116,7 +120,7 @@ export default function ForgotPasswordScreen() {
         </View>
 
         {sentEmail ? (
-          <View style={styles.successBanner} accessibilityRole="status">
+          <View style={styles.successBanner} >
             <Text style={styles.successTitle}>Check your email</Text>
             <Text style={styles.successText}>
               If this email is registered, a reset link is on its way. The link expires in 30 minutes.
