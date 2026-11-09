@@ -712,6 +712,92 @@ export default function UserDashboard() {
           </Pressable>
         </View>
 
+        {/* QUICK CATEGORY PICKER - MATCHES THE WEB DASHBOARD */}
+
+        <View style={{ marginBottom:  26 }}>
+          <SectionHeader
+            title="Your Categories"
+            subtitle="Tap an icon to view expenses in that category"
+          />
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 18, paddingVertical: 5, paddingRight: 8 }}
+          >
+            {categorySpending.map((item) => (
+              <Pressable
+                key={item.category.id}
+                onPress={() => router.push({
+                  pathname: '/(user)/expenses',
+                  params: { category: String(item.category.id) },
+                } as any)}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.category.name}, ${peso(item.spent)} spent this month. Open category expenses.`}
+                style={{ width: 76, alignItems: 'center' }}
+              >
+                <View
+                  style={{
+                    width: 68,
+                    height: 68,
+                    borderRadius: 34,
+                    backgroundColor: item.category.bg || '#e6f4f1',
+                    borderWidth: 1,
+                    borderColor: item.category.color || '#c9e6df',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ color: item.category.color || COLORS.brand, fontSize: 27, fontWeight: '800' }}>
+                    {getCategorySymbol(item.category.icon)}
+                  </Text>
+                </View>
+                <Text
+                  numberOfLines={1}
+                  style={{ color: COLORS.ink, fontSize: 11, fontWeight: '700', marginTop: 8, width: '100%', textAlign: 'center' }}
+                >
+                  {item.category.name}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={{ color: COLORS.muted, fontSize: 9, marginTop: 3, width: '100%', textAlign: 'center' }}
+                >
+                  {peso(item.spent)}
+                </Text>
+              </Pressable>
+            ))}
+
+            <Pressable
+              onPress={() => router.push('/(user)/settings' as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Add or manage categories in settings"
+              style={{ width: 76, alignItems: 'center' }}
+            >
+              <View
+                style={{
+                  width: 68,
+                  height: 68,
+                  borderRadius: 34,
+                  borderWidth: 1.5,
+                  borderStyle: 'dashed',
+                  borderColor: '#0f766e',
+                  backgroundColor: '#ffffff',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: COLORS.brand, fontSize: 29, fontWeight: '500' }}>＋</Text>
+              </View>
+              <Text style={{ color: COLORS.brand, fontSize: 11, fontWeight: '700', marginTop: 8, textAlign: 'center' }}>
+                Add category
+              </Text>
+              <Text style={{ color: COLORS.muted, fontSize: 9, marginTop: 3, textAlign: 'center' }}>
+                Manage
+              </Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+
         {/* BUDGET HEALTH */}
 
         <View style={styles.healthCard}>
