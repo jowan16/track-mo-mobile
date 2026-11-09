@@ -29,9 +29,9 @@ type Category = {
 }
 type Draft = { id: number | null; name: string; color: string; icon: string; show: boolean }
 
-const ICON_OPTIONS = ['coins', 'bus', 'pill', 'utensils', 'zap', 'play', 'shopping-bag', 'home', 'piggy-bank', 'wallet']
+const ICON_OPTIONS = ['bus', 'plus-square', 'utensils', 'zap', 'play', 'shopping-bag', 'home', 'coins', 'piggy-bank']
 const ICON_GLYPHS: Record<string, string> = {
-  coins: '◉', bus: '↔', pill: '✚', utensils: '♨', zap: 'ϟ',
+  coins: '◉', bus: '↔', 'plus-square': '+', utensils: '♨', zap: 'ϟ',
   play: '▶', 'shopping-bag': '▣', home: '⌂', 'piggy-bank': '●', wallet: '▤',
 }
 const emptyDraft: Draft = { id: null, name: '', color: '#0F766E', icon: 'coins', show: true }
