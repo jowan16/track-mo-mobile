@@ -565,18 +565,15 @@ export default function UserDashboard() {
         {/* HEADER */}
 
         <View style={styles.header}>
-          <View style={styles.brandContainer}>
-            <View style={styles.brandMark}>
-              <Image source={require('../../../assets/trackmo-logo.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
-            </View>
-
-            <View>
-              <Text style={styles.brandName}>Track Mo, Pake Ko!</Text>
-              <Text style={styles.brandTagline}>Your money. Your control.</Text>
-            </View>
-          </View>
-
           <UserMenuButton />
+
+          <Text style={styles.brandName} numberOfLines={1}>
+            Track Mo, Pake Ko!
+          </Text>
+
+          <View style={styles.brandMark}>
+            <Image source={require('../../../assets/trackmo-logo.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
+          </View>
         </View>
 
         {/* WELCOME PANEL */}
@@ -1359,11 +1356,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 22,
-  },
-  brandContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    minHeight: 46,
+    position: 'relative',
   },
   brandMark: {
     width: 43,
@@ -1379,14 +1373,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   brandName: {
-    fontSize: 16,
+    position: 'absolute',
+    left: 48,
+    right: 48,
+    textAlign: 'center',
+    fontSize: 15,
     fontWeight: '800',
     color: COLORS.ink,
-  },
-  brandTagline: {
-    fontSize: 11,
-    color: COLORS.muted,
-    marginTop: 2,
   },
   signOutButton: {
     width: 42,
