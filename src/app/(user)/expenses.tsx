@@ -1100,6 +1100,68 @@ export default function ExpensesScreen() {
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.formContent}
             >
+              {receiptContext ? (
+                <View style={styles.receiptReview}>
+                  <Text style={styles.receiptSectionTitle}>Extracted items</Text>
+                  <View style={styles.receiptTableHeader}>
+                    <Text style={[styles.receiptTableHeading, styles.receiptItemColumn]}>Item</Text>
+                    <Text style={[styles.receiptTableHeading, styles.receiptAmountColumn]}>Amount</Text>
+                  </View>
+                  {receiptContext.draft.items.length > 0 ? (
+                    receiptContext.draft.items.map((item, index) => (
+                      <View key={`${item.item_name}-${index}`} style={styles.receiptTableRow}>
+                        <View style={styles.receiptItemColumn}>
+                          <Text style={styles.receiptItemName}>{item.item_name}</Text>
+                          {item.quantity > 1 ? (
+                            <Text style={styles.receiptItemQuantity}>Qty: {item.quantity}</Text>
+                          ) : null}
+                        </View>
+                        <Text style={[styles.receiptItemAmount, styles.receiptAmountColumn]}>
+                          {peso(item.line_total ?? item.unit_price ?? 0)}
+                        </Text>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.receiptEmptyItems}>No individual items were detected. You can still save the expense total.</Text>
+                  )}
+                  <View style={styles.receiptTotalRow}>
+                    <Text style={styles.receiptTotalLabel}>Total</Text>
+                    <Text style={styles.receiptTotalValue}>
+                      {peso(Number(form.amount) || receiptContext.draft.total || 0)}
+                    </Text>
+                  </View>
+
+                  <Text style={[styles.receiptSectionTitle, styles.receiptInfoHeading]}>Expense information</Text>
+                  <View style={styles.receiptInfoCard}>
+                    <View style={styles.receiptInfoRow}>
+                      <Text style={styles.receiptInfoLabel}>Category</Text>
+                      <Text style={styles.receiptInfoValue}>
+                        {categoryMap.get(form.category_id ?? 0)?.name ?? receiptContext.draft.suggestedCategory}
+                      </Text>
+                    </View>
+                    <View style={styles.receiptInfoRow}>
+                      <Text style={styles.receiptInfoLabel}>Merchant</Text>
+                      <Text style={styles.receiptInfoValue}>
+                        {receiptContext.draft.merchant_name || 'Not detected'}
+                      </Text>
+                    </View>
+                    <View style={styles.receiptInfoRow}>
+                      <Text style={styles.receiptInfoLabel}>Date</Text>
+                      <Text style={styles.receiptInfoValue}>
+                        {form.spent_on ? new Date(`${form.spent_on}T00:00:00`).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not detected'}
+                      </Text>
+                    </View>
+                    <View style={[styles.receiptInfoRow, styles.receiptInfoLastRow]}>
+                      <Text style={styles.receiptInfoLabel}>Amount</Text>
+                      <Text style={styles.receiptInfoValue}>
+                        {peso(Number(form.amount) || 0)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.receiptEditHint}>Review and edit the expense details below before adding it.</Text>
+                </View>
+              ) : null}
+
               {/* AMOUNT */}
 
               <Text style={styles.fieldLabel}>Amount (₱)</Text>
@@ -1774,6 +1836,123 @@ const styles = StyleSheet.create({
   },
   formContent: {
     paddingBottom: 22,
+  },
+  receiptReview: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 5,
+  },
+  receiptSectionTitle: {
+    color: COLORS.ink,
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  receiptTableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.line,
+  },
+  receiptTableHeading: {
+    color: COLORS.muted,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  receiptItemColumn: {
+    flex: 1,
+  },
+  receiptAmountColumn: {
+    width: 105,
+    textAlign: 'right',
+  },
+  receiptTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eef1ef',
+  },
+  receiptItemName: {
+    color: COLORS.ink,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  receiptItemQuantity: {
+    color: COLORS.muted,
+    fontSize: 10,
+    marginTop: 3,
+  },
+  receiptItemAmount: {
+    color: COLORS.ink,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  receiptEmptyItems: {
+    color: COLORS.muted,
+    fontSize: 11,
+    lineHeight: 17,
+    paddingVertical: 13,
+  },
+  receiptTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 13,
+    paddingBottom: 15,
+  },
+  receiptTotalLabel: {
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  receiptTotalValue: {
+    color: COLORS.brand,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  receiptInfoHeading: {
+    marginTop: 2,
+  },
+  receiptInfoCard: {
+    backgroundColor: '#f7faf8',
+    borderRadius: 11,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  receiptInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.line,
+  },
+  receiptInfoLastRow: {
+    borderBottomWidth: 0,
+  },
+  receiptInfoLabel: {
+    color: COLORS.muted,
+    fontSize: 11,
+    flex: 1,
+  },
+  receiptInfoValue: {
+    color: COLORS.ink,
+    fontSize: 11,
+    fontWeight: '800',
+    flex: 1.5,
+    textAlign: 'right',
+  },
+  receiptEditHint: {
+    color: COLORS.muted,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 10,
   },
   fieldLabel: {
     color: COLORS.ink,
