@@ -32,6 +32,7 @@ type Category = {
   bg: string
   is_active: boolean
   sort_order: number
+  show_in_picker: boolean
 }
 
 type Expense = {
@@ -196,7 +197,8 @@ export default function UserDashboard() {
   const [errorMessage, setErrorMessage] = useState('')
   const [availableCategories, setAvailableCategories] = useState<Category[]>([])
   const [categoryModalVisible, setCategoryModalVisible] = useState(false)
-  const [addingCategoryId, setAddingCategoryId] = useState<number | null>(null)
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<number>>(new Set())
+  const [savingCategories, setSavingCategories] = useState(false)
 
   // ------------------------------------------------
   // FETCH DASHBOARD DATA
@@ -423,41 +425,77 @@ export default function UserDashboard() {
   const expenseEntryCount = currentMonthExpenses.length
 
   // ------------------------------------------------
-  // TOGGLE TRACKED CATEGORY
+  // CATEGORY PICKER (MATCHES WEB CATEGORY PICKER LOGIC)
   // ------------------------------------------------
 
-  const handleToggleCategory = async (category: Category) => {
-    if (!profile?.id || addingCategoryId !== null) return
+  const pickerOptions = availableCategories.filter(
+    (category) => category.is_active && category.show_in_picker,
+  )
 
-    const isSelected = data.categories.some((item) => item.id === category.id)
-    setAddingCategoryId(category.id)
+  const openCategoryPicker = () => {
+    const pickerIds = new Set(pickerOptions.map((category) => category.id))
+    setSelectedCategoryIds(
+      new Set(data.categories.filter((category) => pickerIds.has(category.id)).map((category) => category.id)),
+    )
+    setCategoryModalVisible(true)
+  }
 
+  const handleToggleCategory = (categoryId: number) => {
+    setSelectedCategoryIds((current) => {
+      const next = new Set(current)
+      if (next.has(categoryId)) next.delete(categoryId)
+      else next.add(categoryId)
+      return next
+    })
+  }
+
+  const handleSaveCategories = async () => {
+    if (!profile?.id || savingCategories) return
+    if (selectedCategoryIds.size === 0) {
+      Alert.alert('Select a category', 'Select at least one category to continue.')
+      return
+    }
+
+    const selectableIds = new Set(pickerOptions.map((category) => category.id))
+    const currentlySelected = data.categories
+      .filter((category) => selectableIds.has(category.id))
+      .map((category) => category.id)
+    const toAdd = [...selectedCategoryIds].filter((id) => !currentlySelected.includes(id))
+    const toRemove = currentlySelected.filter((id) => !selectedCategoryIds.has(id))
+
+    if (toAdd.length === 0 && toRemove.length === 0) {
+      setCategoryModalVisible(false)
+      return
+    }
+
+    setSavingCategories(true)
     try {
-      if (isSelected) {
+      if (toAdd.length > 0) {
+        const { error } = await supabase.from('user_categories').insert(
+          toAdd.map((category_id) => ({ user_id: profile.id, category_id })),
+        )
+        if (error) throw error
+      }
+
+      if (toRemove.length > 0) {
         const { error } = await supabase
           .from('user_categories')
           .delete()
           .eq('user_id', profile.id)
-          .eq('category_id', category.id)
-
-        if (error) throw error
-      } else {
-        const { error } = await supabase.from('user_categories').insert({
-          user_id: profile.id,
-          category_id: category.id,
-        })
-
+          .in('category_id', toRemove)
         if (error) throw error
       }
 
       await loadDashboard()
+      setCategoryModalVisible(false)
     } catch (error) {
+      await loadDashboard()
       Alert.alert(
-        isSelected ? 'Unable to deselect category' : 'Unable to select category',
+        'Unable to save categories',
         error instanceof Error ? error.message : 'Please try again.',
       )
     } finally {
-      setAddingCategoryId(null)
+      setSavingCategories(false)
     }
   }
 
@@ -814,9 +852,9 @@ export default function UserDashboard() {
             ))}
 
             <Pressable
-              onPress={() => setCategoryModalVisible(true)}
+              onPress={openCategoryPicker}
               accessibilityRole="button"
-              accessibilityLabel="Add a category"
+              accessibilityLabel="Add or edit categories"
               style={{ width: 76, alignItems: 'center' }}
             >
               <View
@@ -1222,49 +1260,64 @@ export default function UserDashboard() {
         onRequestClose={() => setCategoryModalVisible(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(10, 25, 20, 0.48)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 30, maxHeight: '78%' }}>
+          <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24, maxHeight: '88%' }}>
             <View style={{ alignSelf: 'center', width: 42, height: 5, borderRadius: 3, backgroundColor: '#d8e0dc', marginBottom: 18 }} />
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ color: COLORS.ink, fontSize: 20, fontWeight: '800' }}>Select Categories</Text>
-              <Pressable onPress={() => setCategoryModalVisible(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close category picker">
+              <Text style={{ color: COLORS.ink, fontSize: 20, fontWeight: '800' }}>What do you want to track?</Text>
+              <Pressable onPress={() => setCategoryModalVisible(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close category picker" disabled={savingCategories}>
                 <Text style={{ color: COLORS.muted, fontSize: 26, lineHeight: 30 }}>×</Text>
               </Pressable>
             </View>
-            <Text style={{ color: COLORS.muted, fontSize: 13, marginBottom: 14 }}>Select the categories you want to show on your dashboard. Tap again to deselect.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
-              {availableCategories.map((category) => {
-                const isSelected = data.categories.some((tracked) => tracked.id === category.id)
-                const isBusy = addingCategoryId === category.id
+            <Text style={{ color: COLORS.muted, fontSize: 13, marginBottom: 14 }}>Choose the categories you spend on. You can change them anytime.</Text>
 
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
+              {pickerOptions.map((category) => {
+                const isSelected = selectedCategoryIds.has(category.id)
                 return (
                   <Pressable
                     key={category.id}
-                    onPress={() => handleToggleCategory(category)}
-                    disabled={addingCategoryId !== null}
+                    onPress={() => handleToggleCategory(category.id)}
+                    disabled={savingCategories}
                     accessibilityRole="checkbox"
-                    accessibilityState={{ checked: isSelected, disabled: addingCategoryId !== null }}
-                    accessibilityLabel={`${category.name}, ${isSelected ? 'selected' : 'not selected'}`}
-                    style={{ flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: 1, borderColor: isSelected ? '#9acfc2' : '#e4e8e5', backgroundColor: isSelected ? '#f0faf7' : '#fbfcfb', opacity: addingCategoryId !== null && !isBusy ? 0.55 : 1 }}
+                    accessibilityState={{ checked: isSelected, disabled: savingCategories }}
+                    accessibilityLabel={category.name}
+                    style={{ flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? COLORS.brand : '#cbd3cf', backgroundColor: isSelected ? '#e6f4f1' : '#ffffff', opacity: savingCategories ? 0.65 : 1 }}
                   >
-                    <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 11 }}>
                       <Text style={{ color: category.color || COLORS.brand, fontSize: 22, fontWeight: '800' }}>{getCategorySymbol(category.icon)}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: COLORS.ink, fontSize: 14, fontWeight: '800' }}>{category.name}</Text>
-                      <Text style={{ color: COLORS.muted, fontSize: 11, marginTop: 3 }}>{isSelected ? 'Shown on your dashboard' : 'Not shown on your dashboard'}</Text>
+                      <Text style={{ color: COLORS.muted, fontSize: 11, marginTop: 3 }}>
+                        {category.slug === 'transportation' ? 'Fare, fuel, commute' :
+                          category.slug === 'medicine' ? 'Meds, checkups' :
+                          category.slug === 'food-water' ? 'Meals, groceries, water' :
+                          category.slug === 'bills-utilities' ? 'Electric, internet, water bill' :
+                          category.slug === 'entertainment' ? 'Movies, games, outings' :
+                          category.slug === 'shopping' ? 'Clothes, gadgets, other items' :
+                          category.slug === 'rent' ? 'Housing and dorm' :
+                          category.slug === 'others-savings' ? 'Other costs and savings' : ''}
+                      </Text>
+                      {isSelected ? <Text style={{ color: COLORS.brand, fontSize: 11, fontWeight: '800', marginTop: 3 }}>Selected</Text> : null}
                     </View>
-                    {isBusy ? (
-                      <ActivityIndicator color={COLORS.brand} />
-                    ) : (
-                      <View style={{ width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: isSelected ? COLORS.brand : '#aeb9b3', backgroundColor: isSelected ? COLORS.brand : '#ffffff', alignItems: 'center', justifyContent: 'center' }}>
-                        {isSelected ? <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '800', lineHeight: 19 }}>✓</Text> : null}
-                      </View>
-                    )}
+                    <View style={{ width: 22, height: 22, borderRadius: 4, borderWidth: 1.5, borderColor: isSelected ? COLORS.brand : '#87938e', backgroundColor: isSelected ? COLORS.brand : '#ffffff', alignItems: 'center', justifyContent: 'center' }}>
+                      {isSelected ? <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '800', lineHeight: 18 }}>✓</Text> : null}
+                    </View>
                   </Pressable>
                 )
               })}
-              {availableCategories.length === 0 ? <Text style={{ color: COLORS.muted, fontSize: 12, paddingVertical: 12 }}>No categories are currently available.</Text> : null}
+              {pickerOptions.length === 0 ? <Text style={{ color: COLORS.muted, fontSize: 12, paddingVertical: 12 }}>No categories are currently available.</Text> : null}
             </ScrollView>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, marginBottom: 14 }}>
+              <Text style={{ color: COLORS.muted, fontSize: 12 }}>{selectedCategoryIds.size} categories selected</Text>
+              <Pressable onPress={() => setSelectedCategoryIds(new Set(pickerOptions.map((category) => category.id)))} disabled={savingCategories}>
+                <Text style={{ color: COLORS.brand, fontSize: 13, fontWeight: '800', textDecorationLine: 'underline' }}>Select all</Text>
+              </Pressable>
+            </View>
+            <Pressable onPress={handleSaveCategories} disabled={savingCategories} style={{ backgroundColor: COLORS.brand, borderRadius: 13, paddingVertical: 14, alignItems: 'center', opacity: savingCategories ? 0.65 : 1 }}>
+              {savingCategories ? <ActivityIndicator color="#ffffff" /> : <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '800' }}>Save categories</Text>}
+            </Pressable>
           </View>
         </View>
       </Modal>
