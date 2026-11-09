@@ -130,7 +130,7 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
 
     let quantity = 1
     const quantityPrefix = name.match(/^(\d+(?:\.\d+)?)\s*(?:[xX]\s*|\s+)(.+)$/)
-    const quantitySuffix = name.match(/^(.+?)\s+(\d+(?:\.\d+)?)$/)
+    const quantitySuffix = name.replace(/\s*[xX]$/, '').match(/^(.+?)\s+(\d+(?:\.\d+)?)$/)
     if (quantityPrefix) {
       quantity = Number(quantityPrefix[1])
       name = quantityPrefix[2]
