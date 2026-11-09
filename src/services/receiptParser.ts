@@ -64,7 +64,7 @@ const dateFromText = (text: string) => {
 }
 
 const merchantFromLines = (lines: string[]) => {
-  const knownMerchant = /\b(watsons|mercury\s+drug|rose\s+pharmacy|southstar\s+drug|generika|the\s+generic\s+pharmacy|tgp|medexpress|med\s+plus|healthway|farmacia|sm\s+(?:supermarket|hypermarket|store)|puregold|robinsons(?:\s+supermarket)?|gaisano|7[\s-]?eleven|seven[\s-]?eleven|alfamart|savemore|metro\s+supermarket|rustan'?s|jollibee|mcdonald'?s|mang\s+inasal|chowking|cebuana|lbc)\b/i
+  const knownMerchant = /\b(la\s+nueva\s+pharmacy|watsons|mercury\s+drug|rose\s+pharmacy|southstar\s+drug|generika|the\s+generic\s+pharmacy|tgp|medexpress|med\s+plus|healthway|farmacia|sm\s+(?:supermarket|hypermarket|store)|puregold|robinsons(?:\s+supermarket)?|gaisano|7[\s-]?eleven|seven[\s-]?eleven|alfamart|savemore|metro\s+supermarket|rustan'?s|jollibee|mcdonald'?s|mang\s+inasal|chowking|cebuana|lbc)\b/i
   const headerLines = lines.slice(0, 12)
 
   const explicit = headerLines.find((line) => /^(?:merchant|store\s+name|store|establishment)\s*[:：-]\s*.+/i.test(line))
@@ -155,8 +155,46 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
     })
   }
 
+  // Some Philippine pharmacy/POS receipts print each item name, discount,
+  // quantity, and a separate two-column price row on successive lines.
+  // Example: ITEM NAME / -16.67% / 3 PCS / 107.40 322.20V.
+  for (let index = 0; index < lines.length; index += 1) {
+    const quantityMatch = lines[index].match(/^\\s*(\\d+(?:\\.\\d+)?)\\s*(?:PCS?|PIECES?)\\s*$/i)
+    if (!quantityMatch) continue
+
+    let nameIndex = index - 1
+    while (nameIndex >= 0 && /^[-+]?\\s*\\d+(?:\\.\\d+)?\\s*%$/.test(lines[nameIndex])) nameIndex -= 1
+    if (nameIndex < 0) continue
+
+    const name = lines[nameIndex].replace(/^[\\d.,\\s]+/, '').trim()
+    const letters = (name.match(/[A-Za-z]/g) ?? []).length
+    if (letters < 2 || name.length < 2 || name.length > 120) continue
+    if (/\\b(receipt|invoice|cashier|terminal|customer|transaction|total|vat|tax|change|cash|address|date|time)\\b/i.test(name)) continue
+
+    let priceLineIndex = index + 1
+    while (priceLineIndex < Math.min(lines.length, index + 3) && /^[-+]?\\s*\\d+(?:\\.\\d+)?\\s*%$/.test(lines[priceLineIndex])) priceLineIndex += 1
+    if (priceLineIndex >= lines.length) continue
+
+    const priceTokens = amountTokens(lines[priceLineIndex])
+    if (priceTokens.length < 2) continue
+    const quantity = Number(quantityMatch[1])
+    const unitPrice = money(priceTokens[0].raw)
+    const lineTotal = money(priceTokens[priceTokens.length - 1].raw)
+    if (!Number.isFinite(quantity) || quantity <= 0 || unitPrice === null || lineTotal === null || lineTotal <= 0) continue
+
+    const key = name.toLowerCase() + '|' + lineTotal.toFixed(2)
+    if (seen.has(key)) continue
+    seen.add(key)
+    items.push({
+      item_name: name.slice(0, 200),
+      quantity,
+      unit_price: unitPrice,
+      line_total: lineTotal,
+    })
+  }
+
   if (!items.length) {
-    const standaloneAmount = /^(?:₱|PHP\s*|P\s*)?(\d[\d,]*(?:\.\d{1,2})?)$/i
+    const standaloneAmount = /^(?:₱|PHP\\s*|P\\s*)?(\\d[\\d,]*(?:\\.\\d{1,2})?)$/i
     const itemHeader = /\b(sub\s*total|subtotal|grand\s+total|total|vat|tax|change|cash|tendered|discount|receipt|invoice|cashier|terminal|date|time|address|phone|thank\s+you|balance|payment|tin|vatable|senior|pwd|store|branch|official|transaction)\b/i
     for (let index = 0; index < lines.length - 1; index += 1) {
       const name = lines[index]
