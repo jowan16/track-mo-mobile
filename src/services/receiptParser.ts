@@ -19,10 +19,19 @@ export type ParsedReceipt = {
 const cleanLine = (value: string) =>
   value.replace(/[|¦]/g, ' ').replace(/\s+/g, ' ').trim()
 
-const money = (value: string) => {
+const money = (value: string): number | null => {
   const cleaned = value.replace(/[₱$€£,\s]/g, '').replace(/[Oo](?=\d)/g, '0').replace(/[Il](?=\d)/g, '1')
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+const amountTokens = (line: string) => {
+  if (/[-+]?\s*\d+(?:\.\d+)?\s*%/.test(line)) return []
+  const pattern = /(?:₱|PHP\s*|P\s*)?(\d[\d,]*\.\d{2})/gi
+  return [...line.matchAll(pattern)].map((match) => ({
+    raw: match[1],
+    index: match.index ?? 0,
+  }))
 }
 
 const toIsoDate = (yearValue: string, monthValue: string, dayValue: string) => {
@@ -32,97 +41,48 @@ const toIsoDate = (yearValue: string, monthValue: string, dayValue: string) => {
   const day = Number(dayValue)
   const date = new Date(year, month - 1, day)
   if (month < 1 || month > 12 || day < 1 || day > 31 || date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return ''
-  return String(year) + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0')
+  return String(year).padStart(4, '0') + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0')
 }
 
 const dateFromText = (text: string) => {
   const iso = text.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/)
   if (iso) return toIsoDate(iso[1], iso[2], iso[3])
 
-  // Philippine retail receipts commonly use MM/DD/YY or MM/DD/YYYY.
   const numeric = text.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](20\d{2}|\d{2})\b/)
-  if (numeric) {
-    const parsed = toIsoDate(numeric[3], numeric[1], numeric[2])
-    if (parsed) return parsed
-  }
+  if (numeric) return toIsoDate(numeric[3], numeric[1], numeric[2])
 
   const months: Record<string, string> = {
     JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06',
     JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12',
   }
-  const named = text.match(/\b(?:(\d{1,2})[\s,/-]+([A-Z]{3,9})|([A-Z]{3,9})[\s,/-]+(\d{1,2})),?[\s,/-]+(20\d{2}|\d{2})\b/i)
-  if (named) {
-    const day = named[1] ?? named[4]
-    const monthName = named[2] ?? named[3]
-    const month = months[monthName.slice(0, 3).toUpperCase()]
-    if (month) return toIsoDate(named[5], month, day)
-  }
-
-  const shortNumeric = text.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})\b/)
-  if (shortNumeric) return toIsoDate(shortNumeric[3], shortNumeric[1], shortNumeric[2])
+  const named = text.match(/\b(JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER|JAN|FEB|MAR|APR|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{1,2}),?\s+(20\d{2}|\d{2})\b/i)
+  if (named) return toIsoDate(named[3], months[named[1].slice(0, 3).toUpperCase()], named[2])
   return ''
 }
 
 const merchantFromLines = (lines: string[]) => {
-  const knownMerchant = /\b(la\s+nueva\s+pharmacy|watsons|mercury\s+drug|rose\s+pharmacy|southstar\s+drug|generika|the\s+generic\s+pharmacy|tgp|medexpress|med\s+plus|healthway|farmacia|sm\s+(?:supermarket|hypermarket|store)|puregold|robinsons(?:\s+supermarket)?|gaisano|7[\s-]?eleven|seven[\s-]?eleven|alfamart|savemore|metro\s+supermarket|rustan'?s|jollibee|mcdonald'?s|mang\s+inasal|chowking|cebuana|lbc)\b/i
-  const headerLines = lines.slice(0, 12)
-
-  const explicit = headerLines.find((line) => /^(?:merchant|store\s+name|store|establishment)\s*[:：-]\s*.+/i.test(line))
-  if (explicit) return explicit.replace(/^(?:merchant|store\s+name|store|establishment)\s*[:：-]\s*/i, '').trim().slice(0, 100)
-
-  const brandMatch = headerLines.join(' ').match(knownMerchant)
-  if (brandMatch) return brandMatch[0].replace(/\s+/g, ' ').trim().replace(/\b\w/g, (letter) => letter.toUpperCase())
-
-  const ignored = /\b(receipt|invoice|official\s+receipt|sales\s+invoice|vat\s+reg|tin|cashier|terminal|date|time|tel|telephone|address|branch\s+no|transaction|customer|thank\s+you|bir|pos|serial|order\s+no|table\s+no|queue)\b/i
-  const candidates = headerLines
-    .map((line) => ({ line }))
-    .filter(({ line }) => {
-      const letters = (line.match(/[A-Za-z]/g) ?? []).length
-      return line.length >= 3 && line.length <= 70 && letters >= 3 && !ignored.test(line) && !/\d{4,}/.test(line) && !/^(?:www\.|https?:|[a-z0-9._%+-]+@[a-z0-9.-]+)/i.test(line)
-    })
-
-  const preferred = candidates.find(({ line }) => /\b(inc|corp|corporation|company|store|supermarket|market|pharmacy|drug|restaurant|cafe|café|foods|food|trading)\b/i.test(line))
-  return (preferred ?? candidates[0])?.line.slice(0, 100) ?? ''
-}
-
-const amountTokens = (line: string) => {
-  if (/[-+]?\s*\d+(?:\.\d+)?\s*%/.test(line)) return []
-  const pattern = /(?:₱|PHP\s*|P\s*)(\d[\d,]*(?:\.\d{1,2})?)|(\d[\d,]*(?:\.\d{1,2})?)/gi
-  return [...line.matchAll(pattern)].map((match) => ({
-    raw: match[1] ?? match[2],
-    index: match.index ?? 0,
-    full: match[0],
-  }))
-}
-
-const amountAfterLabel = (lines: string[], label: RegExp) => {
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    const line = lines[index]
-    const match = label.exec(line)
-    if (!match) continue
-    const afterLabel = line.slice((match.index ?? 0) + match[0].length)
-    const sameLine = amountTokens(afterLabel)
-    if (sameLine.length) return money(sameLine[sameLine.length - 1].raw)
-    for (let next = index + 1; next < Math.min(lines.length, index + 3); next += 1) {
-      const nextAmounts = amountTokens(lines[next])
-      if (nextAmounts.length) return money(nextAmounts[nextAmounts.length - 1].raw)
-    }
-  }
-  return null
+  const header = lines.slice(0, 15).join(' ')
+  const known = header.match(/\b(la\s+nueva\s+pharmacy|watsons|mercury\s+drug|rose\s+pharmacy|southstar\s+drug|generika|the\s+generic\s+pharmacy|tgp|medexpress|sm\s+(?:supermarket|hypermarket|store)|puregold|robinsons(?:\s+supermarket)?|gaisano|7[\s-]?eleven|alfamart|savemore|metro\s+supermarket|rustan'?s|jollibee|mcdonald'?s|mang\s+inasal|chowking|cebuana|lbc)\b/i)
+  if (known) return known[0].replace(/\s+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+  const ignored = /\b(receipt|invoice|sales|serial|tin|cashier|terminal|date|time|address|transaction|customer|thank|bir|pos)\b/i
+  const candidate = lines.slice(0, 8).find((line) => {
+    const letters = (line.match(/[A-Za-z]/g) ?? []).length
+    return letters >= 5 && line.length <= 70 && !ignored.test(line) && !/\d{5,}/.test(line)
+  })
+  return candidate ?? ''
 }
 
 const totalFromReceiptLines = (lines: string[]) => {
-  const excluded = /\b(cash|change|tendered|vat|tax|non[- ]taxable|vatable|transaction|customer|cashier)\b/i
-  const totalLabel = /^(?:(?:grand\s+)?total(?:\s+due|\s+amount)?|amount\s+due|net\s+(?:amount|total)|balance\s+due)\b/i
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index]
-    if (!totalLabel.test(line) || /\b(items?|qty|quantity|discount|savings|before\s+tax)\b/i.test(line)) continue
-    const label = totalLabel.exec(line)
+  const labels = /^(?:(?:grand\s+)?total(?:\s+due|\s+amount)?|amount\s+due|net\s+(?:amount|total)|balance\s+due)\b/i
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    if (!labels.test(line)) continue
+    const label = labels.exec(line)
     const sameLine = amountTokens(line.slice(label?.[0].length ?? 0))
     if (sameLine.length) return money(sameLine[0].raw)
-    for (let next = index + 1; next < Math.min(lines.length, index + 4); next += 1) {
-      if (excluded.test(lines[next])) continue
-      const values = amountTokens(lines[next])
+    for (let j = i + 1; j < Math.min(lines.length, i + 4); j += 1) {
+      if (/\b(cash|change|vat|tax|non[- ]taxable|vatable|transaction|customer|cashier)\b/i.test(lines[j])) continue
+      const values = amountTokens(lines[j])
       if (values.length) return money(values[0].raw)
     }
   }
@@ -130,22 +90,63 @@ const totalFromReceiptLines = (lines: string[]) => {
 }
 
 const extractItems = (lines: string[]): ParsedReceiptItem[] => {
-  const ignored = /\b(sub\s*total|subtotal|grand\s+total|total\s+due|amount\s+due|net\s+total|total\s+amount|total|vat|tax|change|cash|tendered|discount|receipt|invoice|cashier|terminal|date|time|address|phone|thank\s+you|balance|payment|tin|vatable|senior|pwd|approval|reference|auth\s+code|card\s+no|transaction)\b/i
   const items: ParsedReceiptItem[] = []
   const seen = new Set<string>()
+  const ignored = /\b(sub\s*total|subtotal|grand\s+total|total\s+due|amount\s+due|net\s+total|total\s+amount|total|vat|tax|change|cash|tendered|discount|receipt|invoice|cashier|terminal|date|time|address|phone|thank\s+you|balance|payment|tin|vatable|senior|pwd|approval|reference|auth\s+code|card\s+no|transaction)\b/i
 
-  for (const line of lines) {
-    if (ignored.test(line) || line.length < 3) continue
-    if (/[-+]?\\s*\\d+(?:\\.\\d+)?\\s*%/.test(line)) continue
-    if (/[-+]?\s*\d+(?:\.\d+)?\s*%/.test(line)) continue
-    const amounts = amountTokens(line)
-    if (!amounts.length) continue
-    const last = amounts[amounts.length - 1]
-    const total = totalFromReceiptLines(lines)
+  // Pharmacy receipts commonly print name, discount, quantity, then two prices.
+  for (let i = 0; i < lines.length; i += 1) {
+    const qty = lines[i].match(/^(\d+(?:\.\d+)?)\s*(?:PCS?|PIECES?)$/i)
+    if (!qty) continue
+    const quantity = Number(qty[1])
+    let nameIndex = i - 1
+    while (nameIndex >= 0 && /^[-+]?\s*\d+(?:\.\d+)?\s*%$/.test(lines[nameIndex])) nameIndex -= 1
+    if (nameIndex < 0) continue
+    const name = lines[nameIndex].replace(/^[\d.,\s]+/, '').trim()
+    if (name.length < 2 || (name.match(/[A-Za-z]/g) ?? []).length < 2 || ignored.test(name)) continue
 
-  const subtotal = amountAfterLabel(lines, /\b(?:sub\s*total|subtotal)\b\s*[:：-]?/i)
-  const tax = amountAfterLabel(lines, /\b(?:vat|tax)\b\s*[:：-]?/i)
-  const merchant = merchantFromLines(lines)
+    let priceIndex = i + 1
+    while (priceIndex < Math.min(lines.length, i + 3) && /^[-+]?\s*\d+(?:\.\d+)?\s*%$/.test(lines[priceIndex])) priceIndex += 1
+    if (priceIndex >= lines.length) continue
+    const prices = amountTokens(lines[priceIndex])
+    if (prices.length < 2) continue
+    const unitPrice = money(prices[0].raw)
+    const lineTotal = money(prices[prices.length - 1].raw)
+    if (unitPrice === null || lineTotal === null || lineTotal <= 0) continue
+    const key = name.toLowerCase() + '|' + lineTotal.toFixed(2)
+    if (seen.has(key)) continue
+    seen.add(key)
+    items.push({ item_name: name.slice(0, 200), quantity, unit_price: unitPrice, line_total: lineTotal })
+  }
+
+  // Fallback for conventional one-line item/price rows.
+  if (!items.length) {
+    for (const line of lines) {
+      if (ignored.test(line) || /[-+]?\s*\d+(?:\.\d+)?\s*%/.test(line)) continue
+      const prices = amountTokens(line)
+      if (!prices.length) continue
+      const last = prices[prices.length - 1]
+      const name = line.slice(0, last.index).replace(/[|*•\-:]+$/g, '').trim()
+      if (name.length < 2 || (name.match(/[A-Za-z]/g) ?? []).length < 2 || ignored.test(name)) continue
+      const total = money(last.raw)
+      if (total === null || total <= 0) continue
+      const key = name.toLowerCase() + '|' + total.toFixed(2)
+      if (seen.has(key)) continue
+      seen.add(key)
+      items.push({ item_name: name.slice(0, 200), quantity: 1, unit_price: total, line_total: total })
+    }
+  }
+  return items
+}
+
+export const parseReceiptText = (text: string): ParsedReceipt => {
+  const full = text.replace(/\r/g, '\n')
+  const lines = full.split('\n').map(cleanLine).filter(Boolean)
+  const merchant_name = merchantFromLines(lines)
+  const receipt_date = dateFromText(full)
+  const total = totalFromReceiptLines(lines)
+  const subtotal = totalFromReceiptLines(lines.filter((line) => !/^total\b/i.test(line)))
+  const tax = null
   const items = extractItems(lines)
 
   const payment_method =
@@ -155,23 +156,13 @@ const extractItems = (lines: string[]): ParsedReceiptItem[] => {
     : /\b(CASH|CHANGE|TENDERED)\b/i.test(full) ? 'Cash'
     : ''
 
-  const categoryText = (merchant + '\n' + full).toLowerCase()
-  const medicineTerms = /\b(pharmacy|drugstore|drug\s+store|medicine|medicines|medical|pharmaceutical|watsons|mercury\s+drug|rose\s+pharmacy|southstar|generika|tgp|medexpress|biogesic|neozep|bioflu|medicol|alaxan|kremil[- ]?s|dolfenal|paracetamol|acetaminophen|ibuprofen|mefenamic|amoxicillin|antibiotic|antihistamine|cetirizine|loratadine|lagundi|antacid|capsule|capsules|tablet|tablets|syrup|ointment|vitamin\s+[a-z])\b/i
+  const categoryText = (merchant_name + ' ' + full).toLowerCase()
   const suggestedCategory =
-    medicineTerms.test(categoryText) ? 'Medicine'
+    /\b(pharmacy|drugstore|drug\s+store|medicine|medicines|medical|pharmaceutical|watsons|mercury\s+drug|la\s+nueva|tablet|tablets|capsule|capsules)\b/i.test(categoryText) ? 'Medicine'
     : /\b(supermarket|grocery|groceries|rice|milk|bread|eggs|vegetable|meat|fish|market)\b/i.test(categoryText) ? 'Food & Water'
     : /\b(clothing|apparel|shirt|pants|shoes|department store|school supplies|notebook|stationery)\b/i.test(categoryText) ? 'Shopping'
     : /\b(restaurant|cafe|coffee|fast food|foodpanda|grabfood|jollibee|mcdonald)\b/i.test(categoryText) ? 'Food & Water'
     : 'Others'
 
-  return {
-    merchant_name: merchant,
-    receipt_date: receiptDate,
-    subtotal,
-    tax,
-    total,
-    items,
-    suggestedCategory,
-    payment_method,
-  }
+  return { merchant_name, receipt_date, subtotal, tax, total, items, suggestedCategory, payment_method }
 }
