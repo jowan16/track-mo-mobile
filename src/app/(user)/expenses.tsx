@@ -461,9 +461,9 @@ export default function ExpensesScreen() {
         error instanceof Error ? error.message : 'The scanned receipt could not be opened.',
       )
     } finally {
-      router.setParams({ receiptDraft: undefined, receiptPath: undefined })
+      router.setParams({ receiptDraft: undefined, receiptPath: undefined, receiptModel: undefined, receiptRawText: undefined })
     }
-  }, [loading, params.receiptDraft, params.receiptPath, categories])
+  }, [loading, params.receiptDraft, params.receiptPath, params.receiptModel, params.receiptRawText, categories])
 
   const openEdit = (expense: Expense) => {
     setEditing(expense)
