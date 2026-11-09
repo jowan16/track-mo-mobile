@@ -12,6 +12,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -32,6 +33,7 @@ type Category = {
   bg: string
   is_active: boolean
   sort_order: number
+  user_id?: string | null
 }
 
 type Expense = {
@@ -197,6 +199,12 @@ export default function UserDashboard() {
   const [availableCategories, setAvailableCategories] = useState<Category[]>([])
   const [categoryModalVisible, setCategoryModalVisible] = useState(false)
   const [addingCategoryId, setAddingCategoryId] = useState<number | null>(null)
+  const [categoryName, setCategoryName] = useState('')
+  const [categoryIcon, setCategoryIcon] = useState('coins')
+  const [categoryColor, setCategoryColor] = useState('#0F766E')
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [savingCustomCategory, setSavingCustomCategory] = useState(false)
+  const [showCustomCategoryForm, setShowCustomCategoryForm] = useState(false)
 
   // ------------------------------------------------
   // FETCH DASHBOARD DATA
@@ -235,6 +243,7 @@ export default function UserDashboard() {
           .from('categories')
           .select('*')
           .eq('is_active', true)
+          .or(`user_id.is.null,user_id.eq.${profile.id}`)
           .order('sort_order'),
 
         supabase
@@ -449,6 +458,78 @@ export default function UserDashboard() {
       )
     } finally {
       setAddingCategoryId(null)
+    }
+  }
+
+  // ------------------------------------------------
+  // CREATE / EDIT PERSONAL CATEGORY
+  // ------------------------------------------------
+
+  const resetCustomCategoryForm = () => {
+    setCategoryName('')
+    setCategoryIcon('coins')
+    setCategoryColor('#0F766E')
+    setEditingCategory(null)
+    setShowCustomCategoryForm(false)
+  }
+
+  const openEditCategory = (category: Category) => {
+    setEditingCategory(category)
+    setCategoryName(category.name)
+    setCategoryIcon(category.icon || 'coins')
+    setCategoryColor(category.color || '#0F766E')
+    setShowCustomCategoryForm(true)
+  }
+
+  const handleSaveCustomCategory = async () => {
+    if (!profile?.id || savingCustomCategory) return
+    const name = categoryName.trim()
+    if (!name) {
+      Alert.alert('Category name required', 'Enter a name for this category.')
+      return
+    }
+
+    setSavingCustomCategory(true)
+    try {
+      if (editingCategory) {
+        const { error } = await supabase
+          .from('categories')
+          .update({ name, icon: categoryIcon, color: categoryColor, bg: `${categoryColor}22` })
+          .eq('id', editingCategory.id)
+          .eq('user_id', profile.id)
+        if (error) throw error
+      } else {
+        const slugBase = name.toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'category'
+        const { data: created, error } = await supabase
+          .from('categories')
+          .insert({
+            user_id: profile.id,
+            slug: `custom-${profile.id.slice(0, 8)}-${slugBase}-${Date.now()}`,
+            name,
+            icon: categoryIcon,
+            color: categoryColor,
+            bg: `${categoryColor}22`,
+            is_active: true,
+            show_in_picker: true,
+            sort_order: 999,
+          })
+          .select('id')
+          .single()
+        if (error) throw error
+        const { error: linkError } = await supabase.from('user_categories').insert({
+          user_id: profile.id,
+          category_id: created.id,
+        })
+        if (linkError) throw linkError
+      }
+
+      resetCustomCategoryForm()
+      await loadDashboard()
+      Alert.alert('Category saved', editingCategory ? 'Your category has been updated.' : 'Your new category has been added to the dashboard.')
+    } catch (error) {
+      Alert.alert('Unable to save category', error instanceof Error ? error.message : 'Please try again.')
+    } finally {
+      setSavingCustomCategory(false)
     }
   }
 
@@ -1209,44 +1290,65 @@ export default function UserDashboard() {
         visible={categoryModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setCategoryModalVisible(false)}
+        onRequestClose={() => { setCategoryModalVisible(false); resetCustomCategoryForm() }}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(10, 25, 20, 0.48)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 30, maxHeight: '78%' }}>
+          <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 30, maxHeight: '88%' }}>
             <View style={{ alignSelf: 'center', width: 42, height: 5, borderRadius: 3, backgroundColor: '#d8e0dc', marginBottom: 18 }} />
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ color: COLORS.ink, fontSize: 20, fontWeight: '800' }}>Add a Category</Text>
-              <Pressable onPress={() => setCategoryModalVisible(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close category selector">
+              <Text style={{ color: COLORS.ink, fontSize: 20, fontWeight: '800' }}>Manage Categories</Text>
+              <Pressable onPress={() => { setCategoryModalVisible(false); resetCustomCategoryForm() }} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close category manager">
                 <Text style={{ color: COLORS.muted, fontSize: 26, lineHeight: 30 }}>×</Text>
               </Pressable>
             </View>
-            <Text style={{ color: COLORS.muted, fontSize: 13, marginBottom: 18 }}>Choose which spending categories you want to track.</Text>
+            <Text style={{ color: COLORS.muted, fontSize: 13, marginBottom: 14 }}>Add categories or edit the personal categories you created.</Text>
+            {!showCustomCategoryForm ? (
+              <Pressable onPress={() => { setEditingCategory(null); setCategoryName(''); setCategoryIcon('coins'); setCategoryColor('#0F766E'); setShowCustomCategoryForm(true) }} style={{ backgroundColor: '#e8f5f1', borderRadius: 14, padding: 14, marginBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: COLORS.brand, fontSize: 15, fontWeight: '800' }}>＋ Create your own category</Text>
+              </Pressable>
+            ) : (
+              <View style={{ borderWidth: 1, borderColor: '#dce8e3', borderRadius: 16, padding: 14, marginBottom: 14, gap: 12 }}>
+                <Text style={{ color: COLORS.ink, fontSize: 15, fontWeight: '800' }}>{editingCategory ? 'Edit category' : 'New category'}</Text>
+                <TextInput value={categoryName} onChangeText={setCategoryName} placeholder="Category name" placeholderTextColor="#87938e" maxLength={40} style={{ borderWidth: 1, borderColor: '#dce4df', borderRadius: 11, paddingHorizontal: 12, paddingVertical: 11, color: COLORS.ink, fontSize: 14 }} />
+                <Text style={{ color: COLORS.muted, fontSize: 12, fontWeight: '700' }}>Choose an icon</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
+                  {['bus', 'plus-square', 'utensils', 'zap', 'play', 'shopping-bag', 'home', 'coins', 'piggy-bank'].map((iconName) => (
+                    <Pressable key={iconName} onPress={() => setCategoryIcon(iconName)} style={{ width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: categoryIcon === iconName ? '#d8eee8' : '#f3f6f4', borderWidth: categoryIcon === iconName ? 2 : 1, borderColor: categoryIcon === iconName ? COLORS.brand : '#e3e9e5' }}>
+                      <Text style={{ color: COLORS.brand, fontSize: 20, fontWeight: '800' }}>{getCategorySymbol(iconName)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={{ color: COLORS.muted, fontSize: 12, fontWeight: '700' }}>Choose a color</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                  {['#0F766E', '#2563EB', '#7C3AED', '#DB2777', '#EA580C', '#CA8A04', '#16A34A', '#475569'].map((color) => (
+                    <Pressable key={color} onPress={() => setCategoryColor(color)} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: color, borderWidth: categoryColor === color ? 3 : 1, borderColor: categoryColor === color ? '#14201c' : '#ffffff' }} />
+                  ))}
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Pressable onPress={resetCustomCategoryForm} disabled={savingCustomCategory} style={{ flex: 1, padding: 12, borderRadius: 11, backgroundColor: '#f0f3f1', alignItems: 'center' }}><Text style={{ color: COLORS.ink, fontWeight: '700' }}>Cancel</Text></Pressable>
+                  <Pressable onPress={handleSaveCustomCategory} disabled={savingCustomCategory} style={{ flex: 1, padding: 12, borderRadius: 11, backgroundColor: COLORS.brand, alignItems: 'center', opacity: savingCustomCategory ? 0.65 : 1 }}>{savingCustomCategory ? <ActivityIndicator color="#ffffff" /> : <Text style={{ color: '#ffffff', fontWeight: '800' }}>{editingCategory ? 'Save changes' : 'Create category'}</Text>}</Pressable>
+                </View>
+              </View>
+            )}
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
-              {availableCategories.filter((category) => !data.categories.some((tracked) => tracked.id === category.id)).map((category) => (
-                <Pressable
-                  key={category.id}
-                  onPress={() => handleAddCategory(category)}
-                  disabled={addingCategoryId !== null}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Add ${category.name} category`}
-                  style={{ flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: 1, borderColor: '#e4e8e5', backgroundColor: '#fbfcfb', opacity: addingCategoryId !== null && addingCategoryId !== category.id ? 0.55 : 1 }}
-                >
-                  <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    <Text style={{ color: category.color || COLORS.brand, fontSize: 22, fontWeight: '800' }}>{getCategorySymbol(category.icon)}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: COLORS.ink, fontSize: 14, fontWeight: '800' }}>{category.name}</Text>
-                    <Text style={{ color: COLORS.muted, fontSize: 11, marginTop: 3 }}>Add to your tracked categories</Text>
-                  </View>
+              <Text style={{ color: COLORS.ink, fontSize: 14, fontWeight: '800', marginTop: 2 }}>Your custom categories</Text>
+              {availableCategories.filter((category) => category.user_id === profile?.id).map((category) => (
+                <View key={category.id} style={{ flexDirection: 'row', alignItems: 'center', padding: 11, borderRadius: 14, borderWidth: 1, borderColor: '#e4e8e5', backgroundColor: '#fbfcfb' }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 11 }}><Text style={{ color: category.color || COLORS.brand, fontSize: 20, fontWeight: '800' }}>{getCategorySymbol(category.icon)}</Text></View>
+                  <Text style={{ flex: 1, color: COLORS.ink, fontSize: 14, fontWeight: '800' }}>{category.name}</Text>
+                  <Pressable onPress={() => openEditCategory(category)} accessibilityRole="button" accessibilityLabel={`Edit ${category.name}`} style={{ paddingHorizontal: 13, paddingVertical: 8, borderRadius: 9, backgroundColor: '#e8f5f1' }}><Text style={{ color: COLORS.brand, fontSize: 12, fontWeight: '800' }}>Edit</Text></Pressable>
+                </View>
+              ))}
+              {availableCategories.filter((category) => category.user_id === profile?.id).length === 0 ? <Text style={{ color: COLORS.muted, fontSize: 12, marginBottom: 8 }}>You have not created any custom categories yet.</Text> : null}
+              <Text style={{ color: COLORS.ink, fontSize: 14, fontWeight: '800', marginTop: 8 }}>Default categories</Text>
+              {availableCategories.filter((category) => !category.user_id && !data.categories.some((tracked) => tracked.id === category.id)).map((category) => (
+                <Pressable key={category.id} onPress={() => handleAddCategory(category)} disabled={addingCategoryId !== null} accessibilityRole="button" accessibilityLabel={`Add ${category.name} category`} style={{ flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: 1, borderColor: '#e4e8e5', backgroundColor: '#fbfcfb', opacity: addingCategoryId !== null && addingCategoryId !== category.id ? 0.55 : 1 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}><Text style={{ color: category.color || COLORS.brand, fontSize: 22, fontWeight: '800' }}>{getCategorySymbol(category.icon)}</Text></View>
+                  <View style={{ flex: 1 }}><Text style={{ color: COLORS.ink, fontSize: 14, fontWeight: '800' }}>{category.name}</Text><Text style={{ color: COLORS.muted, fontSize: 11, marginTop: 3 }}>Add to your tracked categories</Text></View>
                   {addingCategoryId === category.id ? <ActivityIndicator color={COLORS.brand} /> : <Text style={{ color: COLORS.brand, fontSize: 23, fontWeight: '700' }}>＋</Text>}
                 </Pressable>
               ))}
-              {availableCategories.every((category) => data.categories.some((tracked) => tracked.id === category.id)) ? (
-                <View style={{ paddingVertical: 28, alignItems: 'center' }}>
-                  <Text style={{ color: COLORS.ink, fontSize: 15, fontWeight: '800' }}>All categories added</Text>
-                  <Text style={{ color: COLORS.muted, fontSize: 12, marginTop: 5 }}>You are already tracking every available category.</Text>
-                </View>
-              ) : null}
+              {availableCategories.filter((category) => !category.user_id).every((category) => data.categories.some((tracked) => tracked.id === category.id)) ? <View style={{ paddingVertical: 16, alignItems: 'center' }}><Text style={{ color: COLORS.muted, fontSize: 12 }}>All default categories are already added.</Text></View> : null}
             </ScrollView>
           </View>
         </View>
