@@ -15,6 +15,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { useAuth } from '@/context/AuthContext'
+import { supabase } from '@/services/supabase'
 
 const LOCK_KEY = 'tmpk_login_lock'
 const MAX_TRIES = 5
@@ -103,9 +104,24 @@ export default function LoginScreen() {
 
       if (profile.role === 'admin') {
         router.replace('/(admin)')
-      } else {
-        router.replace('/')
+        return
       }
+
+      // Decide the first user destination from the saved category selections.
+      // Do this here, after sign-in, so the login flow does not race the root redirect.
+      const { data: selectedCategories, error: categoryError } = await supabase
+        .from('user_categories')
+        .select('category_id')
+        .eq('user_id', profile.id)
+        .limit(1)
+
+      if (categoryError) throw categoryError
+
+      router.replace(
+        selectedCategories && selectedCategories.length > 0
+          ? '/(user)'
+          : '/(user)/category-dashboard',
+      )
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Something went wrong. Please try again.'
