@@ -112,6 +112,29 @@ export function parseReceiptText(rawText: string): ParsedReceipt {
     itemLines.push({ item_name: itemName.slice(0, 200), quantity: quantity > 0 ? quantity : 1, unit_price: quantity > 0 ? Math.round((lineTotal / quantity) * 100) / 100 : lineTotal, line_total: lineTotal })
   }
 
+  // Some OCR responses put the item name and its price on separate lines.
+  // Pair a plausible product line with the following standalone amount when
+  // the normal same-line receipt-item parser found nothing.
+  if (itemLines.length === 0) {
+    const standaloneAmount = /^(?:₱|PHP\s*)?([0-9][0-9,]*(?:\.\d{2})?)$/i
+    const itemHeader = /\b(sub\s*total|subtotal|grand\s+total|total|vat|tax|change|cash|tendered|discount|receipt|invoice|cashier|terminal|date|time|address|phone|thank you|balance|payment|tin|vatable|senior|pwd|store|branch|official|transaction)\b/i
+    for (let index = 0; index < lines.length - 1; index += 1) {
+      const name = lines[index].trim()
+      const amountMatch = lines[index + 1].trim().match(standaloneAmount)
+      const letterCount = (name.match(/[A-Za-z]/g) ?? []).length
+      if (!amountMatch || letterCount < 3 || name.length > 100 || itemHeader.test(name)) continue
+      const lineTotal = money(amountMatch[1])
+      if (lineTotal === null || lineTotal <= 0) continue
+      itemLines.push({
+        item_name: name.slice(0, 200),
+        quantity: 1,
+        unit_price: lineTotal,
+        line_total: lineTotal,
+      })
+      index += 1
+    }
+  }
+
   const merchant = merchantFromLines(lines)
   const categoryText = `${merchant}\n${full}`.toLowerCase()
   const medicineTerms = /\b(pharmacy|drugstore|drug\s+store|medicine|medicines|medical|pharmaceutical|watsons|mercury\s+drug|rose\s+pharmacy|southstar|generika|tgp|medexpress|biogesic|neozep|bioflu|medicol|alaxan|kremil[- ]?s|dolfenal|paracetamol|acetaminophen|ibuprofen|mefenamic|amoxicillin|antibiotic|antihistamine|cetirizine|loratadine|lagundi|antacid|capsule|capsules|tablet|tablets|syrup|ointment|vitamin\s+[a-z])\b/i
