@@ -43,7 +43,7 @@ const dateFromText = (text: string) => {
     const month = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'].indexOf(monthMatch[1].toUpperCase()) + 1
     return `${monthMatch[3]}-${String(month).padStart(2, '0')}-${String(Number(monthMatch[2])).padStart(2, '0')}`
   }
-  return new Date().toISOString().slice(0, 10)
+  return ''
 }
 
 export function parseReceiptText(rawText: string): ParsedReceipt {
