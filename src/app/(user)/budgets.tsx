@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Image,
@@ -49,7 +50,7 @@ type Expense = {
   is_archived: boolean
 }
 
-const COLORS = {
+const LIGHT_COLORS = {
   canvas: '#f6f7f5',
   ink: '#14201c',
   muted: '#4b5754',
@@ -58,6 +59,16 @@ const COLORS = {
   danger: '#b42318',
   orange: '#c2410c',
 }
+function getCOLORS(dark: boolean) { return dark ? {
+  canvas: '#101a18',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+  danger: '#ff8178',
+  orange: '#ffad70',
+} : LIGHT_COLORS }
+
 
 function peso(value: number) {
   return `₱ ${value.toLocaleString('en-PH', {
@@ -112,6 +123,11 @@ function monthRange(year: number, month: number) {
 }
 
 export default function BudgetsScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const COLORS = getCOLORS(dark)
+  const styles = makeStyles(dark, COLORS)
+
   const { profile } = useAuth()
 
   const now = new Date()
@@ -941,7 +957,7 @@ export default function BudgetsScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.canvas,
@@ -1004,13 +1020,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   brandMarkText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 25,
     fontWeight: '800',
   },
   monthBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e6f4f1',
+    backgroundColor: (dark ? '#203d36' : '#e6f4f1'),
     paddingHorizontal: 13,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1029,12 +1045,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   addButtonText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 14,
     fontWeight: '800',
   },
   errorCard: {
-    backgroundColor: '#fff0ef',
+    backgroundColor: (dark ? '#402725' : '#fff0ef'),
     borderColor: '#f3c3bf',
     borderWidth: 1,
     borderRadius: 15,
@@ -1047,7 +1063,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   errorMessage: {
-    color: '#7f1d1d',
+    color: (dark ? '#ffaaa3' : '#7f1d1d'),
     fontSize: 12,
     marginTop: 5,
     marginBottom: 9,
@@ -1072,7 +1088,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1,
     minWidth: '46%',
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.line,
@@ -1122,7 +1138,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   budgetCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 17,
@@ -1243,12 +1259,12 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   archiveButtonText: {
-    color: '#c2410c',
+    color: (dark ? '#ffad70' : '#c2410c'),
     fontSize: 11,
     fontWeight: '700',
   },
   emptyCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 18,
@@ -1281,12 +1297,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   emptyButtonText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 11,
     fontWeight: '800',
   },
   availableCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 16,
@@ -1377,7 +1393,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1396,7 +1412,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 11,
@@ -1415,7 +1431,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryChoice: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 11,
@@ -1452,7 +1468,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   formErrorCard: {
-    backgroundColor: '#fff0ef',
+    backgroundColor: (dark ? '#402725' : '#fff0ef'),
     borderColor: '#f3c3bf',
     borderWidth: 1,
     borderRadius: 10,
@@ -1472,7 +1488,7 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
   saveButtonText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 13,
     fontWeight: '800',
   },
@@ -1480,7 +1496,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   cancelButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 12,
@@ -1493,4 +1509,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-})
+}) }
