@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -45,7 +46,7 @@ type Budget = {
 
 type Tab = 'expenses' | 'budgets'
 
-const C = {
+const LIGHT_C = {
   canvas: '#f6f7f5',
   card: '#ffffff',
   ink: '#14201c',
@@ -54,6 +55,16 @@ const C = {
   brand: '#0f766e',
   danger: '#b42318',
 }
+function getC(dark: boolean) { return dark ? {
+  canvas: '#101a18',
+  card: '#1b2a26',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+  danger: '#ff8178',
+} : LIGHT_C }
+
 
 function peso(value: number) {
   return `₱ ${value.toLocaleString('en-PH', {
@@ -79,6 +90,11 @@ function monthLabel(month: number, year: number) {
 }
 
 export default function ArchiveScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const C = getC(dark)
+  const styles = makeStyles(dark, C)
+
   const { profile } = useAuth()
 
   const [tab, setTab] = useState<Tab>('expenses')
@@ -451,7 +467,7 @@ function ActionButtons({
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: C.canvas,
@@ -502,7 +518,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   activeTabText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
   },
   center: {
     flex: 1,
@@ -605,4 +621,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-})
+}) }
