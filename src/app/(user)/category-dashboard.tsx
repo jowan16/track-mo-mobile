@@ -304,7 +304,7 @@ export default function CategoryDashboardScreen() {
 }
 
 function makeStyles(dark: boolean) { return StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F6F7F5' },
+  screen: { flex: 1, backgroundColor: (dark ? '#101a18' : '#F6F7F5') },
   content: { padding: 20, paddingBottom: 36, flexGrow: 1 },
   brand: { alignItems: 'center', marginBottom: 28 },
   brandMark: {
@@ -328,10 +328,10 @@ function makeStyles(dark: boolean) { return StyleSheet.create({
     borderRadius: 14,
     backgroundColor: (dark ? '#1b2a26' : '#FFFFFF'),
     borderWidth: 1,
-    borderColor: '#E4E8E5',
+    borderColor: (dark ? '#30413a' : '#E4E8E5'),
     gap: 12,
   },
-  errorText: { color: '#B42318', fontSize: 13, lineHeight: 20 },
+  errorText: { color: (dark ? '#ff8178' : '#B42318'), fontSize: 13, lineHeight: 20 },
   retryButton: { alignSelf: 'flex-start', paddingVertical: 8 },
   retryText: { color: (dark ? '#55c6b0' : '#0F766E'), fontSize: 13, fontWeight: '800' },
   selectionSummary: {
@@ -350,12 +350,12 @@ function makeStyles(dark: boolean) { return StyleSheet.create({
     borderRadius: 13,
     backgroundColor: (dark ? '#1b2a26' : '#FFFFFF'),
     borderWidth: 1,
-    borderColor: '#CBD3CF',
+    borderColor: (dark ? '#46564f' : '#CBD3CF'),
   },
   categoryCardSelected: {
     borderWidth: 2,
     borderColor: (dark ? '#55c6b0' : '#0F766E'),
-    backgroundColor: '#E6F4F1',
+    backgroundColor: (dark ? '#203d36' : '#E6F4F1'),
     padding: 12,
   },
   cardTop: {
@@ -377,7 +377,7 @@ function makeStyles(dark: boolean) { return StyleSheet.create({
     height: 21,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#AAB6B0',
+    borderColor: (dark ? '#46564f' : '#AAB6B0'),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: (dark ? '#1b2a26' : '#FFFFFF'),
