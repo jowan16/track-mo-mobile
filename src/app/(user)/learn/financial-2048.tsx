@@ -127,11 +127,9 @@ export default function Financial2048Screen() {
     if (sameBoard(board, result.board)) return
     const next = spawnTile(result.board)
     setBoard(next)
-    setScore((old) => {
-      const updated = old + result.gained
-      setBest((current) => Math.max(current, updated))
-      return updated
-    })
+    const updatedScore = score + result.gained
+    setScore(updatedScore)
+    setBest((current) => Math.max(current, updatedScore))
     if (!won && next.some((row) => row.some((value) => value >= 2048))) setWon(true)
   }
 
