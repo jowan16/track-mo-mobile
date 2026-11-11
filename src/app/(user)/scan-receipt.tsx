@@ -222,7 +222,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   hint: { color: COLORS.muted, fontSize: 10, textAlign: 'center', marginTop: 12 },
   previewCard: { backgroundColor: COLORS.white, borderRadius: 17, padding: 16, borderWidth: 1, borderColor: COLORS.line },
   previewTitle: { color: COLORS.ink, fontSize: 14, fontWeight: '800', marginBottom: 10 },
-  previewImage: { width: '100%', height: 300, backgroundColor: '#f8faf9', borderRadius: 10 },
+  previewImage: { width: '100%', height: 300, backgroundColor: (dark ? '#101a18' : '#f8faf9'), borderRadius: 10 },
   fileName: { color: COLORS.muted, fontSize: 11, marginTop: 9 },
   processingCard: { backgroundColor: COLORS.white, borderRadius: 17, padding: 22, alignItems: 'center', borderWidth: 1, borderColor: COLORS.line },
   processingTitle: { color: COLORS.ink, fontSize: 15, fontWeight: '800', marginTop: 13 },
