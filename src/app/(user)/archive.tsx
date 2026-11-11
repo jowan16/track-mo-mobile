@@ -318,7 +318,7 @@ export default function ArchiveScreen() {
 
           {tab === 'expenses' ? (
             expenses.length === 0 ? (
-              <EmptyState message="No archived expenses. Expenses you archive will appear here." />
+              <EmptyState styles={styles} message="No archived expenses. Expenses you archive will appear here." />
             ) : (
               expenses.map((item) => {
                 const category = categoryMap.get(item.category_id)
@@ -351,6 +351,7 @@ export default function ArchiveScreen() {
                     </View>
 
                     <ActionButtons
+                      styles={styles}
                       busy={busyId === item.id}
                       onRestore={() =>
                         confirmAction(
@@ -372,7 +373,7 @@ export default function ArchiveScreen() {
               })
             )
           ) : budgets.length === 0 ? (
-            <EmptyState message="No archived budgets. Budgets you archive will appear here." />
+            <EmptyState styles={styles} message="No archived budgets. Budgets you archive will appear here." />
           ) : (
             budgets.map((item) => {
               const category = categoryMap.get(item.category_id)
@@ -399,6 +400,7 @@ export default function ArchiveScreen() {
                   </View>
 
                   <ActionButtons
+                    styles={styles}
                     busy={busyId === item.id}
                     onRestore={() =>
                       confirmAction(
@@ -425,7 +427,7 @@ export default function ArchiveScreen() {
   )
 }
 
-function EmptyState({ message }: { message: string }) {
+function EmptyState({ message, styles }: { message: string; styles: ReturnType<typeof makeStyles> }) {
   return (
     <View style={styles.empty}>
       <Text style={styles.emptyIcon}>▣</Text>
@@ -436,10 +438,12 @@ function EmptyState({ message }: { message: string }) {
 }
 
 function ActionButtons({
+  styles,
   busy,
   onRestore,
   onDelete,
 }: {
+  styles: ReturnType<typeof makeStyles>
   busy: boolean
   onRestore: () => void
   onDelete: () => void
