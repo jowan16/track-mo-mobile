@@ -8,9 +8,8 @@ import React, {
   useState,
   type ReactNode,
 } from 'react'
-import { useColorScheme } from 'react-native'
 
-export type ThemePreference = 'light' | 'dark' | 'system'
+export type ThemePreference = 'light' | 'dark'
 
 type ThemeContextType = {
   preference: ThemePreference
@@ -23,13 +22,12 @@ const STORAGE_KEY = 'trackmo-theme'
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const systemScheme = useColorScheme()
   const [preference, setPreferenceState] =
-    useState<ThemePreference>('system')
+    useState<ThemePreference>('light')
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved === 'light' || saved === 'dark' || saved === 'system') {
+      if (saved === 'light' || saved === 'dark') {
         setPreferenceState(saved)
       }
     })
@@ -40,10 +38,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEY, value)
   }, [])
 
-  const resolvedTheme =
-    preference === 'system'
-      ? systemScheme === 'dark' ? 'dark' : 'light'
-      : preference
+  const resolvedTheme = preference
 
   const value = useMemo(
     () => ({ preference, resolvedTheme, setPreference }),
