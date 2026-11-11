@@ -342,7 +342,6 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     gap: 12,
-  ,
     borderBottomWidth: 1,
     borderBottomColor: C.line,
     backgroundColor: C.white},
