@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -20,7 +21,7 @@ type Lesson = {
   sort_order: number
 }
 
-const C = {
+const LIGHT_C = {
   bg: '#f6f7f5',
   card: '#ffffff',
   ink: '#14201c',
@@ -28,6 +29,15 @@ const C = {
   line: '#e4e8e5',
   brand: '#0f766e',
 }
+function getC(dark: boolean) { return dark ? {
+  bg: '#101a18',
+  card: '#1b2a26',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+} : LIGHT_C }
+
 
 const topics = [
   { id: 'budgeting', title: 'Budgeting', icon: '📊', description: 'Give every peso a job before the month starts.', color: '#e5f3ef' },
@@ -39,6 +49,11 @@ const topics = [
 ]
 
 export default function LearnHubScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const C = getC(dark)
+  const styles = makeStyles(dark, C)
+
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -138,7 +153,7 @@ export default function LearnHubScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   header: {
     position: 'relative',
@@ -159,8 +174,8 @@ const styles = StyleSheet.create({
   lessonCount: { color: C.brand, fontSize: 11, fontWeight: '700', marginTop: 6 },
   arrow: { color: C.muted, fontSize: 27 },
   card: { backgroundColor: C.card, padding: 15, borderRadius: 13 },
-  error: { color: '#b42318', fontSize: 13 },
-  disclaimer: { backgroundColor: '#fff7e8', borderRadius: 13, padding: 15, marginTop: 13 },
-  disclaimerTitle: { color: '#80530c', fontWeight: '800', fontSize: 13 },
-  disclaimerText: { color: '#765f39', fontSize: 12, lineHeight: 18, marginTop: 5 },
-})
+  error: { color: (dark ? '#ff8178' : '#b42318'), fontSize: 13 },
+  disclaimer: { backgroundColor: (dark ? '#3b3020' : '#fff7e8'), borderRadius: 13, padding: 15, marginTop: 13 },
+  disclaimerTitle: { color: (dark ? '#f5c56d' : '#80530c'), fontWeight: '800', fontSize: 13 },
+  disclaimerText: { color: (dark ? '#c7b48b' : '#765f39'), fontSize: 12, lineHeight: 18, marginTop: 5 },
+}) }
