@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 import { useState } from 'react'
 import {
   ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet,
@@ -12,12 +13,22 @@ import { UserMenuButton } from '@/components/user-navigation'
 import { recognizeReceipt, uploadReceipt } from '@/services/receiptStorage'
 import { parseReceiptText } from '@/services/receiptParser'
 
-const COLORS = {
+const LIGHT_COLORS = {
   canvas: '#f6f7f5', white: '#ffffff', ink: '#14201c', muted: '#68756f',
   line: '#e4e8e5', brand: '#0f766e', brandLight: '#e6f4f1', danger: '#b42318',
 }
+function getCOLORS(dark: boolean) { return dark ? {
+  canvas: '#101a18', white: '#1b2a26', ink: '#edf5f1', muted: '#a9b8b1',
+  line: '#30413a', brand: '#55c6b0', brandLight: '#203d36', danger: '#ff8178',
+} : LIGHT_COLORS }
+
 
 export default function ScanReceiptScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const COLORS = getCOLORS(dark)
+  const styles = makeStyles(dark, COLORS)
+
   const { profile } = useAuth()
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null)
   const [processing, setProcessing] = useState(false)
@@ -188,7 +199,7 @@ export default function ScanReceiptScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.canvas },
   header: { minHeight: 76, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 13, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.line },
   headerText: { flex: 1 },
@@ -216,9 +227,9 @@ const styles = StyleSheet.create({
   processingCard: { backgroundColor: COLORS.white, borderRadius: 17, padding: 22, alignItems: 'center', borderWidth: 1, borderColor: COLORS.line },
   processingTitle: { color: COLORS.ink, fontSize: 15, fontWeight: '800', marginTop: 13 },
   processingText: { color: COLORS.muted, fontSize: 12, lineHeight: 19, textAlign: 'center', marginTop: 6 },
-  errorCard: { backgroundColor: '#fff0ef', borderRadius: 13, borderWidth: 1, borderColor: '#f4c7c3', padding: 14 },
+  errorCard: { backgroundColor: (dark ? '#402725' : '#fff0ef'), borderRadius: 13, borderWidth: 1, borderColor: (dark ? '#75423e' : '#f4c7c3'), padding: 14 },
   errorTitle: { color: COLORS.danger, fontSize: 13, fontWeight: '800' },
-  errorText: { color: '#7f1d1d', fontSize: 12, lineHeight: 18, marginTop: 5 },
+  errorText: { color: (dark ? '#ffaaa3' : '#7f1d1d'), fontSize: 12, lineHeight: 18, marginTop: 5 },
   retryButton: { alignSelf: 'flex-start', marginTop: 12, paddingVertical: 8, paddingHorizontal: 13, borderRadius: 9, backgroundColor: COLORS.white },
   retryText: { color: COLORS.brand, fontSize: 12, fontWeight: '800' },
-})
+}) }
