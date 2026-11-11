@@ -1416,7 +1416,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     marginBottom: 28,
   },
   welcomeEyebrow: {
-    color: '#b8e5dc',
+    color: (dark ? '#20443d' : '#b8e5dc'),
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.3,
@@ -1429,7 +1429,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     marginTop: 12,
   },
   welcomeSubtitle: {
-    color: '#d4efea',
+    color: (dark ? '#1f403a' : '#d4efea'),
     fontSize: 13,
     lineHeight: 20,
     marginTop: 8,
@@ -1449,7 +1449,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     fontWeight: '700',
   },
   welcomeSmall: {
-    color: '#c5e6e0',
+    color: (dark ? '#1f403a' : '#c5e6e0'),
     fontSize: 11,
     marginTop: 3,
   },
@@ -1517,7 +1517,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     marginTop: 6,
   },
   summaryDescription: {
-    color: '#84908b',
+    color: (dark ? '#9aaba3' : '#84908b'),
     fontSize: 10,
     marginTop: 5,
   },
@@ -1566,7 +1566,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   healthTrack: {
     height: 9,
     borderRadius: 10,
-    backgroundColor: '#edf0ed',
+    backgroundColor: (dark ? '#2a3a34' : '#edf0ed'),
     overflow: 'hidden',
     marginTop: 19,
   },
@@ -1639,7 +1639,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   },
   categoryTrack: {
     height: 6,
-    backgroundColor: '#edf0ed',
+    backgroundColor: (dark ? '#2a3a34' : '#edf0ed'),
     borderRadius: 10,
     overflow: 'hidden',
     marginTop: 9,
@@ -1649,7 +1649,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     borderRadius: 10,
   },
   categoryMeta: {
-    color: '#84908b',
+    color: (dark ? '#9aaba3' : '#84908b'),
     fontSize: 10,
     marginTop: 5,
   },
@@ -1803,7 +1803,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     marginTop: 6,
   },
   errorCard: {
-    backgroundColor: '#fff1f0',
+    backgroundColor: (dark ? '#402725' : '#fff1f0'),
     borderRadius: 15,
     padding: 15,
     marginBottom: 22,
@@ -1824,7 +1824,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 13,
     borderRadius: 9,
-    backgroundColor: '#fee2e2',
+    backgroundColor: (dark ? '#4a2828' : '#fee2e2'),
   },
   retryText: {
     color: COLORS.danger,
