@@ -1388,7 +1388,10 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     marginBottom: 22,
     minHeight: 46,
     position: 'relative',
-  },
+  ,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.line,
+    backgroundColor: COLORS.white},
   brandMark: {
     width: 43,
     height: 43,
