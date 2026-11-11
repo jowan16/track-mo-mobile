@@ -202,7 +202,7 @@ export default function ScanReceiptScreen() {
 
 function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.canvas },
-  header: { position: 'relative', minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.line },
+  header: { position: 'relative', minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, backgroundColor: dark ? '#1b2421' : '#ffffff', borderBottomWidth: 1, borderBottomColor: dark ? '#34423c' : '#e4e8e5'},
   headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
   headerTitle: { fontSize: 24, lineHeight: 29, fontWeight: '800', color: COLORS.ink, textAlign: 'center' },
   headerSubtitle: { color: COLORS.muted, fontSize: 12, lineHeight: 16, marginTop: 3, textAlign: 'center' },
