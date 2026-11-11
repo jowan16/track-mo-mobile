@@ -247,7 +247,7 @@ function makeStyles(C: ReturnType<typeof getC>, dark: boolean) {
     backgroundColor: C.card},
     backButton: { width: 44, height: 44, alignItems: 'flex-start', justifyContent: 'center' },
     backText: { color: C.brand, fontSize: 12, fontWeight: '800' },
-    headerTitle: { position: 'absolute', left: 72, right: 72, textAlign: 'center', color: C.ink, fontSize: 20, fontWeight: '900' },
+    headerTitle: { position: 'absolute', left: 72, right: 72, textAlign: 'center', color: C.ink, fontSize: 18, fontWeight: '900' },
     headerSpacer: { width: 44, height: 44 },
     content: { padding: 17, paddingBottom: 36 },
     hero: { backgroundColor: C.soft, borderRadius: 18, padding: 19, marginBottom: 18 },
