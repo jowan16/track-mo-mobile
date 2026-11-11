@@ -460,18 +460,7 @@ export default function ReportsScreen() {
 
 function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.canvas },
-  header: {
-      position: 'relative',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 18,
-      paddingVertical: 14,
-      minHeight: 72,
-      backgroundColor: C.white,
-      borderBottomWidth: 1,
-      borderBottomColor: C.line,
-    },
+  header: { position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, minHeight: 72, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line },
   headerSpacer: { width: 44, height: 44 },
   headerText: {
     position: 'absolute',
