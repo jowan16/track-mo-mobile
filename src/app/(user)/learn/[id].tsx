@@ -186,7 +186,10 @@ export default function LessonDetailScreen() {
 
 function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18 ,
+    borderBottomWidth: 1,
+    borderBottomColor: C.line,
+    backgroundColor: C.card},
   headerTitle: { color: C.ink, fontSize: 20, fontWeight: '800' },
   headerSubtitle: { color: C.muted, fontSize: 12, marginTop: 3 },
   content: { padding: 17, paddingBottom: 40 },
