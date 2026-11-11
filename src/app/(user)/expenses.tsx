@@ -1528,6 +1528,8 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     paddingHorizontal: 18, paddingVertical: 14, minHeight: 72,
     backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.line,
   },
+  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
+  headerSpacer: { width: 44, height: 44 },
   brandMarkText: {
     color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 25,
