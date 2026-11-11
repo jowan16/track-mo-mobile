@@ -337,11 +337,22 @@ export default function ReportExportScreen() {
 
 function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
-  header: { position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, minHeight: 72, borderBottomWidth: 1, borderBottomColor: dark ? '#34423c' : '#e4e8e5', backgroundColor: dark ? '#1b2421' : '#ffffff'},
+  header: {
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      minHeight: 72,
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderBottomWidth: 1,
+      borderBottomColor: dark ? '#30413a' : '#e4e8e5',
+    },
   headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
   headerSpacer: { width: 44, height: 44 },
-  subtitle: { color: C.muted, fontSize: 12, lineHeight: 16, marginTop: 3, textAlign: 'center' },
-  title: { color: C.ink, fontSize: 24, lineHeight: 29, fontWeight: '800', textAlign: 'center' },
+  subtitle: { color: C.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
+  title: { color: C.ink, fontSize: 24, fontWeight: '800', textAlign: 'center' },
   sectionTitle: {
     color: C.ink,
     fontSize: 15,
