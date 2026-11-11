@@ -193,7 +193,10 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 18,
     paddingVertical: 10,
-  },
+  ,
+    borderBottomWidth: 1,
+    borderBottomColor: C.line,
+    backgroundColor: C.card},
   headerText: {
     flex: 1,
     alignItems: 'center',
