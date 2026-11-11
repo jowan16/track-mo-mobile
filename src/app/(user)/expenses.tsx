@@ -246,6 +246,7 @@ export default function ExpensesScreen() {
     null,
   )
   const [page, setPage] = useState(1)
+  const [expandedExpenseId, setExpandedExpenseId] = useState<string | null>(null)
 
   const [formVisible, setFormVisible] = useState(false)
   const [editing, setEditing] = useState<Expense | null>(null)
@@ -984,81 +985,106 @@ export default function ExpensesScreen() {
                   Clear filters
                 </Text>
               </Pressable>
-            ) : null}
-          </View>
-        ) : (
-          <View style={styles.listCard}>
-            {visibleExpenses.map((expense) => {
+            )            {visibleExpenses.map((expense) => {
               const category = categoryMap.get(expense.category_id)
+              const expanded = expandedExpenseId === expense.id
+              const note = expense.note?.trim() ?? ''
+              const isReceiptDetails = note.length > 200 || note.includes('\n')
 
               return (
                 <View key={expense.id} style={styles.expenseRow}>
-                  <View
-                    style={[
-                      styles.categoryIcon,
-                      {
-                        backgroundColor: category?.bg || '#e6f4f1',
-                      },
-                    ]}
+                  <Pressable
+                    style={styles.expenseRecordHeader}
+                    onPress={() => setExpandedExpenseId(expanded ? null : expense.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded }}
                   >
-                    <Text
+                    <View
                       style={[
-                        styles.categorySymbol,
-                        {
-                          color: category?.color || COLORS.brand,
-                        },
+                        styles.categoryIcon,
+                        { backgroundColor: category?.bg || '#e6f4f1' },
                       ]}
                     >
-                      {categorySymbol(category?.icon ?? 'coins')}
-                    </Text>
-                  </View>
-
-                  <View style={styles.expenseContent}>
-                    <Text style={styles.expenseName}>
-                      {category?.name ?? 'Expense'}
-                    </Text>
-
-                    {expense.note?.trim() ? (
-                      <View style={styles.expenseNoteContainer}>
-                        <Text style={styles.expenseNoteLabel}>
-                          {expense.note.length > 200 || expense.note.includes('\n')
-                            ? 'Receipt Details'
-                            : 'Note'}
-                        </Text>
-                        <Text style={styles.expenseNote}>
-                          {expense.note}
-                        </Text>
-                      </View>
-                    ) : null}
-
-                    <Text style={styles.expenseMeta}>
-                      {shortDate(expense.spent_on)} ·{' '}
-                      {expense.payment_method}
-                    </Text>
-
-                    <Text style={styles.expenseAmount}>
-                      -{peso(expense.amount)}
-                    </Text>
-
-                    <View style={styles.actionRow}>
-                      <Pressable
-                        style={styles.editButton}
-                        onPress={() => openEdit(expense)}
+                      <Text
+                        style={[
+                          styles.categorySymbol,
+                          { color: category?.color || COLORS.brand },
+                        ]}
                       >
-                        <Text style={styles.editButtonText}>
-                          ✎ Edit
-                        </Text>
-                      </Pressable>
-
-                      <Pressable
-                        style={styles.archiveButton}
-                        onPress={() => archiveExpense(expense)}
-                      >
-                        <Text style={styles.archiveButtonText}>
-                          ▣ Archive
-                        </Text>
-                      </Pressable>
+                        {categorySymbol(category?.icon ?? 'coins')}
+                      </Text>
                     </View>
+
+                    <View style={styles.expenseContent}>
+                      <Text style={styles.expenseName}>
+                        {category?.name ?? 'Expense'}
+                      </Text>
+                      <Text style={styles.expenseMeta}>
+                        {shortDate(expense.spent_on)} · {expense.payment_method}
+                      </Text>
+                    </View>
+
+                    <View style={styles.expenseSummaryRight}>
+                      <Text style={styles.expenseAmount}>
+                        -{peso(expense.amount)}
+                      </Text>
+                      <Text style={styles.expandHint}>
+                        {expanded ? 'Hide details －' : 'View details ＋'}
+                      </Text>
+                    </View>
+                  </Pressable>
+
+                  {expanded ? (
+                    <View style={styles.expandedExpenseDetails}>
+                      <View style={styles.detailsDivider} />
+                      <View style={styles.detailLine}>
+                        <Text style={styles.detailLabel}>Category</Text>
+                        <Text style={styles.detailValue}>{category?.name ?? 'Expense'}</Text>
+                      </View>
+                      <View style={styles.detailLine}>
+                        <Text style={styles.detailLabel}>Date</Text>
+                        <Text style={styles.detailValue}>{shortDate(expense.spent_on)}</Text>
+                      </View>
+                      <View style={styles.detailLine}>
+                        <Text style={styles.detailLabel}>Payment method</Text>
+                        <Text style={styles.detailValue}>{expense.payment_method}</Text>
+                      </View>
+                      <View style={styles.detailLine}>
+                        <Text style={styles.detailLabel}>Amount</Text>
+                        <Text style={styles.detailAmount}>-{peso(expense.amount)}</Text>
+                      </View>
+
+                      {note ? (
+                        <View style={styles.expandedNoteBlock}>
+                          <Text style={styles.detailLabel}>
+                            {isReceiptDetails ? 'Receipt Details' : 'Note'}
+                          </Text>
+                          <Text style={styles.expandedNoteText}>{note}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.noNoteText}>No additional notes for this expense.</Text>
+                      )}
+
+                      <View style={styles.actionRow}>
+                        <Pressable
+                          style={styles.editButton}
+                          onPress={() => openEdit(expense)}
+                        >
+                          <Text style={styles.editButtonText}>✎ Edit</Text>
+                        </Pressable>
+
+                        <Pressable
+                          style={styles.archiveButton}
+                          onPress={() => archiveExpense(expense)}
+                        >
+                          <Text style={styles.archiveButtonText}>▣ Archive</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+              )
+            })}>
                   </View>
                 </View>
               )
@@ -1711,12 +1737,76 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     paddingHorizontal: 14,
   },
   expenseRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 11,
-    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f2f0',
+    borderBottomColor: COLORS.line,
+  },
+  expenseRecordHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingVertical: 14,
+  },
+  expenseSummaryRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  expandHint: {
+    color: COLORS.brand,
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  expandedExpenseDetails: {
+    paddingLeft: 54,
+    paddingRight: 2,
+    paddingBottom: 14,
+  },
+  detailsDivider: {
+    height: 1,
+    backgroundColor: COLORS.line,
+    marginBottom: 10,
+  },
+  detailLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 6,
+  },
+  detailLabel: {
+    color: COLORS.muted,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  detailValue: {
+    color: COLORS.ink,
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'right',
+    flexShrink: 1,
+  },
+  detailAmount: {
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  expandedNoteBlock: {
+    backgroundColor: dark ? '#202f2a' : '#f7faf8',
+    borderRadius: 10,
+    padding: 11,
+    marginTop: 9,
+  },
+  expandedNoteText: {
+    color: COLORS.ink,
+    fontSize: 11,
+    lineHeight: 18,
+    marginTop: 6,
+  },
+  noNoteText: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontStyle: 'italic',
+    marginTop: 9,
   },
   categoryIcon: {
     width: 43,
