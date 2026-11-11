@@ -483,7 +483,6 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     justifyContent: 'space-between',
     padding: 18,
     minHeight: 80,
-  ,
     borderBottomWidth: 1,
     borderBottomColor: C.line,
     backgroundColor: C.card},
