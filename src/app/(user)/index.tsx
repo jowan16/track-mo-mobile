@@ -72,6 +72,7 @@ type SummaryCardProps = {
   symbol: string
   color: string
   background: string
+  styles: any
 }
 
 // --------------------------------------------------
@@ -159,6 +160,7 @@ function SummaryCard({
   symbol,
   color,
   background,
+  styles,
 }: SummaryCardProps) {
   return (
     <View style={styles.summaryCard}>
@@ -178,9 +180,11 @@ function SummaryCard({
 function SectionHeader({
   title,
   subtitle,
+  styles,
 }: {
   title: string
   subtitle?: string
+  styles: any
 }) {
   return (
     <View style={styles.sectionHeader}>
@@ -639,6 +643,7 @@ export default function UserDashboard() {
         <SectionHeader
           title="Your Overview"
           subtitle="A quick look at your finances"
+          styles={styles}
         />
 
         <View style={styles.summaryGrid}>
@@ -649,6 +654,7 @@ export default function UserDashboard() {
             symbol="₱"
             color="#dc2626"
             background="#fee8ea"
+            styles={styles}
           />
 
           <SummaryCard
@@ -660,6 +666,7 @@ export default function UserDashboard() {
             symbol="◉"
             color="#0f766e"
             background="#e6f4f1"
+            styles={styles}
           />
 
           <SummaryCard
@@ -669,6 +676,7 @@ export default function UserDashboard() {
             symbol="▦"
             color="#4338ca"
             background="#eaedff"
+            styles={styles}
           />
 
           <SummaryCard
@@ -678,6 +686,7 @@ export default function UserDashboard() {
             symbol="↗"
             color="#c2410c"
             background="#fff1e0"
+            styles={styles}
           />
         </View>
 
@@ -687,6 +696,7 @@ export default function UserDashboard() {
           <SectionHeader
             title="Quick Actions"
             subtitle="Manage your daily spending"
+            styles={styles}
           />
 
           <Pressable
@@ -815,6 +825,7 @@ export default function UserDashboard() {
           <SectionHeader
             title="Your Categories"
             subtitle="Tap an icon to view expenses in that category"
+            styles={styles}
           />
 
           <ScrollView
@@ -979,6 +990,7 @@ export default function UserDashboard() {
           <SectionHeader
             title="Spending by Category"
             subtitle="Your spending this month"
+            styles={styles}
           />
 
           {categorySpending.length === 0 ? (
@@ -1060,6 +1072,7 @@ export default function UserDashboard() {
           <SectionHeader
             title="Spending Trend"
             subtitle="Your expenses over the last six months"
+            styles={styles}
           />
 
           <View style={styles.chartCard}>
@@ -1123,6 +1136,7 @@ export default function UserDashboard() {
           <SectionHeader
             title="Recent Transactions"
             subtitle="Your latest expense entries"
+            styles={styles}
           />
 
           {currentMonthExpenses.length === 0 ? (
@@ -1190,6 +1204,7 @@ export default function UserDashboard() {
           <SectionHeader
             title="Budget Progress"
             subtitle="How each category is doing"
+            styles={styles}
           />
 
           {categorySpending.filter((item) => item.budget > 0).length === 0 ? (
