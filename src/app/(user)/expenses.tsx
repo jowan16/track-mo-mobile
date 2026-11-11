@@ -693,11 +693,18 @@ export default function ExpensesScreen() {
             : 'Your expense has been recorded.',
       )
     } catch (error) {
-      setFormError(
+      const message =
         error instanceof Error
           ? error.message
-          : 'Unable to save your expense. Please try again.',
-      )
+          : typeof error === 'object' &&
+              error !== null &&
+              'message' in error &&
+              typeof error.message === 'string'
+            ? error.message
+            : 'Unable to save your expense. Please try again.'
+
+      console.error('Expense save error:', error)
+      setFormError(message)
     } finally {
       setSaving(false)
     }
@@ -990,18 +997,22 @@ export default function ExpensesScreen() {
                   </View>
 
                   <View style={styles.expenseContent}>
-                    <Text
-                      style={styles.expenseName}
-                      numberOfLines={1}
-                    >
-                      {expense.note?.trim() ||
-                        category?.name ||
-                        'Expense'}
+                    <Text style={styles.expenseName}>
+                      {category?.name ?? 'Expense'}
                     </Text>
 
-                    <Text style={styles.expenseCategory}>
-                      {category?.name ?? 'Uncategorized'}
-                    </Text>
+                    {expense.note?.trim() ? (
+                      <View style={styles.expenseNoteContainer}>
+                        <Text style={styles.expenseNoteLabel}>
+                          {expense.note.length > 200 || expense.note.includes('\n')
+                            ? 'Receipt Details'
+                            : 'Note'}
+                        </Text>
+                        <Text style={styles.expenseNote}>
+                          {expense.note}
+                        </Text>
+                      </View>
+                    ) : null}
 
                     <Text style={styles.expenseMeta}>
                       {shortDate(expense.spent_on)} ·{' '}
@@ -1709,11 +1720,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
-  expenseCategory: {
+  expenseNoteContainer: {
+    marginTop: 5,
+  },
+  expenseNoteLabel: {
     color: COLORS.brand,
+    fontSize: 10,
+    fontWeight: '800',
+    marginBottom: 3,
+  },
+  expenseNote: {
+    color: COLORS.muted,
     fontSize: 11,
-    fontWeight: '700',
-    marginTop: 3,
+    lineHeight: 16,
   },
   expenseMeta: {
     color: COLORS.muted,
