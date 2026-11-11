@@ -1387,9 +1387,9 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     minHeight: 72,
-    backgroundColor: COLORS.white,
+    backgroundColor: dark ? '#1b2421' : '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    borderBottomColor: dark ? '#34423c' : '#e4e8e5',
   },
   brandMarkText: {
     color: (dark ? '#1b2a26' : '#ffffff'),
