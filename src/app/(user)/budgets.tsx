@@ -985,6 +985,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.line,
   },
   headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
+  headerSpacer: { width: 44, height: 44 },
   monthBadge: {
     alignSelf: 'flex-start',
     backgroundColor: (dark ? '#203d36' : '#e6f4f1'),
