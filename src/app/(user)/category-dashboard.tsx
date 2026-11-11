@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -50,6 +51,10 @@ const HINTS: Record<string, string> = {
 }
 
 export default function CategoryDashboardScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const styles = makeStyles(dark)
+
   const { profile } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -298,7 +303,7 @@ export default function CategoryDashboardScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean) { return StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F6F7F5' },
   content: { padding: 20, paddingBottom: 36, flexGrow: 1 },
   brand: { alignItems: 'center', marginBottom: 28 },
@@ -306,50 +311,50 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: '#0F766E',
+    backgroundColor: (dark ? '#55c6b0' : '#0F766E'),
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 9,
   },
-  brandMarkText: { color: '#FFFFFF', fontSize: 25, fontWeight: '900' },
-  brandName: { color: '#14201C', fontSize: 18, fontWeight: '800' },
+  brandMarkText: { color: (dark ? '#1b2a26' : '#FFFFFF'), fontSize: 25, fontWeight: '900' },
+  brandName: { color: (dark ? '#edf5f1' : '#14201C'), fontSize: 18, fontWeight: '800' },
   heading: { marginBottom: 22 },
-  title: { color: '#14201C', fontSize: 24, lineHeight: 31, fontWeight: '800' },
-  subtitle: { color: '#64716B', fontSize: 13, lineHeight: 20, marginTop: 8 },
+  title: { color: (dark ? '#edf5f1' : '#14201C'), fontSize: 24, lineHeight: 31, fontWeight: '800' },
+  subtitle: { color: (dark ? '#a9b8b1' : '#64716B'), fontSize: 13, lineHeight: 20, marginTop: 8 },
   loading: { minHeight: 190, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { color: '#64716B', fontSize: 13 },
+  loadingText: { color: (dark ? '#a9b8b1' : '#64716B'), fontSize: 13 },
   errorCard: {
     padding: 18,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: (dark ? '#1b2a26' : '#FFFFFF'),
     borderWidth: 1,
     borderColor: '#E4E8E5',
     gap: 12,
   },
   errorText: { color: '#B42318', fontSize: 13, lineHeight: 20 },
   retryButton: { alignSelf: 'flex-start', paddingVertical: 8 },
-  retryText: { color: '#0F766E', fontSize: 13, fontWeight: '800' },
+  retryText: { color: (dark ? '#55c6b0' : '#0F766E'), fontSize: 13, fontWeight: '800' },
   selectionSummary: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  selectionCount: { color: '#64716B', fontSize: 12, fontWeight: '600' },
-  selectAllText: { color: '#0F766E', fontSize: 12, fontWeight: '800' },
+  selectionCount: { color: (dark ? '#a9b8b1' : '#64716B'), fontSize: 12, fontWeight: '600' },
+  selectAllText: { color: (dark ? '#55c6b0' : '#0F766E'), fontSize: 12, fontWeight: '800' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   categoryCard: {
     width: '48%',
     minHeight: 145,
     padding: 13,
     borderRadius: 13,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: (dark ? '#1b2a26' : '#FFFFFF'),
     borderWidth: 1,
     borderColor: '#CBD3CF',
   },
   categoryCardSelected: {
     borderWidth: 2,
-    borderColor: '#0F766E',
+    borderColor: (dark ? '#55c6b0' : '#0F766E'),
     backgroundColor: '#E6F4F1',
     padding: 12,
   },
@@ -375,23 +380,23 @@ const styles = StyleSheet.create({
     borderColor: '#AAB6B0',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: (dark ? '#1b2a26' : '#FFFFFF'),
   },
-  checkboxSelected: { backgroundColor: '#0F766E', borderColor: '#0F766E' },
-  checkmark: { color: '#FFFFFF', fontSize: 14, fontWeight: '900', lineHeight: 17 },
-  categoryName: { color: '#14201C', fontSize: 13, fontWeight: '800' },
-  categoryHint: { color: '#64716B', fontSize: 10, lineHeight: 15, marginTop: 4 },
-  selectedLabel: { color: '#0F766E', fontSize: 10, fontWeight: '800', marginTop: 7 },
+  checkboxSelected: { backgroundColor: (dark ? '#55c6b0' : '#0F766E'), borderColor: (dark ? '#55c6b0' : '#0F766E') },
+  checkmark: { color: (dark ? '#1b2a26' : '#FFFFFF'), fontSize: 14, fontWeight: '900', lineHeight: 17 },
+  categoryName: { color: (dark ? '#edf5f1' : '#14201C'), fontSize: 13, fontWeight: '800' },
+  categoryHint: { color: (dark ? '#a9b8b1' : '#64716B'), fontSize: 10, lineHeight: 15, marginTop: 4 },
+  selectedLabel: { color: (dark ? '#55c6b0' : '#0F766E'), fontSize: 10, fontWeight: '800', marginTop: 7 },
   footer: { marginTop: 24 },
   continueButton: {
     minHeight: 50,
     borderRadius: 11,
-    backgroundColor: '#0F8A72',
+    backgroundColor: (dark ? '#55c6b0' : '#0F8A72'),
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   continueButtonDisabled: { opacity: 0.55 },
-  continueButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
-  footerNote: { color: '#718078', fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: 11 },
-})
+  continueButtonText: { color: (dark ? '#1b2a26' : '#FFFFFF'), fontSize: 14, fontWeight: '800' },
+  footerNote: { color: (dark ? '#9aaba3' : '#718078'), fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: 11 },
+}) }
