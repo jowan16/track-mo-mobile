@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -22,7 +23,7 @@ type Lesson = {
   sort_order: number
 }
 
-const C = {
+const LIGHT_C = {
   bg: '#f6f7f5',
   card: '#ffffff',
   ink: '#14201c',
@@ -30,6 +31,15 @@ const C = {
   line: '#e4e8e5',
   brand: '#0f766e',
 }
+function getC(dark: boolean) { return dark ? {
+  bg: '#101a18',
+  card: '#1b2a26',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+} : LIGHT_C }
+
 
 const resources: Record<string, string> = {
   budgeting: 'https://filiapp.treasury.gov.ph/budgeting.html',
@@ -50,6 +60,11 @@ const topicNames: Record<string, string> = {
 }
 
 export default function LessonDetailScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const C = getC(dark)
+  const styles = makeStyles(dark, C)
+
   const { id } = useLocalSearchParams<{ id: string }>()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [lesson, setLesson] = useState<Lesson | null>(null)
@@ -169,7 +184,7 @@ export default function LessonDetailScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18 },
   headerTitle: { color: C.ink, fontSize: 20, fontWeight: '800' },
@@ -182,15 +197,15 @@ const styles = StyleSheet.create({
   card: { backgroundColor: C.card, borderRadius: 15, borderWidth: 1, borderColor: C.line, padding: 17, marginBottom: 13 },
   body: { color: C.ink, fontSize: 15, lineHeight: 25 },
   resourceButton: { backgroundColor: C.brand, borderRadius: 12, padding: 15, alignItems: 'center', marginVertical: 8 },
-  resourceText: { color: '#ffffff', fontWeight: '800', fontSize: 13 },
-  disclaimer: { backgroundColor: '#fff7e8', borderRadius: 13, padding: 15, marginTop: 7 },
-  disclaimerTitle: { color: '#80530c', fontWeight: '800', fontSize: 13 },
-  disclaimerText: { color: '#765f39', fontSize: 12, marginTop: 5 },
+  resourceText: { color: (dark ? '#1b2a26' : '#ffffff'), fontWeight: '800', fontSize: 13 },
+  disclaimer: { backgroundColor: (dark ? '#3b3020' : '#fff7e8'), borderRadius: 13, padding: 15, marginTop: 7 },
+  disclaimerTitle: { color: (dark ? '#f5c56d' : '#80530c'), fontWeight: '800', fontSize: 13 },
+  disclaimerText: { color: (dark ? '#c7b48b' : '#765f39'), fontSize: 12, marginTop: 5 },
   relatedTitle: { color: C.ink, fontSize: 15, fontWeight: '800', marginBottom: 8 },
   related: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.line },
   relatedText: { color: C.ink, fontSize: 13, fontWeight: '600', flex: 1 },
   arrow: { color: C.muted, fontSize: 23 },
-  error: { color: '#b42318' },
+  error: { color: (dark ? '#ff8178' : '#b42318') },
   emptyTitle: { color: C.ink, fontSize: 17, fontWeight: '800' },
   emptyText: { color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 7 },
-})
+}) }
