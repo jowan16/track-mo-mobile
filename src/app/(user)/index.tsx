@@ -586,13 +586,12 @@ export default function UserDashboard() {
         <View style={styles.header}>
           <UserMenuButton />
 
-          <Text style={styles.brandName} numberOfLines={1}>
-            Track Mo, Pake Ko!
-          </Text>
-
-          <View style={styles.brandMark}>
-            <Image source={require('../../../assets/trackmo-logo.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
+          <View style={styles.headerText}>
+            <Text style={styles.brandName} numberOfLines={1}>
+              Track Mo, Pake Ko!
+            </Text>
           </View>
+          <View style={styles.headerSpacer} />
         </View>
 
         {/* WELCOME PANEL */}
@@ -1382,37 +1381,23 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     paddingBottom: 36,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 22,
-    minHeight: 46,
     position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    minHeight: 72,
+    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.line,
-    backgroundColor: COLORS.white},
-  brandMark: {
-    width: 43,
-    height: 43,
-    borderRadius: 14,
-    backgroundColor: (dark ? '#55c6b0' : '#0f766e'),
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   brandMarkText: {
     color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 25,
     fontWeight: '800',
   },
-  brandName: {
-    position: 'absolute',
-    left: 48,
-    right: 48,
-    textAlign: 'center',
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.ink,
-  },
+  brandName: { position: 'absolute', left: 72, right: 72, textAlign: 'center', fontSize: 24, fontWeight: '800', color: COLORS.ink },
   signOutButton: {
     width: 42,
     height: 42,
