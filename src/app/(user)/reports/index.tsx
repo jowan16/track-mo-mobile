@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
@@ -37,7 +38,7 @@ type Budget = {
   amount: number
 }
 
-const C = {
+const LIGHT_C = {
   canvas: '#f6f7f5',
   white: '#ffffff',
   ink: '#14201c',
@@ -48,6 +49,18 @@ const C = {
   orange: '#c2410c',
   red: '#b42318',
 }
+function getC(dark: boolean) { return dark ? {
+  canvas: '#101a18',
+  white: '#1b2a26',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+  pale: '#203d36',
+  orange: '#ffad70',
+  red: '#ff8178',
+} : LIGHT_C }
+
 
 const peso = (value: number) =>
   `₱ ${value.toLocaleString('en-PH', {
@@ -66,6 +79,11 @@ function monthLabel(year: number, month: number) {
 }
 
 export default function ReportsScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const C = getC(dark)
+  const styles = makeStyles(dark, C)
+
   const { profile } = useAuth()
   const today = new Date()
 
@@ -440,7 +458,7 @@ export default function ReportsScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.canvas },
   header: {
     position: 'relative',
@@ -520,7 +538,7 @@ const styles = StyleSheet.create({
   categoryInfo: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   categoryName: { color: C.ink, fontSize: 13, fontWeight: '700', flex: 1 },
   categoryAmount: { color: C.muted, fontSize: 12, fontWeight: '700' },
-  progressTrack: { height: 8, backgroundColor: '#edf1ee', borderRadius: 8, overflow: 'hidden' },
+  progressTrack: { height: 8, backgroundColor: (dark ? '#2a3a34' : '#edf1ee'), borderRadius: 8, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: C.brand, borderRadius: 8 },
   insightRow: { flexDirection: 'row', gap: 9, alignItems: 'flex-start' },
   insightBullet: { color: C.brand, fontSize: 20, lineHeight: 21 },
@@ -533,4 +551,4 @@ const styles = StyleSheet.create({
   exportButtonText: { color: C.brand, fontSize: 13, fontWeight: '800' },
   error: { color: C.red, fontSize: 13 },
   link: { color: C.brand, fontWeight: '800' },
-})
+}) }
