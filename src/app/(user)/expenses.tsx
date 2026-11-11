@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 
 
 
@@ -72,7 +73,7 @@ const PAGE_SIZE = 10
 
 import { UserMenuButton } from '@/components/user-navigation'
 
-const COLORS = {
+const LIGHT_COLORS = {
   canvas: '#f6f7f5',
   ink: '#14201c',
   muted: '#4b5754',
@@ -81,6 +82,16 @@ const COLORS = {
   danger: '#b42318',
   orange: '#c2410c',
 }
+function getCOLORS(dark: boolean) { return dark ? {
+  canvas: '#101a18',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+  danger: '#ff8178',
+  orange: '#ffad70',
+} : LIGHT_COLORS }
+
 
 // --------------------------------------------------
 // HELPERS
@@ -213,6 +224,11 @@ function getDateError(value: string) {
 // --------------------------------------------------
 
 export default function ExpensesScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const COLORS = getCOLORS(dark)
+  const styles = makeStyles(dark, COLORS)
+
   const { profile } = useAuth()
   const params = useLocalSearchParams<{ openForm?: string; category?: string; receiptDraft?: string; receiptPath?: string; receiptModel?: string; receiptRawText?: string }>()
 
@@ -1458,7 +1474,7 @@ export default function ExpensesScreen() {
 // STYLES
 // --------------------------------------------------
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.canvas,
@@ -1509,7 +1525,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   brandMarkText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 25,
     fontWeight: '800',
   },
@@ -1537,13 +1553,13 @@ const styles = StyleSheet.create({
     borderColor: COLORS.brand,
   },
   expenseActionIcon: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 25,
     fontWeight: '800',
     marginBottom: 7,
   },
   expenseActionTitle: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 13,
     fontWeight: '800',
     textAlign: 'center',
@@ -1563,12 +1579,12 @@ const styles = StyleSheet.create({
     marginBottom: 17,
   },
   addButtonText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 14,
     fontWeight: '800',
   },
   errorCard: {
-    backgroundColor: '#fff0ef',
+    backgroundColor: (dark ? '#402725' : '#fff0ef'),
     borderColor: '#f3c3bf',
     borderWidth: 1,
     borderRadius: 15,
@@ -1581,7 +1597,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   errorMessage: {
-    color: '#7f1d1d',
+    color: (dark ? '#ffaaa3' : '#7f1d1d'),
     fontSize: 12,
     marginTop: 5,
     marginBottom: 9,
@@ -1592,7 +1608,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.line,
@@ -1619,7 +1635,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 13,
@@ -1656,7 +1672,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.line,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
@@ -1670,7 +1686,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   filterChipTextActive: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontWeight: '800',
   },
   listHeader: {
@@ -1687,7 +1703,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   listCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 18,
@@ -1768,12 +1784,12 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   archiveButtonText: {
-    color: '#c2410c',
+    color: (dark ? '#ffad70' : '#c2410c'),
     fontSize: 11,
     fontWeight: '700',
   },
   emptyCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 18,
@@ -1800,7 +1816,7 @@ const styles = StyleSheet.create({
   },
   clearFiltersButton: {
     marginTop: 14,
-    backgroundColor: '#e6f4f1',
+    backgroundColor: (dark ? '#203d36' : '#e6f4f1'),
     paddingHorizontal: 15,
     paddingVertical: 9,
     borderRadius: 9,
@@ -1828,7 +1844,7 @@ const styles = StyleSheet.create({
   pageButton: {
     width: 34,
     height: 34,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 9,
@@ -1898,7 +1914,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1951,7 +1967,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#fff0ef',
+    backgroundColor: (dark ? '#402725' : '#fff0ef'),
   },
   removeReceiptItemText: {
     color: COLORS.danger,
@@ -1959,7 +1975,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   receiptReview: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 14,
@@ -2083,7 +2099,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 11,
@@ -2101,7 +2117,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryChoice: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 11,
@@ -2143,7 +2159,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   methodChip: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 20,
@@ -2160,7 +2176,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   methodTextActive: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontWeight: '800',
   },
   noteInput: {
@@ -2179,7 +2195,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   budgetCheckCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 12,
@@ -2198,7 +2214,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   warningCard: {
-    backgroundColor: '#fff7e8',
+    backgroundColor: (dark ? '#3b3020' : '#fff7e8'),
     borderWidth: 1,
     borderColor: '#f2d39c',
     borderRadius: 12,
@@ -2224,7 +2240,7 @@ const styles = StyleSheet.create({
     marginTop: 13,
   },
   formErrorCard: {
-    backgroundColor: '#fff0ef',
+    backgroundColor: (dark ? '#402725' : '#fff0ef'),
     borderRadius: 10,
     padding: 11,
     marginTop: 13,
@@ -2242,7 +2258,7 @@ const styles = StyleSheet.create({
   cancelButton: {
     borderWidth: 1,
     borderColor: COLORS.line,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -2259,7 +2275,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   saveButtonText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 12,
     fontWeight: '800',
   },
@@ -2273,8 +2289,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   recordAnywayText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 12,
     fontWeight: '800',
   },
-})
+}) }
