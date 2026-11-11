@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 import React, { useState } from 'react'
 import {
   ActivityIndicator,
@@ -34,7 +35,7 @@ type CategoryRow = {
   name: string
 }
 
-const C = {
+const LIGHT_C = {
   background: '#f6f7f5',
   card: '#ffffff',
   ink: '#14201c',
@@ -42,6 +43,15 @@ const C = {
   line: '#e4e8e5',
   brand: '#0f766e',
 }
+function getC(dark: boolean) { return dark ? {
+  background: '#101a18',
+  card: '#1b2a26',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+} : LIGHT_C }
+
 
 const money = (value: number) =>
   `₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -59,6 +69,11 @@ const htmlText = (value: unknown) =>
   })[character] || character)
 
 export default function ReportExportScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const C = getC(dark)
+  const styles = makeStyles(dark, C)
+
   const { profile } = useAuth()
   const params = useLocalSearchParams<{ format?: string }>()
   const initialFormat = params.format === 'pdf' ? 'pdf' : 'csv'
@@ -319,7 +334,7 @@ export default function ReportExportScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
   header: {
     flexDirection: 'row',
@@ -357,7 +372,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     flex: 1,
   },
-  optionSelected: { backgroundColor: '#e5f3ef', borderColor: C.brand },
+  optionSelected: { backgroundColor: (dark ? '#203d36' : '#e5f3ef'), borderColor: C.brand },
   optionText: { color: C.muted, fontSize: 13, fontWeight: '600', textAlign: 'center' },
   optionTextSelected: { color: C.brand, fontWeight: '800' },
   description: { color: C.muted, fontSize: 13, lineHeight: 20 },
@@ -368,7 +383,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   disabledButton: { opacity: 0.65 },
-  primaryButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '800' },
+  primaryButtonText: { color: (dark ? '#1b2a26' : '#ffffff'), fontSize: 15, fontWeight: '800' },
   backButton: { alignItems: 'center', padding: 12 },
   backText: { color: C.brand, fontWeight: '700' },
-})
+}) }
