@@ -486,7 +486,7 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   title: { color: C.ink, fontSize: 25, fontWeight: '900' },
   muted: { color: C.muted, fontSize: 13, lineHeight: 19 },
   toggle: {
-    flexDirection: 'row', backgroundColor: '#e9eeeb',
+    flexDirection: 'row', backgroundColor: (dark ? '#2a3a34' : '#e9eeeb'),
     padding: 4, borderRadius: 12,
   },
   toggleButton: { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: 'center' },
@@ -508,9 +508,9 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   summaryCard: {
     backgroundColor: C.brand, borderRadius: 17, padding: 20, gap: 7,
   },
-  summaryLabel: { color: '#c9e9e3', fontSize: 11, fontWeight: '800', letterSpacing: 1 },
+  summaryLabel: { color: (dark ? '#1f403a' : '#c9e9e3'), fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   summaryAmount: { color: C.white, fontSize: 29, fontWeight: '900' },
-  summaryPeriod: { color: '#d8efeb', fontSize: 12 },
+  summaryPeriod: { color: (dark ? '#1f403a' : '#d8efeb'), fontSize: 12 },
   statsRow: { flexDirection: 'row', gap: 10 },
   statCard: {
     flex: 1, minWidth: 0, backgroundColor: C.white,
@@ -529,7 +529,7 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   barColumn: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'flex-end' },
   barTrack: {
     width: '100%', height: 112, justifyContent: 'flex-end',
-    backgroundColor: '#f0f4f1', borderRadius: 4, overflow: 'hidden',
+    backgroundColor: (dark ? '#2a3a34' : '#f0f4f1'), borderRadius: 4, overflow: 'hidden',
   },
   bar: { width: '100%', backgroundColor: C.brand, borderRadius: 4 },
   barLabel: { color: C.muted, fontSize: 8, marginTop: 5 },
