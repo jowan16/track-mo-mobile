@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
@@ -77,7 +78,7 @@ type SummaryCardProps = {
 // HELPERS
 // --------------------------------------------------
 
-const COLORS = {
+const LIGHT_COLORS = {
   canvas: '#f6f7f5',
   ink: '#14201c',
   muted: '#4b5754',
@@ -85,6 +86,15 @@ const COLORS = {
   brand: '#0f766e',
   danger: '#b42318',
 }
+function getCOLORS(dark: boolean) { return dark ? {
+  canvas: '#101a18',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+  danger: '#ff8178',
+} : LIGHT_COLORS }
+
 
 const CATEGORY_SYMBOLS: Record<string, string> = {
   bus: '↔',
@@ -185,6 +195,11 @@ function SectionHeader({
 // --------------------------------------------------
 
 export default function UserDashboard() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const COLORS = getCOLORS(dark)
+  const styles = makeStyles(dark, COLORS)
+
   const { profile, signOut } = useAuth()
 
   const [data, setData] = useState<DashboardData>({
@@ -679,7 +694,7 @@ export default function UserDashboard() {
             accessibilityRole="button"
             accessibilityLabel="Open expenses"
             style={{
-              backgroundColor: '#ffffff',
+              backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
               borderWidth: 1,
               borderColor: COLORS.line,
               borderRadius: 16,
@@ -695,7 +710,7 @@ export default function UserDashboard() {
                   width: 44,
                   height: 44,
                   borderRadius: 13,
-                  backgroundColor: '#e6f4f1',
+                  backgroundColor: (dark ? '#203d36' : '#e6f4f1'),
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
@@ -728,7 +743,7 @@ export default function UserDashboard() {
             accessibilityLabel="Scan your receipt"
             style={{
               marginTop: 11,
-              backgroundColor: '#e6f4f1',
+              backgroundColor: (dark ? '#203d36' : '#e6f4f1'),
               borderWidth: 1,
               borderColor: '#c9e6df',
               borderRadius: 16,
@@ -744,14 +759,14 @@ export default function UserDashboard() {
                   width: 48,
                   height: 48,
                   borderRadius: 14,
-                  backgroundColor: '#0f766e',
+                  backgroundColor: (dark ? '#55c6b0' : '#0f766e'),
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
                 <Text
                   style={{
-                    color: '#ffffff',
+                    color: (dark ? '#1b2a26' : '#ffffff'),
                     fontSize: 27,
                     fontWeight: '800',
                   }}
@@ -784,7 +799,7 @@ export default function UserDashboard() {
 
             <Text
               style={{
-                color: '#0f766e',
+                color: (dark ? '#55c6b0' : '#0f766e'),
                 fontSize: 24,
                 fontWeight: '700',
               }}
@@ -862,8 +877,8 @@ export default function UserDashboard() {
                   borderRadius: 34,
                   borderWidth: 1.5,
                   borderStyle: 'dashed',
-                  borderColor: '#0f766e',
-                  backgroundColor: '#ffffff',
+                  borderColor: (dark ? '#55c6b0' : '#0f766e'),
+                  backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
@@ -904,7 +919,7 @@ export default function UserDashboard() {
                   backgroundColor:
                     totalBudget > 0 && totalExpense / totalBudget >= 0.8
                       ? '#fff1e0'
-                      : '#e6f4f1',
+                      : (dark ? '#203d36' : '#e6f4f1'),
                 },
               ]}
             >
@@ -936,7 +951,7 @@ export default function UserDashboard() {
                           ? '#dc2626'
                           : totalExpense / totalBudget >= 0.8
                             ? '#d97706'
-                            : '#0f766e',
+                            : (dark ? '#55c6b0' : '#0f766e'),
                     },
                   ]}
                 />
@@ -1258,7 +1273,7 @@ export default function UserDashboard() {
         onRequestClose={() => setCategoryModalVisible(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(10, 25, 20, 0.48)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24, maxHeight: '88%' }}>
+          <View style={{ backgroundColor: (dark ? '#1b2a26' : '#ffffff'), borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24, maxHeight: '88%' }}>
             <View style={{ alignSelf: 'center', width: 42, height: 5, borderRadius: 3, backgroundColor: '#d8e0dc', marginBottom: 18 }} />
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <Text style={{ color: COLORS.ink, fontSize: 20, fontWeight: '800' }}>What do you want to track?</Text>
@@ -1279,7 +1294,7 @@ export default function UserDashboard() {
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: isSelected, disabled: savingCategories }}
                     accessibilityLabel={category.name}
-                    style={{ flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? COLORS.brand : '#cbd3cf', backgroundColor: isSelected ? '#e6f4f1' : '#ffffff', opacity: savingCategories ? 0.65 : 1 }}
+                    style={{ flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? COLORS.brand : '#cbd3cf', backgroundColor: isSelected ? '#e6f4f1' : (dark ? '#1b2a26' : '#ffffff'), opacity: savingCategories ? 0.65 : 1 }}
                   >
                     <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 11 }}>
                       <Text style={{ color: category.color || COLORS.brand, fontSize: 22, fontWeight: '800' }}>{getCategorySymbol(category.icon)}</Text>
@@ -1298,8 +1313,8 @@ export default function UserDashboard() {
                       </Text>
                       {isSelected ? <Text style={{ color: COLORS.brand, fontSize: 11, fontWeight: '800', marginTop: 3 }}>Selected</Text> : null}
                     </View>
-                    <View style={{ width: 22, height: 22, borderRadius: 4, borderWidth: 1.5, borderColor: isSelected ? COLORS.brand : '#87938e', backgroundColor: isSelected ? COLORS.brand : '#ffffff', alignItems: 'center', justifyContent: 'center' }}>
-                      {isSelected ? <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '800', lineHeight: 18 }}>✓</Text> : null}
+                    <View style={{ width: 22, height: 22, borderRadius: 4, borderWidth: 1.5, borderColor: isSelected ? COLORS.brand : '#87938e', backgroundColor: isSelected ? COLORS.brand : (dark ? '#1b2a26' : '#ffffff'), alignItems: 'center', justifyContent: 'center' }}>
+                      {isSelected ? <Text style={{ color: (dark ? '#1b2a26' : '#ffffff'), fontSize: 15, fontWeight: '800', lineHeight: 18 }}>✓</Text> : null}
                     </View>
                   </Pressable>
                 )
@@ -1314,7 +1329,7 @@ export default function UserDashboard() {
               </Pressable>
             </View>
             <Pressable onPress={handleSaveCategories} disabled={savingCategories} style={{ backgroundColor: COLORS.brand, borderRadius: 13, paddingVertical: 14, alignItems: 'center', opacity: savingCategories ? 0.65 : 1 }}>
-              {savingCategories ? <ActivityIndicator color="#ffffff" /> : <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '800' }}>Save categories</Text>}
+              {savingCategories ? <ActivityIndicator color="#ffffff" /> : <Text style={{ color: (dark ? '#1b2a26' : '#ffffff'), fontSize: 14, fontWeight: '800' }}>Save categories</Text>}
             </Pressable>
           </View>
         </View>
@@ -1327,7 +1342,7 @@ export default function UserDashboard() {
 // STYLES
 // --------------------------------------------------
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.canvas,
@@ -1363,12 +1378,12 @@ const styles = StyleSheet.create({
     width: 43,
     height: 43,
     borderRadius: 14,
-    backgroundColor: '#0f766e',
+    backgroundColor: (dark ? '#55c6b0' : '#0f766e'),
     justifyContent: 'center',
     alignItems: 'center',
   },
   brandMarkText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 25,
     fontWeight: '800',
   },
@@ -1385,7 +1400,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     justifyContent: 'center',
@@ -1407,7 +1422,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.3,
   },
   welcomeTitle: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 29,
     fontWeight: '800',
     lineHeight: 36,
@@ -1429,7 +1444,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.2)',
   },
   welcomeMonth: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 14,
     fontWeight: '700',
   },
@@ -1445,7 +1460,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
   welcomeBadgeText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 11,
     fontWeight: '700',
   },
@@ -1472,7 +1487,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     width: '48%',
     minHeight: 154,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.line,
@@ -1507,7 +1522,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   healthCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderRadius: 19,
     borderWidth: 1,
     borderColor: COLORS.line,
@@ -1577,7 +1592,7 @@ const styles = StyleSheet.create({
     marginBottom: 27,
   },
   listCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 18,
@@ -1639,7 +1654,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   chartCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 18,
@@ -1762,7 +1777,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emptyCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.line,
@@ -1799,7 +1814,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   errorMessage: {
-    color: '#7f1d1d',
+    color: (dark ? '#ffaaa3' : '#7f1d1d'),
     fontSize: 11,
     marginTop: 5,
   },
@@ -1830,4 +1845,4 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 4,
   },
-})
+}) }
