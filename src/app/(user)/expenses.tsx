@@ -981,11 +981,13 @@ export default function ExpensesScreen() {
                 }}
                 style={styles.clearFiltersButton}
               >
-                <Text style={styles.clearFiltersText}>
-                  Clear filters
-                </Text>
+                <Text style={styles.clearFiltersText}>Clear filters</Text>
               </Pressable>
-            )            {visibleExpenses.map((expense) => {
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.listCard}>
+            {visibleExpenses.map((expense) => {
               const category = categoryMap.get(expense.category_id)
               const expanded = expandedExpenseId === expense.id
               const note = expense.note?.trim() ?? ''
@@ -1062,7 +1064,9 @@ export default function ExpensesScreen() {
                           <Text style={styles.expandedNoteText}>{note}</Text>
                         </View>
                       ) : (
-                        <Text style={styles.noNoteText}>No additional notes for this expense.</Text>
+                        <Text style={styles.noNoteText}>
+                          No additional notes for this expense.
+                        </Text>
                       )}
 
                       <View style={styles.actionRow}>
@@ -1082,10 +1086,6 @@ export default function ExpensesScreen() {
                       </View>
                     </View>
                   ) : null}
-                </View>
-              )
-            })}>
-                  </View>
                 </View>
               )
             })}
