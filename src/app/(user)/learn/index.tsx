@@ -193,6 +193,7 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   }
   headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },,
   headerSpacer: { width: 44, height: 44 },
+  subtitle: { color: C.muted, fontSize: 12, lineHeight: 16, marginTop: 3, textAlign: 'center' },
   title: { color: C.ink, fontSize: 24, lineHeight: 29, fontWeight: '800', textAlign: 'center' },
   gameIcon: { width: 50, height: 50, flexShrink: 0, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   gameText: { flex: 1, minWidth: 0 },
