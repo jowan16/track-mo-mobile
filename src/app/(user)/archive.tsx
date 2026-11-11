@@ -592,14 +592,14 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     borderRadius: 9,
   },
   restoreButton: {
-    backgroundColor: '#e0f2ef',
+    backgroundColor: (dark ? '#203d36' : '#e0f2ef'),
   },
   restoreText: {
     color: C.brand,
     fontWeight: '800',
   },
   deleteButton: {
-    backgroundColor: '#fce8e6',
+    backgroundColor: (dark ? '#402725' : '#fce8e6'),
   },
   deleteText: {
     color: C.danger,
