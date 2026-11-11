@@ -132,6 +132,7 @@ export default function ScanReceiptScreen() {
           <Text style={styles.headerTitle}>Scan Receipt</Text>
           <Text style={styles.headerSubtitle}>AI-powered expense recognition</Text>
         </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -201,10 +202,10 @@ export default function ScanReceiptScreen() {
 
 function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.canvas },
-  header: { minHeight: 76, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 13, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.line },
-  headerText: { flex: 1 },
-  headerTitle: { fontSize: 19, fontWeight: '800', color: COLORS.ink },
-  headerSubtitle: { color: COLORS.muted, fontSize: 12, marginTop: 3 },
+  header: { position: 'relative', minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.line },
+  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
+  headerTitle: { fontSize: 24, lineHeight: 29, fontWeight: '800', color: COLORS.ink, textAlign: 'center' },
+  headerSubtitle: { color: COLORS.muted, fontSize: 12, lineHeight: 16, marginTop: 3, textAlign: 'center' },
   content: { padding: 20, paddingBottom: 44, gap: 17 },
   intro: { alignItems: 'center', paddingVertical: 16 },
   introIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: COLORS.brandLight, alignItems: 'center', justifyContent: 'center', marginBottom: 13 },
