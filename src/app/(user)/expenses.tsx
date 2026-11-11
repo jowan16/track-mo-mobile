@@ -812,9 +812,7 @@ export default function ExpensesScreen() {
             </Text>
           </View>
 
-          <View style={styles.brandMark}>
-            <Image source={require('../../../assets/trackmo-logo.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
-          </View>
+          <View style={styles.headerSpacer} />
         </View>
 
         {/* EXPENSE ACTIONS */}
@@ -1526,33 +1524,17 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     paddingBottom: 36,
   },
   header: {
-    position: 'relative',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 19,
-    minHeight: 44,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
-    backgroundColor: COLORS.white},
-  pageTitle: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: COLORS.ink,
-   textAlign: 'center' },
-  pageSubtitle: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginTop: 5,
-   textAlign: 'center' },
-  brandMark: {
-    width: 43,
-    height: 43,
-    borderRadius: 14,
-    backgroundColor: COLORS.brand,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      minHeight: 72,
+      backgroundColor: COLORS.white,
+      borderBottomWidth: 1,
+      borderBottomColor: COLORS.line,
+    },
   brandMarkText: {
     color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 25,
