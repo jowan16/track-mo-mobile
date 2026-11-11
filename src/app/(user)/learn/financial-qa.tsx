@@ -241,7 +241,18 @@ function getC(dark: boolean) {
 function makeStyles(C: ReturnType<typeof getC>, dark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    header: { position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, minHeight: 72, backgroundColor: dark ? '#1b2421' : '#ffffff', borderBottomWidth: 1, borderBottomColor: dark ? '#34423c' : '#e4e8e5'},
+    header: {
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      minHeight: 72,
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderBottomWidth: 1,
+      borderBottomColor: dark ? '#30413a' : '#e4e8e5',
+    },
     backButton: { width: 44, height: 44, alignItems: 'flex-start', justifyContent: 'center' },
     backText: { color: C.brand, fontSize: 12, fontWeight: '800' },
     headerTitle: { position: 'absolute', left: 72, right: 72, textAlign: 'center', color: C.ink, fontSize: 18, fontWeight: '900' },
