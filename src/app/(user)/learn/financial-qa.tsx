@@ -241,7 +241,10 @@ function getC(dark: boolean) {
 function makeStyles(C: ReturnType<typeof getC>, dark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    header: { minHeight: 62, paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    header: { minHeight: 62, paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' ,
+    borderBottomWidth: 1,
+    borderBottomColor: C.line,
+    backgroundColor: C.card},
     backButton: { minWidth: 65, paddingVertical: 10 },
     backText: { color: C.brand, fontSize: 14, fontWeight: '800' },
     headerTitle: { color: C.ink, fontSize: 18, fontWeight: '900' },
