@@ -479,7 +479,7 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   header: {
     position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 18, paddingVertical: 14, minHeight: 72,
-    backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: C.line,
+    backgroundColor: dark ? '#1b2421' : '#ffffff', borderBottomWidth: 1, borderBottomColor: dark ? '#34423c' : '#e4e8e5',
   },
   title: { color: C.ink, fontSize: 24, lineHeight: 29, fontWeight: '800', textAlign: 'center' },
   activeTab: {
