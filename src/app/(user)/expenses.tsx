@@ -141,7 +141,7 @@ function formatReceiptDetails(value: string) {
   return value
     .replace(/\r/g, '\n')
     .split('\n')
-    .map((line) => line.replace(/[\\t ]+/g, ' ').trim())
+    .map((line) => line.replace(/[\t ]+/g, ' ').trim())
     .filter(Boolean)
     .join('\n')
     .slice(0, 10000)
