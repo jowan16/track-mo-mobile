@@ -1398,6 +1398,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     fontWeight: '800',
   },
   brandName: { position: 'absolute', left: 72, right: 72, textAlign: 'center', fontSize: 24, fontWeight: '800', color: COLORS.ink },
+  headerSpacer: { width: 44, height: 44 },
   signOutButton: {
     width: 42,
     height: 42,
