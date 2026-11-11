@@ -104,6 +104,37 @@ export default function LearnHubScreen() {
           </Text>
         </View>
 
+        <Text style={styles.sectionTitle}>Play & Learn</Text>
+        <Pressable
+          style={styles.gameCard}
+          onPress={() => router.push('/(user)/learn/financial-qa' as any)}
+        >
+          <View style={[styles.gameIcon, { backgroundColor: dark ? '#28483e' : '#e3f4ed' }]}>
+            <Text style={{ fontSize: 27 }}>🧠</Text>
+          </View>
+          <View style={styles.gameText}>
+            <Text style={styles.gameTitle}>Financial Q&A</Text>
+            <Text style={styles.gameDescription}>Answer practical money questions, get instant explanations, and build your financial knowledge.</Text>
+            <Text style={styles.gameMeta}>12 QUESTIONS  ·  SCORE & FEEDBACK</Text>
+          </View>
+          <Text style={styles.arrow}>›</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.gameCard}
+          onPress={() => router.push('/(user)/learn/financial-2048' as any)}
+        >
+          <View style={[styles.gameIcon, { backgroundColor: dark ? '#3d3452' : '#f0eafa' }]}>
+            <Text style={{ fontSize: 27 }}>🔢</Text>
+          </View>
+          <View style={styles.gameText}>
+            <Text style={styles.gameTitle}>2048 Money Mind</Text>
+            <Text style={styles.gameDescription}>Merge matching number tiles, plan your moves, and challenge yourself to reach 2048.</Text>
+            <Text style={styles.gameMeta}>PUZZLE GAME  ·  PLAY AT YOUR PACE</Text>
+          </View>
+          <Text style={styles.arrow}>›</Text>
+        </Pressable>
+
         <Text style={styles.sectionTitle}>Learn the Basics</Text>
 
         {loading ? (
@@ -168,6 +199,13 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   headerSpacer: { width: 44, height: 44 },
   title: { color: C.ink, fontSize: 24, fontWeight: '800', textAlign: 'center' },
   subtitle: { color: C.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
+  sectionTitle: { color: C.ink, fontSize: 17, fontWeight: '900', marginTop: 5, marginBottom: 11 },
+  gameCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 15, padding: 13, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  gameIcon: { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  gameText: { flex: 1 },
+  gameTitle: { color: C.ink, fontSize: 15, fontWeight: '900' },
+  gameDescription: { color: C.muted, fontSize: 11, lineHeight: 16, marginTop: 4 },
+  gameMeta: { color: C.brand, fontSize: 9, fontWeight: '900', letterSpacing: 0.5, marginTop: 7 },
   topicIcon: { width: 50, height: 50, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   topicTitle: { color: C.ink, fontSize: 15, fontWeight: '800' },
   topicDescription: { color: C.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
