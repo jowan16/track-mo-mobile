@@ -988,7 +988,6 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
     minHeight: 44,
-  ,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.line,
     backgroundColor: COLORS.white},
