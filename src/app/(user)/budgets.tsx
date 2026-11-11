@@ -981,7 +981,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   header: {
     position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 18, paddingVertical: 14, minHeight: 72,
-    backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.line,
+    backgroundColor: dark ? '#1b2421' : '#ffffff', borderBottomWidth: 1, borderBottomColor: dark ? '#34423c' : '#e4e8e5',
   },
   headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
   headerSpacer: { width: 44, height: 44 },
