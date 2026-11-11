@@ -343,7 +343,6 @@ export default function SettingsScreen() {
               {([
                 ['light', '☀', 'Light'],
                 ['dark', '☾', 'Dark'],
-                ['system', '⚙', 'System'],
               ] as const).map(([value, icon, label]) => {
                 const selected = preference === value
 
