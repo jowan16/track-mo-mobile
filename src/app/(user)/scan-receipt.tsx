@@ -206,6 +206,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
   headerTitle: { fontSize: 24, lineHeight: 29, fontWeight: '800', color: COLORS.ink, textAlign: 'center' },
   headerSubtitle: { color: COLORS.muted, fontSize: 12, lineHeight: 16, marginTop: 3, textAlign: 'center' },
+  headerSpacer: { width: 44, height: 44 },
   content: { padding: 20, paddingBottom: 44, gap: 17 },
   intro: { alignItems: 'center', paddingVertical: 16 },
   introIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: COLORS.brandLight, alignItems: 'center', justifyContent: 'center', marginBottom: 13 },
