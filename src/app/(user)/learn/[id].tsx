@@ -115,10 +115,11 @@ export default function LessonDetailScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <UserMenuButton />
-        <View style={{ flex: 1 }}>
+        <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Learning lesson</Text>
           <Text style={styles.headerSubtitle}>Financial Literacy</Text>
         </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -190,8 +191,8 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.line,
     backgroundColor: C.card},
-  headerTitle: { color: C.ink, fontSize: 20, fontWeight: '800' },
-  headerSubtitle: { color: C.muted, fontSize: 12, marginTop: 3 },
+  headerTitle: { color: C.ink, fontSize: 24, lineHeight: 29, fontWeight: '800', textAlign: 'center' },
+  headerSubtitle: { color: C.muted, fontSize: 12, lineHeight: 16, marginTop: 3, textAlign: 'center' },
   content: { padding: 17, paddingBottom: 40 },
   back: { marginBottom: 18, paddingVertical: 5 },
   backText: { color: C.brand, fontSize: 14, fontWeight: '800' },
