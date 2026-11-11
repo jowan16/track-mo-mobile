@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Image,
   Modal,
   ActivityIndicator,
   Alert,
