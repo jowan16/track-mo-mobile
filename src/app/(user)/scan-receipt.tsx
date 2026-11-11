@@ -37,8 +37,18 @@ export default function ScanReceiptScreen() {
       }
 
       const result = source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 })
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [3, 4],
+            quality: 1,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [3, 4],
+            quality: 1,
+          })
 
       if (result.canceled || !result.assets?.length) return
 
@@ -120,13 +130,13 @@ export default function ScanReceiptScreen() {
           </View>
           <Text style={styles.title}>Turn receipts into expenses</Text>
           <Text style={styles.description}>
-            Take a photo or choose a receipt image. Track Mo will read it and open your Add Expense form with the detected details filled in for review.
+            Take a photo or choose a receipt image, then crop it to include the full receipt. Track Mo will read it and show the recognized text in Receipt Details for review.
           </Text>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.selectionTitle}>Add your receipt</Text>
-          <Text style={styles.cardDescription}>Keep the full receipt visible, clear, and well lit.</Text>
+          <Text style={styles.cardDescription}>Keep the receipt clear and well lit. Crop the image to include the entire receipt, especially its date and total.</Text>
 
           <Pressable
             style={[styles.primaryButton, processing && styles.disabled]}
