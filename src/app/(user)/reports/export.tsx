@@ -277,6 +277,7 @@ export default function ReportExportScreen() {
           <Text style={styles.title}>Export report</Text>
           <Text style={styles.subtitle}>Create a file you can share</Text>
         </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -336,27 +337,7 @@ export default function ReportExportScreen() {
 
 function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: C.line,
-    backgroundColor: C.white},
-  headerText: { flex: 1 },
-  title: { color: C.ink, fontSize: 22, fontWeight: '800' },
-  subtitle: { color: C.muted, fontSize: 13, marginTop: 2 },
-  content: { padding: 16, paddingBottom: 40, gap: 14 },
-  card: {
-    backgroundColor: C.card,
-    borderRadius: 16,
-    padding: 17,
-    borderWidth: 1,
-    borderColor: C.line,
-    gap: 10,
-  },
+  header: { position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, minHeight: 72, borderBottomWidth: 1, borderBottomColor: C.line, backgroundColor: C.card },
   sectionTitle: {
     color: C.ink,
     fontSize: 15,
