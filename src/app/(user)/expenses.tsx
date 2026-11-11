@@ -22,7 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/context/AuthContext'
-import { supabase } from '@/services/supabase'
+import { supabase, withValidSession } from '@/services/supabase'
 
 // --------------------------------------------------
 // TYPES
@@ -648,35 +648,36 @@ export default function ExpensesScreen() {
         note: form.note.trim() || null,
       }
 
-      if (receiptContext && !editing) {
-        const { error } = await supabase.rpc('save_receipt_expense', {
-          p_storage_path: receiptContext.path,
-          p_merchant_name: receiptContext.draft.merchant_name.trim(),
-          p_receipt_date: form.spent_on,
-          p_subtotal: receiptContext.draft.subtotal,
-          p_tax: receiptContext.draft.tax,
-          p_total: Number(form.amount),
-          p_currency: 'PHP',
-          p_category_id: form.category_id,
-          p_amount: Number(form.amount),
-          p_spent_on: form.spent_on,
-          p_payment_method: form.payment_method,
-          p_note: form.note.trim() || null,
-          p_items: receiptContext.draft.items.filter((item) => item.item_name.trim()).map((item) => ({
-            item_name: item.item_name.trim(),
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            line_total: item.line_total,
-          })),
-          p_recognition_data: {
-            model: receiptContext.model,
-            raw_text: receiptContext.rawText,
-            confirmed_at: new Date().toISOString(),
-          },
-        })
-        if (error) throw error
-      } else {
-        const result = editing
+      const result = await withValidSession(async () => {
+        if (receiptContext && !editing) {
+          return await supabase.rpc('save_receipt_expense', {
+            p_storage_path: receiptContext.path,
+            p_merchant_name: receiptContext.draft.merchant_name.trim(),
+            p_receipt_date: form.spent_on,
+            p_subtotal: receiptContext.draft.subtotal,
+            p_tax: receiptContext.draft.tax,
+            p_total: Number(form.amount),
+            p_currency: 'PHP',
+            p_category_id: form.category_id,
+            p_amount: Number(form.amount),
+            p_spent_on: form.spent_on,
+            p_payment_method: form.payment_method,
+            p_note: form.note.trim() || null,
+            p_items: receiptContext.draft.items.filter((item) => item.item_name.trim()).map((item) => ({
+              item_name: item.item_name.trim(),
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              line_total: item.line_total,
+            })),
+            p_recognition_data: {
+              model: receiptContext.model,
+              raw_text: receiptContext.rawText,
+              confirmed_at: new Date().toISOString(),
+            },
+          })
+        }
+
+        return editing
           ? await supabase
               .from('expenses')
               .update(row)
@@ -688,9 +689,9 @@ export default function ExpensesScreen() {
                 ...row,
                 user_id: profile.id,
               })
+      })
 
-        if (result.error) throw result.error
-      }
+      if (result.error) throw result.error
 
       setFormVisible(false)
       setEditing(null)
