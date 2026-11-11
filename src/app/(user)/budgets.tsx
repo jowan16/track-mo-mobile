@@ -1051,7 +1051,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   },
   errorCard: {
     backgroundColor: (dark ? '#402725' : '#fff0ef'),
-    borderColor: '#f3c3bf',
+    borderColor: (dark ? '#75423e' : '#f3c3bf'),
     borderWidth: 1,
     borderRadius: 15,
     padding: 15,
@@ -1206,7 +1206,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   },
   progressTrack: {
     height: 9,
-    backgroundColor: '#edf0ee',
+    backgroundColor: (dark ? '#2a3a34' : '#edf0ee'),
     borderRadius: 20,
     overflow: 'hidden',
   },
@@ -1242,18 +1242,18 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     borderTopColor: '#f0f2f0',
   },
   editButton: {
-    backgroundColor: '#eef0ff',
+    backgroundColor: (dark ? '#2b3155' : '#eef0ff'),
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
   editButtonText: {
-    color: '#3b49df',
+    color: (dark ? '#aab4ff' : '#3b49df'),
     fontSize: 11,
     fontWeight: '700',
   },
   archiveButton: {
-    backgroundColor: '#fff1e8',
+    backgroundColor: (dark ? '#453020' : '#fff1e8'),
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 9,
@@ -1273,7 +1273,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   },
   emptySymbol: {
     fontSize: 35,
-    color: '#a8b5ae',
+    color: (dark ? '#9aaba3' : '#a8b5ae'),
     fontWeight: '800',
   },
   emptyTitle: {
@@ -1326,7 +1326,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     marginTop: 12,
   },
   availableChip: {
-    backgroundColor: '#f0f3f1',
+    backgroundColor: (dark ? '#2a3a34' : '#f0f3f1'),
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 7,
@@ -1443,7 +1443,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   },
   categoryChoiceActive: {
     borderColor: COLORS.brand,
-    backgroundColor: '#edf8f5',
+    backgroundColor: (dark ? '#203d36' : '#edf8f5'),
   },
   choiceIcon: {
     width: 34,
@@ -1469,7 +1469,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   },
   formErrorCard: {
     backgroundColor: (dark ? '#402725' : '#fff0ef'),
-    borderColor: '#f3c3bf',
+    borderColor: (dark ? '#75423e' : '#f3c3bf'),
     borderWidth: 1,
     borderRadius: 10,
     padding: 11,
