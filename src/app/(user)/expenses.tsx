@@ -137,6 +137,16 @@ function emptyForm(): ExpenseForm {
   }
 }
 
+function formatReceiptDetails(value: string) {
+  return value
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[\\t ]+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, 10000)
+}
+
 function cleanAmount(value: string) {
   let cleaned = value.replace(/[^\d.]/g, '')
 
@@ -442,9 +452,9 @@ export default function ExpensesScreen() {
       const category = availableCategories.find(
         (item) => item.name.toLowerCase() === draft.suggestedCategory.toLowerCase(),
       )
-      // Merchant and purchased items have dedicated fields in this receipt form.
-      // Keep the optional note clean instead of copying raw OCR/header text into it.
-      const note = ''
+      // Preserve the complete OCR text in the Receipt Details field.
+      // Keep each detected receipt line separate for easier reading and editing.
+      const note = formatReceiptDetails(params.receiptRawText || '')
 
       setEditing(null)
       setReceiptContext({
@@ -596,8 +606,8 @@ export default function ExpensesScreen() {
       return
     }
 
-    if (form.note.length > 200) {
-      setFormError('Note cannot exceed 200 characters.')
+    if (form.note.length > (receiptContext ? 10000 : 200)) {
+      setFormError(receiptContext ? 'Receipt details are too long.' : 'Note cannot exceed 200 characters.')
       return
     }
 
@@ -1187,7 +1197,7 @@ export default function ExpensesScreen() {
                   <Text style={styles.fieldHint}>Use YYYY-MM-DD format. Future dates are not allowed.</Text>
 
                   {/* AMOUNT */}
-                  <Text style={styles.fieldLabel}>Receipt Total (₱)</Text>
+                  <Text style={styles.fieldLabel}>Receipt Total Amount (₱)</Text>
                   <TextInput
                     style={styles.input}
                     value={form.amount}
@@ -1282,29 +1292,22 @@ export default function ExpensesScreen() {
                     )) : (
                       <Text style={styles.receiptEmptyItems}>No items detected. Add the items you want to include.</Text>
                     )}
-                    <View style={styles.receiptTotalRow}>
-                      <Text style={styles.receiptTotalLabel}>Extracted items total</Text>
-                      <Text style={styles.receiptTotalValue}>
-                        {peso(receiptContext.draft.items.reduce((sum, item) => sum + (Number(item.line_total) || 0), 0))}
-                      </Text>
-                    </View>
                   </View>
 
-                  {/* OPTIONAL NOTE */}
-                  <Text style={styles.fieldLabel}>Note (Optional)</Text>
+                  {/* RECEIPT DETAILS */}
+                  <Text style={styles.fieldLabel}>Receipt Details</Text>
                   <TextInput
-                    style={[styles.input, styles.noteInput]}
+                    style={[styles.input, styles.noteInput, styles.receiptDetailsInput]}
                     value={form.note}
-                    onChangeText={(value) => updateForm({ note: value.slice(0, 200) })}
-                    placeholder="Add a short description..."
+                    onChangeText={(value) => updateForm({ note: value.slice(0, 10000) })}
+                    placeholder="The recognized receipt details will appear here..."
                     placeholderTextColor="#84908b"
                     multiline
-                    numberOfLines={3}
                     textAlignVertical="top"
                     editable={!saving}
-                    maxLength={200}
+                    maxLength={10000}
                   />
-                  <Text style={styles.characterCount}>{form.note.length}/200 characters</Text>
+                  <Text style={styles.characterCount}>{form.note.length}/10000 characters</Text>
                 </>
               ) : (
                 <>
@@ -2212,6 +2215,11 @@ const styles = StyleSheet.create({
   noteInput: {
     minHeight: 85,
     paddingTop: 12,
+  },
+  receiptDetailsInput: {
+    minHeight: 180,
+    lineHeight: 19,
+    paddingVertical: 12,
   },
   characterCount: {
     textAlign: 'right',
