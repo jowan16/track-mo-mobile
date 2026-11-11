@@ -1,7 +1,6 @@
 import { useAppTheme } from '@/context/ThemeContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Image,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
