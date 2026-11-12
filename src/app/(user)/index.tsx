@@ -568,6 +568,7 @@ export default function UserDashboard() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <UserPageHeader title="Track Mo, Pake Ko!" subtitle="Your personal finance overview" />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -580,10 +581,6 @@ export default function UserDashboard() {
           />
         }
       >
-        {/* HEADER */}
-
-        <UserPageHeader title="Track Mo, Pake Ko!" subtitle="Your personal finance overview" />
-
         {/* WELCOME PANEL */}
 
         <LinearGradient
