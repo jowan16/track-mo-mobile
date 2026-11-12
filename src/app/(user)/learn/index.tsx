@@ -3,13 +3,13 @@ import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 import { router } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { UserPageHeader } from '@/components/user-navigation'
 import { supabase } from '@/services/supabase'
 
@@ -84,10 +84,10 @@ export default function LearnHubScreen() {
   }, [])
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <UserPageHeader title="Financial Literacy" subtitle="Learn to make better money decisions" />
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <Text style={styles.heroEyebrow}>TRACK MO LEARNING HUB</Text>
           <Text style={styles.heroTitle}>Make Better Financial Decisions</Text>
@@ -179,6 +179,14 @@ export default function LearnHubScreen() {
 
 function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
+  scroll: { flex: 1 },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 30 },
+  hero: { backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 18, padding: 17, marginBottom: 20 },
+  heroEyebrow: { color: C.brand, fontSize: 10, lineHeight: 14, fontWeight: '900', letterSpacing: 1.1, marginBottom: 7 },
+  heroTitle: { color: C.ink, fontSize: 20, lineHeight: 26, fontWeight: '900' },
+  heroText: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 7 },
+  sectionTitle: { color: C.ink, fontSize: 17, lineHeight: 22, fontWeight: '900', marginBottom: 11, marginTop: 2 },
+  gameCard: { minHeight: 112, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 16, padding: 13, marginBottom: 11, flexDirection: 'row', alignItems: 'center', gap: 11 },
   header: {
       position: 'relative',
       flexDirection: 'row',
