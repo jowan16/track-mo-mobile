@@ -30,21 +30,7 @@ export default function ResetPasswordScreen() {
   const [passwordError, setPasswordError] = useState('')
   const [confirmError, setConfirmError] = useState('')
 
-  const hasMinLength = password.length >= 8
-  const hasLetter = /[A-Za-z]/.test(password)
-  const hasNumber = /\\d/.test(password)
-  const passwordIsValid = hasMinLength && hasLetter && hasNumber
   const passwordsMatch = password.length > 0 && password === confirmPassword
-
-  const strength = Math.min(
-    100,
-    (hasMinLength ? 40 : password.length * 4) +
-      (hasLetter ? 20 : 0) +
-      (hasNumber ? 20 : 0) +
-      (/[^A-Za-z0-9]/.test(password) ? 20 : 0),
-  )
-  const strengthLabel =
-    strength < 40 ? 'Weak' : strength < 80 ? 'Fair' : 'Strong'
 
   useEffect(() => {
     let mounted = true
@@ -111,15 +97,7 @@ export default function ResetPasswordScreen() {
 
   const handlePasswordChange = (value: string) => {
     setPassword(value)
-    setPasswordError(
-      value.length > 0 && value.length < 8
-        ? 'Password must contain at least 8 characters.'
-        : value.length > 0 && !/[A-Za-z]/.test(value)
-          ? 'Include at least one letter.'
-          : value.length > 0 && !/\\d/.test(value)
-            ? 'Include at least one number.'
-            : '',
-    )
+    setPasswordError('')
 
     if (confirmPassword && value !== confirmPassword) {
       setConfirmError('Passwords do not match.')
@@ -141,11 +119,6 @@ export default function ResetPasswordScreen() {
 
     if (!password) {
       setPasswordError('Please enter a new password.')
-      hasError = true
-    } else if (!passwordIsValid) {
-      setPasswordError(
-        'Use at least 8 characters, including at least one letter and one number.',
-      )
       hasError = true
     } else {
       setPasswordError('')
@@ -250,7 +223,7 @@ export default function ResetPasswordScreen() {
           <View style={[styles.passwordContainer, passwordError ? styles.inputInvalid : null]}>
             <TextInput
               style={styles.passwordInput}
-              placeholder="At least 8 characters"
+              placeholder="Enter your new password"
               placeholderTextColor="#94A3B8"
               value={password}
               onChangeText={handlePasswordChange}
@@ -271,35 +244,6 @@ export default function ResetPasswordScreen() {
             </Pressable>
           </View>
           {passwordError ? <Text style={styles.fieldError}>{passwordError}</Text> : null}
-
-          <View style={styles.strengthContainer}>
-            <View style={styles.strengthTrack}>
-              <View
-                style={[
-                  styles.strengthFill,
-                  {
-                    width: `${strength}%`,
-                    backgroundColor: strength < 60 ? '#B42318' : '#0F8A72',
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.strengthText}>
-              Password strength: {password ? strengthLabel : 'Not entered'}
-            </Text>
-          </View>
-
-          <View style={styles.requirements}>
-            <Text style={[styles.requirement, hasMinLength && styles.requirementMet]}>
-              {hasMinLength ? '✓' : '○'} At least 8 characters
-            </Text>
-            <Text style={[styles.requirement, hasLetter && styles.requirementMet]}>
-              {hasLetter ? '✓' : '○'} At least one letter
-            </Text>
-            <Text style={[styles.requirement, hasNumber && styles.requirementMet]}>
-              {hasNumber ? '✓' : '○'} At least one number
-            </Text>
-          </View>
 
           <Text style={styles.label}>Confirm new password</Text>
           <View style={[styles.passwordContainer, confirmError ? styles.inputInvalid : null]}>
@@ -460,40 +404,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: -11,
     marginBottom: 13,
-  },
-  strengthContainer: {
-    marginTop: -5,
-    marginBottom: 12,
-  },
-  strengthTrack: {
-    height: 7,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 99,
-    overflow: 'hidden',
-  },
-  strengthFill: {
-    height: 7,
-    borderRadius: 99,
-  },
-  strengthText: {
-    color: '#64776F',
-    fontSize: 11,
-    marginTop: 6,
-  },
-  requirements: {
-    backgroundColor: '#F5F8F6',
-    borderRadius: 10,
-    padding: 11,
-    marginBottom: 20,
-    gap: 6,
-  },
-  requirement: {
-    color: '#718078',
-    fontSize: 12,
-  },
-  requirementMet: {
-    color: '#0F766E',
-    fontWeight: '700',
   },
   matchText: {
     color: '#0F766E',
