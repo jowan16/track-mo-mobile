@@ -637,10 +637,13 @@ export default function BudgetsScreen() {
                   ? (categorySpent / budget.amount) * 100
                   : 0
 
+              const show100Warning = percent >= 100 && !!profile?.warn_100
+              const show80Warning = percent >= 80 && !!profile?.warn_80
+
               const progressColor =
-                percent >= 100
+                show100Warning
                   ? COLORS.danger
-                  : percent >= 80
+                  : show80Warning
                     ? COLORS.orange
                     : COLORS.brand
 
@@ -704,11 +707,11 @@ export default function BudgetsScreen() {
                     />
                   </View>
 
-                  {percent >= 100 && profile?.warn_100 ? (
+                  {show100Warning ? (
                     <Text style={styles.dangerAlert}>
                       Over budget
                     </Text>
-                  ) : percent >= 80 && profile?.warn_80 ? (
+                  ) : show80Warning ? (
                     <Text style={styles.warningAlert}>
                       Alert at 80% reached
                     </Text>
