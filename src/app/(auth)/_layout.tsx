@@ -8,10 +8,12 @@ export default function AuthLayout() {
   const pathname = usePathname()
 
   const isResetPassword = pathname.endsWith('/reset-password')
+  const isLogin = pathname.endsWith('/login')
 
-  // Allow the password reset screen to open even if
-  // Supabase has already established a recovery session.
-  if (isResetPassword) {
+  // Keep the login screen mounted after authentication so the login handler
+  // can check saved category selections before choosing the next destination.
+  // Also allow password recovery to finish even with a recovery session.
+  if (isResetPassword || isLogin) {
     return <Stack screenOptions={{ headerShown: false }} />
   }
 
