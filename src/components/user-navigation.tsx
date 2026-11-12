@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native'
-import { router } from 'expo-router'
+import { router, usePathname } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { useAppTheme } from '@/context/ThemeContext'
 
@@ -36,6 +36,7 @@ export function UserDrawerProvider({
 }) {
   const [visible, setVisible] = useState(false)
   const { profile, signOut } = useAuth()
+  const pathname = usePathname()
   const { resolvedTheme } = useAppTheme()
   const styles = makeStyles(resolvedTheme === 'dark')
 
@@ -44,6 +45,13 @@ export function UserDrawerProvider({
   const navigate = (path: string) => {
     closeDrawer()
     router.push(path as any)
+  }
+
+  const isMenuItemActive = (path: string) => {
+    const target = path.replace('/(user)', '')
+    const current = pathname.replace('/(user)', '') || '/'
+    if (!target || target === '/') return current === '/'
+    return current === target || current.startsWith(`${target}/`)
   }
 
   const handleMenuPress = (label: string, path: string, available: boolean) => {
@@ -180,7 +188,7 @@ export function UserDrawerProvider({
                   key={item.label}
                   style={({ pressed }) => [
                     styles.menuItem,
-                    item.label === 'Dashboard' && styles.activeMenuItem,
+                    isMenuItemActive(item.path) && styles.activeMenuItem,
                     pressed && styles.menuItemPressed,
                   ]}
                   onPress={() =>
@@ -191,7 +199,7 @@ export function UserDrawerProvider({
                   <Text
                     style={[
                       styles.menuIcon,
-                      item.label === 'Dashboard' && styles.activeMenuIcon,
+                      isMenuItemActive(item.path) && styles.activeMenuIcon,
                     ]}
                   >
                     {item.icon}
@@ -199,7 +207,7 @@ export function UserDrawerProvider({
                   <Text
                     style={[
                       styles.menuText,
-                      item.label === 'Dashboard' && styles.activeMenuText,
+                      isMenuItemActive(item.path) && styles.activeMenuText,
                     ]}
                   >
                     {item.label}
