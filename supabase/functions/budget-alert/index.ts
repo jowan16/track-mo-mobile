@@ -17,12 +17,22 @@ interface ProfileRecord {
   warn_100?: boolean;
 }
 
+interface BudgetRecord {
+  id: string;
+  user_id: string;
+  category_id: number;
+  month: number;
+  year: number;
+  amount: number;
+  is_archived: boolean;
+}
+
 interface DatabaseWebhookPayload {
   type: "INSERT" | "UPDATE";
   table: string;
   schema: string;
-  record: ExpenseRecord | ProfileRecord;
-  old_record?: ExpenseRecord | ProfileRecord | null;
+  record: ExpenseRecord | ProfileRecord | BudgetRecord;
+  old_record?: ExpenseRecord | ProfileRecord | BudgetRecord | null;
 }
 
 interface AffectedBudget {
@@ -30,6 +40,8 @@ interface AffectedBudget {
   categoryId: number;
   month: number;
   year: number;
+  budgetId?: string;
+  archived?: boolean;
 }
 
 function escapeHtml(value: string): string {
@@ -232,7 +244,7 @@ export default {
 
         if (
           payload.schema !== "public" ||
-          !["expenses", "profiles"].includes(payload.table) ||
+          !["expenses", "profiles", "budgets"].includes(payload.table) ||
           (payload.type !== "INSERT" && payload.type !== "UPDATE")
         ) {
           return Response.json({
@@ -246,6 +258,7 @@ export default {
           string,
           AffectedBudget
         >();
+        const forcedThresholds = new Set<number>();
 
         if (payload.table === "expenses") {
           const records = [
@@ -275,7 +288,7 @@ export default {
               year,
             });
           }
-        } else {
+        } else if (payload.table === "profiles") {
           // Re-check current-month budgets when notification preferences change.
           const profileRecord = payload.record as ProfileRecord;
           if (!profileRecord.id) {
@@ -312,17 +325,8 @@ export default {
             if (!previousProfile?.warn_100 && profileRecord.warn_100) resetThresholds.push(100);
           }
 
-          if (resetThresholds.length > 0 && (activeBudgets || []).length > 0) {
-            const { error: resetLogsError } = await supabase
-              .from("email_notification_logs")
-              .delete()
-              .eq("user_id", profileRecord.id)
-              .eq("notification_type", "budget_alert")
-              .in("budget_id", activeBudgets!.map((budgetItem) => budgetItem.id))
-              .in("threshold", resetThresholds);
-
-            if (resetLogsError) throw resetLogsError;
-          }
+          // Force a new alert cycle when a previously disabled preference is enabled.
+          resetThresholds.forEach((threshold) => forcedThresholds.add(threshold));
 
           for (const budgetItem of activeBudgets || []) {
             const key = [profileRecord.id, budgetItem.category_id, month, year].join("-");
@@ -331,6 +335,36 @@ export default {
               categoryId: budgetItem.category_id,
               month,
               year,
+              budgetId: budgetItem.id,
+            });
+          }
+        } else {
+          // Budget inserts, amount edits, category/month changes, and archive/restore.
+          const records = [payload.old_record, payload.record].filter(
+            (record): record is BudgetRecord =>
+              record !== null &&
+              record !== undefined &&
+              "user_id" in record &&
+              "category_id" in record &&
+              "month" in record &&
+              "year" in record &&
+              "amount" in record,
+          );
+
+          for (const budgetRecord of records) {
+            const key = [
+              budgetRecord.user_id,
+              budgetRecord.category_id,
+              budgetRecord.month,
+              budgetRecord.year,
+            ].join("-");
+            affectedBudgets.set(key, {
+              userId: budgetRecord.user_id,
+              categoryId: budgetRecord.category_id,
+              month: budgetRecord.month,
+              year: budgetRecord.year,
+              budgetId: budgetRecord.id,
+              archived: budgetRecord.is_archived,
             });
           }
         }
@@ -354,12 +388,7 @@ export default {
             throw profileError;
           }
 
-          if (
-            !profile ||
-            !profile.email ||
-            !profile.email_alerts ||
-            (!profile.warn_80 && !profile.warn_100)
-          ) {
+          if (!profile) {
             continue;
           }
 
@@ -379,6 +408,22 @@ export default {
           }
 
           if (!budget || Number(budget.amount) <= 0) {
+            // An archived budget is below both thresholds. This resets its
+            // crossing state so restoring it can create a fresh crossing.
+            if (item.budgetId && item.archived) {
+              for (const threshold of [80, 100]) {
+                const { error: stateError } = await supabase.rpc(
+                  "claim_budget_alert_crossing",
+                  {
+                    p_budget_id: item.budgetId,
+                    p_threshold: threshold,
+                    p_percentage: 0,
+                    p_force: false,
+                  },
+                );
+                if (stateError) throw stateError;
+              }
+            }
             continue;
           }
 
@@ -428,18 +473,29 @@ export default {
 
           const currency = profile.currency || "PHP";
 
-          const thresholds: number[] = [];
+          for (const threshold of [80, 100]) {
+            // The database atomically tracks whether this threshold is
+            // currently crossed and only grants one email per new crossing.
+            const { data: alertCycle, error: claimError } = await supabase.rpc(
+              "claim_budget_alert_crossing",
+              {
+                p_budget_id: budget.id,
+                p_threshold: threshold,
+                p_percentage: percentage,
+                p_force: forcedThresholds.has(threshold),
+              },
+            );
 
-          if (profile.warn_80 && percentage >= 80) {
-            thresholds.push(80);
-          }
+            if (claimError) throw claimError;
+            if (alertCycle === null || alertCycle === undefined) continue;
 
-          if (profile.warn_100 && percentage >= 100) {
-            thresholds.push(100);
-          }
+            const thresholdEnabled =
+              threshold === 80 ? profile.warn_80 : profile.warn_100;
+            if (!profile.email || !profile.email_alerts || !thresholdEnabled) {
+              continue;
+            }
 
-          for (const threshold of thresholds) {
-            // Reserve this notification to prevent duplicate emails.
+            // Reserve this specific crossing cycle to make webhook retries safe.
             const { error: logError } = await supabase
               .from("email_notification_logs")
               .insert({
@@ -447,17 +503,11 @@ export default {
                 notification_type: "budget_alert",
                 budget_id: budget.id,
                 threshold,
+                alert_cycle: alertCycle,
               });
 
-            // A unique constraint violation means this alert was
-            // already sent or reserved for this budget threshold.
-            if (logError?.code === "23505") {
-              continue;
-            }
-
-            if (logError) {
-              throw logError;
-            }
+            if (logError?.code === "23505") continue;
+            if (logError) throw logError;
 
             const brevoApiKey = Deno.env.get(
               "BREVO_API_KEY",
@@ -478,7 +528,15 @@ export default {
                 .eq("user_id", item.userId)
                 .eq("budget_id", budget.id)
                 .eq("threshold", threshold)
+                .eq("alert_cycle", alertCycle)
                 .eq("notification_type", "budget_alert");
+
+              await supabase.rpc("claim_budget_alert_crossing", {
+                p_budget_id: budget.id,
+                p_threshold: threshold,
+                p_percentage: 0,
+                p_force: false,
+              });
 
               throw new Error(
                 "Brevo environment variables are missing.",
@@ -532,7 +590,15 @@ export default {
                 .eq("user_id", item.userId)
                 .eq("budget_id", budget.id)
                 .eq("threshold", threshold)
+                .eq("alert_cycle", alertCycle)
                 .eq("notification_type", "budget_alert");
+
+              await supabase.rpc("claim_budget_alert_crossing", {
+                p_budget_id: budget.id,
+                p_threshold: threshold,
+                p_percentage: 0,
+                p_force: false,
+              });
 
               console.error(
                 "Brevo email error:",
