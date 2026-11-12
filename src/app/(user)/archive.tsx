@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 
@@ -236,16 +236,7 @@ export default function ArchiveScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <UserMenuButton />
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Archive</Text>
-          <Text style={styles.subtitle}>
-            Manage your archived records
-          </Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      <UserPageHeader title="Archive" subtitle="Manage your archived records" />
 
       <View style={styles.tabs}>
         <Pressable
