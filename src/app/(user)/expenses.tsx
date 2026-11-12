@@ -788,6 +788,7 @@ export default function ExpensesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <UserPageHeader title="Expenses" subtitle="Keep track of your spending and transactions." />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -800,10 +801,6 @@ export default function ExpensesScreen() {
           />
         }
       >
-        {/* HEADER */}
-
-        <UserPageHeader title="Expenses" subtitle="Keep track of your spending and transactions." />
-
         {/* EXPENSE ACTIONS */}
 
         <View style={styles.expenseActions}>
