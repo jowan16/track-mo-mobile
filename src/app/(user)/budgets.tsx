@@ -16,7 +16,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 
@@ -526,17 +526,7 @@ export default function BudgetsScreen() {
       >
         {/* HEADER */}
 
-        <View style={styles.header}>
-          <UserMenuButton />
-          <View style={styles.headerText}>
-            <Text style={styles.pageTitle}>Budgets</Text>
-            <Text style={styles.pageSubtitle}>
-              Manage your monthly spending limits.
-            </Text>
-          </View>
-
-          <View style={styles.headerSpacer} />
-        </View>
+        <UserPageHeader title="Budgets" subtitle="Manage your monthly spending limits." />
 
         {/* MONTH */}
 
