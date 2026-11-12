@@ -704,17 +704,19 @@ export default function BudgetsScreen() {
                     />
                   </View>
 
-                  {percent >= 100 ? (
+                  {percent >= 100 && profile?.warn_100 ? (
                     <Text style={styles.dangerAlert}>
                       Over budget
                     </Text>
-                  ) : percent >= 80 ? (
+                  ) : percent >= 80 && profile?.warn_80 ? (
                     <Text style={styles.warningAlert}>
                       Alert at 80% reached
                     </Text>
                   ) : (
                     <Text style={styles.normalAlert}>
-                      Within budget
+                      {profile?.warn_80 || profile?.warn_100
+                        ? 'Within budget'
+                        : 'Budget alerts are turned off'}
                     </Text>
                   )}
 
