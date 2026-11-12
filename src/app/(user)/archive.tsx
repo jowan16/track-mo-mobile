@@ -240,37 +240,29 @@ export default function ArchiveScreen() {
 
       <View style={styles.tabs}>
         <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'expenses' }}
           onPress={() => setTab('expenses')}
-          style={[
-            styles.tab,
-            tab === 'expenses' && styles.activeTab,
-          ]}
+          style={[styles.tab, tab === 'expenses' && styles.activeTab]}
         >
-          <Text
-            style={[
-              styles.tabText,
-              tab === 'expenses' && styles.activeTabText,
-            ]}
-          >
-            Expenses ({expenses.length})
-          </Text>
+          <Text style={[styles.tabIcon, tab === 'expenses' && styles.activeTabIcon]}>↗</Text>
+          <Text style={[styles.tabText, tab === 'expenses' && styles.activeTabText]}>Expenses</Text>
+          <View style={[styles.tabCount, tab === 'expenses' && styles.activeTabCount]}>
+            <Text style={[styles.tabCountText, tab === 'expenses' && styles.activeTabCountText]}>{expenses.length}</Text>
+          </View>
         </Pressable>
 
         <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'budgets' }}
           onPress={() => setTab('budgets')}
-          style={[
-            styles.tab,
-            tab === 'budgets' && styles.activeTab,
-          ]}
+          style={[styles.tab, tab === 'budgets' && styles.activeTab]}
         >
-          <Text
-            style={[
-              styles.tabText,
-              tab === 'budgets' && styles.activeTabText,
-            ]}
-          >
-            Budgets ({budgets.length})
-          </Text>
+          <Text style={[styles.tabIcon, tab === 'budgets' && styles.activeTabIcon]}>▤</Text>
+          <Text style={[styles.tabText, tab === 'budgets' && styles.activeTabText]}>Budgets</Text>
+          <View style={[styles.tabCount, tab === 'budgets' && styles.activeTabCount]}>
+            <Text style={[styles.tabCountText, tab === 'budgets' && styles.activeTabCountText]}>{budgets.length}</Text>
+          </View>
         </Pressable>
       </View>
 
@@ -483,16 +475,74 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   headerSpacer: { width: 44, height: 44 },
   subtitle: { color: C.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
   title: { color: C.ink, fontSize: 24, fontWeight: '800', textAlign: 'center' },
+  tabs: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 2,
+    padding: 5,
+    gap: 6,
+    borderRadius: 14,
+    backgroundColor: dark ? '#1b2a26' : '#e8efeb',
+    borderWidth: 1,
+    borderColor: C.line,
+  },
+  tab: {
+    flex: 1,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
   activeTab: {
-    backgroundColor: C.brand,
-    borderRadius: 9,
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.line,
+    shadowColor: '#000000',
+    shadowOpacity: dark ? 0 : 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: dark ? 0 : 1,
+  },
+  tabIcon: {
+    color: C.muted,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  activeTabIcon: {
+    color: C.brand,
   },
   tabText: {
     color: C.muted,
+    fontSize: 13,
     fontWeight: '700',
   },
   activeTabText: {
-    color: (dark ? '#1b2a26' : '#ffffff'),
+    color: C.ink,
+  },
+  tabCount: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: dark ? '#30413a' : '#dce5e0',
+  },
+  activeTabCount: {
+    backgroundColor: dark ? '#24483f' : '#d9f1eb',
+  },
+  tabCountText: {
+    color: C.muted,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  activeTabCountText: {
+    color: C.brand,
   },
   center: {
     flex: 1,
@@ -557,23 +607,32 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.line,
   },
   actionButton: {
     flex: 1,
-    padding: 11,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 9,
+    justifyContent: 'center',
+    borderRadius: 11,
+    borderWidth: 1,
   },
   restoreButton: {
-    backgroundColor: (dark ? '#203d36' : '#e0f2ef'),
+    backgroundColor: (dark ? '#203d36' : '#e5f5f0'),
+    borderColor: dark ? '#31594e' : '#c7e8dc',
   },
   restoreText: {
     color: C.brand,
     fontWeight: '800',
   },
   deleteButton: {
-    backgroundColor: (dark ? '#402725' : '#fce8e6'),
+    backgroundColor: dark ? '#302321' : '#fff7f6',
+    borderColor: dark ? '#593b36' : '#f2d6d2',
   },
   deleteText: {
     color: C.danger,
