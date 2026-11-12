@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
+import { useAppTheme } from '@/context/ThemeContext'
 
 type DrawerContextType = {
   openDrawer: () => void
@@ -35,6 +36,8 @@ export function UserDrawerProvider({
 }) {
   const [visible, setVisible] = useState(false)
   const { profile, signOut } = useAuth()
+  const { resolvedTheme } = useAppTheme()
+  const styles = makeStyles(resolvedTheme === 'dark')
 
   const closeDrawer = () => setVisible(false)
 
@@ -237,6 +240,8 @@ export function UserDrawerProvider({
 
 export function UserMenuButton() {
   const { openDrawer } = useUserDrawer()
+  const { resolvedTheme } = useAppTheme()
+  const styles = makeStyles(resolvedTheme === 'dark')
 
   return (
     <Pressable
@@ -250,7 +255,21 @@ export function UserMenuButton() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean) {
+  const palette = {
+    drawer: dark ? '#151f1b' : '#ffffff',
+    text: dark ? '#f1f5f3' : '#14201c',
+    muted: dark ? '#a0ada7' : '#4b5754',
+    border: dark ? '#34423c' : '#e8eeeb',
+    subtle: dark ? '#26332e' : '#f1f5f3',
+    active: dark ? '#173d37' : '#e6f4f1',
+    pressed: dark ? '#26332e' : '#f1f5f3',
+    brand: '#0f766e',
+    dangerBg: dark ? '#3a2423' : '#fff1f0',
+    dangerPressed: dark ? '#4a2b29' : '#ffe2df',
+    danger: '#ef7770',
+  }
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     flexDirection: 'row',
@@ -263,7 +282,7 @@ const styles = StyleSheet.create({
     width: '82%',
     maxWidth: 340,
     height: '100%',
-    backgroundColor: '#ffffff',
+    backgroundColor: palette.drawer,
     paddingTop: 58,
     paddingHorizontal: 20,
     paddingBottom: 24,
@@ -278,7 +297,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 13,
-    backgroundColor: '#0f766e',
+    backgroundColor: palette.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -289,7 +308,7 @@ const styles = StyleSheet.create({
   },
   brandName: {
     flex: 1,
-    color: '#14201c',
+    color: palette.text,
     fontSize: 15,
     fontWeight: '800',
     marginLeft: 11,
@@ -298,18 +317,18 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: '#f1f5f3',
+    backgroundColor: palette.subtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeText: {
-    color: '#4b5754',
+    color: palette.muted,
     fontSize: 25,
     lineHeight: 29,
   },
   separator: {
     height: 1,
-    backgroundColor: '#e8eeeb',
+    backgroundColor: palette.border,
   },
   menuScroll: {
     flex: 1,
@@ -327,14 +346,14 @@ const styles = StyleSheet.create({
     borderRadius: 11,
   },
   activeMenuItem: {
-    backgroundColor: '#e6f4f1',
+    backgroundColor: palette.active,
   },
   menuItemPressed: {
-    backgroundColor: '#f1f5f3',
+    backgroundColor: palette.subtle,
   },
   menuIcon: {
     width: 30,
-    color: '#68756f',
+    color: palette.muted,
     fontSize: 21,
     fontWeight: '700',
   },
@@ -342,7 +361,7 @@ const styles = StyleSheet.create({
     color: '#0f766e',
   },
   menuText: {
-    color: '#34413b',
+    color: palette.text,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -354,12 +373,12 @@ const styles = StyleSheet.create({
     paddingTop: 15,
   },
   signedInLabel: {
-    color: '#7b8782',
+    color: palette.muted,
     fontSize: 12,
     marginTop: 17,
   },
   profileName: {
-    color: '#14201c',
+    color: palette.text,
     fontSize: 15,
     fontWeight: '800',
     marginTop: 5,
@@ -368,22 +387,22 @@ const styles = StyleSheet.create({
   logoutButton: {
     minHeight: 45,
     borderRadius: 10,
-    backgroundColor: '#fff1f0',
+    backgroundColor: palette.dangerBg,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 13,
     gap: 10,
   },
   logoutPressed: {
-    backgroundColor: '#ffe2df',
+    backgroundColor: palette.dangerPressed,
   },
   logoutIcon: {
-    color: '#b42318',
+    color: palette.danger,
     fontSize: 19,
     fontWeight: '800',
   },
   logoutText: {
-    color: '#b42318',
+    color: palette.danger,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -391,7 +410,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 12,
-    backgroundColor: '#e6f4f1',
+    backgroundColor: palette.active,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -400,4 +419,5 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
   },
-})
+  })
+}

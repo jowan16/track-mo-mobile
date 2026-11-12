@@ -332,6 +332,44 @@ export default function SettingsScreen() {
                 </Pressable>
               </>
             )}
+            <View style={styles.separator} />
+
+            <Text style={styles.itemTitle}>SECURITY</Text>
+            <Text style={styles.description}>
+              Change your account password. You will remain signed in.
+            </Text>
+
+            <Text style={styles.label}>New Password</Text>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="At least 8 characters"
+              placeholderTextColor={C.muted}
+              secureTextEntry
+              autoCapitalize="none"
+              style={styles.input}
+            />
+
+            <Text style={styles.label}>Confirm New Password</Text>
+            <TextInput
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Re-enter your new password"
+              placeholderTextColor={C.muted}
+              secureTextEntry
+              autoCapitalize="none"
+              style={styles.input}
+            />
+
+            <Pressable
+              style={styles.primaryButton}
+              onPress={handleChangePassword}
+              disabled={savingPassword || !password || !confirmPassword}
+            >
+              {savingPassword
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.primaryButtonText}>Update Password</Text>}
+            </Pressable>
           </Section>
 
           <Section title="APPEARANCE">
@@ -343,7 +381,6 @@ export default function SettingsScreen() {
               {([
                 ['light', '☀', 'Light'],
                 ['dark', '☾', 'Dark'],
-                ['system', '⚙', 'System'],
               ] as const).map(([value, icon, label]) => {
                 const selected = preference === value
 
@@ -446,44 +483,6 @@ export default function SettingsScreen() {
             {savingPreference && (
               <Text style={styles.savingText}>Saving preference...</Text>
             )}
-          </Section>
-
-          <Section title="SECURITY">
-            <Text style={styles.description}>
-              Change your account password. You will remain signed in.
-            </Text>
-
-            <Text style={styles.label}>New Password</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="At least 8 characters"
-              placeholderTextColor={C.muted}
-              secureTextEntry
-              autoCapitalize="none"
-              style={styles.input}
-            />
-
-            <Text style={styles.label}>Confirm New Password</Text>
-            <TextInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Re-enter your new password"
-              placeholderTextColor={C.muted}
-              secureTextEntry
-              autoCapitalize="none"
-              style={styles.input}
-            />
-
-            <Pressable
-              style={styles.primaryButton}
-              onPress={handleChangePassword}
-              disabled={savingPassword || !password || !confirmPassword}
-            >
-              {savingPassword
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.primaryButtonText}>Update Password</Text>}
-            </Pressable>
           </Section>
 
           <Section title="ACCOUNT">

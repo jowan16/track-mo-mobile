@@ -87,3 +87,45 @@ if (Platform.OS !== 'web') {
     }
   })
 }
+
+
+/**
+ * Run an authenticated Supabase request with a valid access token.
+ * Refreshes shortly before expiry and retries once when PostgREST rejects
+ * the request specifically because the JWT has expired.
+ */
+export async function withValidSession<T extends { error: { code?: string; message?: string } | null }>(
+  request: () => Promise<T>,
+): Promise<T> {
+  const refresh = async () => {
+    const { data, error } = await supabase.auth.refreshSession()
+    if (error || !data.session) {
+      throw error ?? new Error('Your session has expired. Please sign in again.')
+    }
+  }
+
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw error
+  if (!data.session) {
+    throw new Error('Your session has expired. Please sign in again.')
+  }
+
+  if (
+    data.session.expires_at &&
+    data.session.expires_at <= Math.floor(Date.now() / 1000) + 60
+  ) {
+    await refresh()
+  }
+
+  let result = await request()
+  const expiredJwt =
+    result.error?.code === 'PGRST303' ||
+    /jwt expired|token expired/i.test(result.error?.message ?? '')
+
+  if (result.error && expiredJwt) {
+    await refresh()
+    result = await request()
+  }
+
+  return result
+}

@@ -1,6 +1,6 @@
+import { useAppTheme } from '@/context/ThemeContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Image,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
@@ -49,7 +49,7 @@ type Expense = {
   is_archived: boolean
 }
 
-const COLORS = {
+const LIGHT_COLORS = {
   canvas: '#f6f7f5',
   ink: '#14201c',
   muted: '#4b5754',
@@ -58,6 +58,16 @@ const COLORS = {
   danger: '#b42318',
   orange: '#c2410c',
 }
+function getCOLORS(dark: boolean) { return dark ? {
+  canvas: '#101a18',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+  danger: '#ff8178',
+  orange: '#ffad70',
+} : LIGHT_COLORS }
+
 
 function peso(value: number) {
   return `₱ ${value.toLocaleString('en-PH', {
@@ -112,6 +122,11 @@ function monthRange(year: number, month: number) {
 }
 
 export default function BudgetsScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const COLORS = getCOLORS(dark)
+  const styles = makeStyles(dark, COLORS)
+
   const { profile } = useAuth()
 
   const now = new Date()
@@ -520,9 +535,7 @@ export default function BudgetsScreen() {
             </Text>
           </View>
 
-          <View style={styles.brandMark}>
-            <Image source={require('../../../assets/trackmo-logo.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
-          </View>
+          <View style={styles.headerSpacer} />
         </View>
 
         {/* MONTH */}
@@ -941,7 +954,7 @@ export default function BudgetsScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.canvas,
@@ -966,51 +979,22 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   header: {
-    position: 'relative',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-    minHeight: 44,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  headerText: {
-    position: 'absolute',
-    left: 54,
-    right: 54,
-    alignItems: 'center',
-  },
-  pageTitle: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: COLORS.ink,
-   textAlign: 'center' },
-  pageSubtitle: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginTop: 5,
-   textAlign: 'center' },
-  brandMark: {
-    width: 43,
-    height: 43,
-    borderRadius: 14,
-    backgroundColor: COLORS.brand,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  brandMarkText: {
-    color: '#ffffff',
-    fontSize: 25,
-    fontWeight: '800',
-  },
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      minHeight: 72,
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderBottomWidth: 1,
+      borderBottomColor: dark ? '#30413a' : '#e4e8e5',
+    },
+  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
+  headerSpacer: { width: 44, height: 44 },
   monthBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e6f4f1',
+    backgroundColor: (dark ? '#203d36' : '#e6f4f1'),
     paddingHorizontal: 13,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1029,13 +1013,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   addButtonText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 14,
     fontWeight: '800',
   },
   errorCard: {
-    backgroundColor: '#fff0ef',
-    borderColor: '#f3c3bf',
+    backgroundColor: (dark ? '#402725' : '#fff0ef'),
+    borderColor: (dark ? '#75423e' : '#f3c3bf'),
     borderWidth: 1,
     borderRadius: 15,
     padding: 15,
@@ -1047,7 +1031,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   errorMessage: {
-    color: '#7f1d1d',
+    color: (dark ? '#ffaaa3' : '#7f1d1d'),
     fontSize: 12,
     marginTop: 5,
     marginBottom: 9,
@@ -1072,7 +1056,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1,
     minWidth: '46%',
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.line,
@@ -1122,7 +1106,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   budgetCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 17,
@@ -1190,7 +1174,7 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: 9,
-    backgroundColor: '#edf0ee',
+    backgroundColor: (dark ? '#2a3a34' : '#edf0ee'),
     borderRadius: 20,
     overflow: 'hidden',
   },
@@ -1226,29 +1210,29 @@ const styles = StyleSheet.create({
     borderTopColor: '#f0f2f0',
   },
   editButton: {
-    backgroundColor: '#eef0ff',
+    backgroundColor: (dark ? '#2b3155' : '#eef0ff'),
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
   editButtonText: {
-    color: '#3b49df',
+    color: (dark ? '#aab4ff' : '#3b49df'),
     fontSize: 11,
     fontWeight: '700',
   },
   archiveButton: {
-    backgroundColor: '#fff1e8',
+    backgroundColor: (dark ? '#453020' : '#fff1e8'),
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
   archiveButtonText: {
-    color: '#c2410c',
+    color: (dark ? '#ffad70' : '#c2410c'),
     fontSize: 11,
     fontWeight: '700',
   },
   emptyCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 18,
@@ -1257,7 +1241,7 @@ const styles = StyleSheet.create({
   },
   emptySymbol: {
     fontSize: 35,
-    color: '#a8b5ae',
+    color: (dark ? '#9aaba3' : '#a8b5ae'),
     fontWeight: '800',
   },
   emptyTitle: {
@@ -1281,12 +1265,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   emptyButtonText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 11,
     fontWeight: '800',
   },
   availableCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 16,
@@ -1310,7 +1294,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   availableChip: {
-    backgroundColor: '#f0f3f1',
+    backgroundColor: (dark ? '#2a3a34' : '#f0f3f1'),
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 7,
@@ -1377,7 +1361,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1396,7 +1380,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 11,
@@ -1415,7 +1399,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryChoice: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 11,
@@ -1427,7 +1411,7 @@ const styles = StyleSheet.create({
   },
   categoryChoiceActive: {
     borderColor: COLORS.brand,
-    backgroundColor: '#edf8f5',
+    backgroundColor: (dark ? '#203d36' : '#edf8f5'),
   },
   choiceIcon: {
     width: 34,
@@ -1452,8 +1436,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   formErrorCard: {
-    backgroundColor: '#fff0ef',
-    borderColor: '#f3c3bf',
+    backgroundColor: (dark ? '#402725' : '#fff0ef'),
+    borderColor: (dark ? '#75423e' : '#f3c3bf'),
     borderWidth: 1,
     borderRadius: 10,
     padding: 11,
@@ -1472,7 +1456,7 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
   saveButtonText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 13,
     fontWeight: '800',
   },
@@ -1480,7 +1464,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   cancelButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 12,
@@ -1493,4 +1477,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-})
+}) }

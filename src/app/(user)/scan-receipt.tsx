@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 import { useState } from 'react'
 import {
   ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet,
@@ -12,12 +13,22 @@ import { UserMenuButton } from '@/components/user-navigation'
 import { recognizeReceipt, uploadReceipt } from '@/services/receiptStorage'
 import { parseReceiptText } from '@/services/receiptParser'
 
-const COLORS = {
+const LIGHT_COLORS = {
   canvas: '#f6f7f5', white: '#ffffff', ink: '#14201c', muted: '#68756f',
   line: '#e4e8e5', brand: '#0f766e', brandLight: '#e6f4f1', danger: '#b42318',
 }
+function getCOLORS(dark: boolean) { return dark ? {
+  canvas: '#101a18', white: '#1b2a26', ink: '#edf5f1', muted: '#a9b8b1',
+  line: '#30413a', brand: '#55c6b0', brandLight: '#203d36', danger: '#ff8178',
+} : LIGHT_COLORS }
+
 
 export default function ScanReceiptScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const COLORS = getCOLORS(dark)
+  const styles = makeStyles(dark, COLORS)
+
   const { profile } = useAuth()
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null)
   const [processing, setProcessing] = useState(false)
@@ -37,8 +48,18 @@ export default function ScanReceiptScreen() {
       }
 
       const result = source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 })
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [3, 4],
+            quality: 1,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [3, 4],
+            quality: 1,
+          })
 
       if (result.canceled || !result.assets?.length) return
 
@@ -111,6 +132,7 @@ export default function ScanReceiptScreen() {
           <Text style={styles.headerTitle}>Scan Receipt</Text>
           <Text style={styles.headerSubtitle}>AI-powered expense recognition</Text>
         </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -120,13 +142,13 @@ export default function ScanReceiptScreen() {
           </View>
           <Text style={styles.title}>Turn receipts into expenses</Text>
           <Text style={styles.description}>
-            Take a photo or choose a receipt image. Track Mo will read it and open your Add Expense form with the detected details filled in for review.
+            Take a photo or choose a receipt image, then crop it to include the full receipt. Track Mo will read it and show the recognized text in Receipt Details for review.
           </Text>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.selectionTitle}>Add your receipt</Text>
-          <Text style={styles.cardDescription}>Keep the full receipt visible, clear, and well lit.</Text>
+          <Text style={styles.cardDescription}>Keep the receipt clear and well lit. Crop the image to include the entire receipt, especially its date and total.</Text>
 
           <Pressable
             style={[styles.primaryButton, processing && styles.disabled]}
@@ -178,12 +200,24 @@ export default function ScanReceiptScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.canvas },
-  header: { minHeight: 76, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 13, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.line },
-  headerText: { flex: 1 },
-  headerTitle: { fontSize: 19, fontWeight: '800', color: COLORS.ink },
-  headerSubtitle: { color: COLORS.muted, fontSize: 12, marginTop: 3 },
+  header: {
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      minHeight: 72,
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderBottomWidth: 1,
+      borderBottomColor: dark ? '#30413a' : '#e4e8e5',
+    },
+  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: COLORS.ink, textAlign: 'center' },
+  headerSubtitle: { color: COLORS.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
+  headerSpacer: { width: 44, height: 44 },
   content: { padding: 20, paddingBottom: 44, gap: 17 },
   intro: { alignItems: 'center', paddingVertical: 16 },
   introIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: COLORS.brandLight, alignItems: 'center', justifyContent: 'center', marginBottom: 13 },
@@ -201,14 +235,14 @@ const styles = StyleSheet.create({
   hint: { color: COLORS.muted, fontSize: 10, textAlign: 'center', marginTop: 12 },
   previewCard: { backgroundColor: COLORS.white, borderRadius: 17, padding: 16, borderWidth: 1, borderColor: COLORS.line },
   previewTitle: { color: COLORS.ink, fontSize: 14, fontWeight: '800', marginBottom: 10 },
-  previewImage: { width: '100%', height: 300, backgroundColor: '#f8faf9', borderRadius: 10 },
+  previewImage: { width: '100%', height: 300, backgroundColor: (dark ? '#101a18' : '#f8faf9'), borderRadius: 10 },
   fileName: { color: COLORS.muted, fontSize: 11, marginTop: 9 },
   processingCard: { backgroundColor: COLORS.white, borderRadius: 17, padding: 22, alignItems: 'center', borderWidth: 1, borderColor: COLORS.line },
   processingTitle: { color: COLORS.ink, fontSize: 15, fontWeight: '800', marginTop: 13 },
   processingText: { color: COLORS.muted, fontSize: 12, lineHeight: 19, textAlign: 'center', marginTop: 6 },
-  errorCard: { backgroundColor: '#fff0ef', borderRadius: 13, borderWidth: 1, borderColor: '#f4c7c3', padding: 14 },
+  errorCard: { backgroundColor: (dark ? '#402725' : '#fff0ef'), borderRadius: 13, borderWidth: 1, borderColor: (dark ? '#75423e' : '#f4c7c3'), padding: 14 },
   errorTitle: { color: COLORS.danger, fontSize: 13, fontWeight: '800' },
-  errorText: { color: '#7f1d1d', fontSize: 12, lineHeight: 18, marginTop: 5 },
+  errorText: { color: (dark ? '#ffaaa3' : '#7f1d1d'), fontSize: 12, lineHeight: 18, marginTop: 5 },
   retryButton: { alignSelf: 'flex-start', marginTop: 12, paddingVertical: 8, paddingHorizontal: 13, borderRadius: 9, backgroundColor: COLORS.white },
   retryText: { color: COLORS.brand, fontSize: 12, fontWeight: '800' },
-})
+}) }

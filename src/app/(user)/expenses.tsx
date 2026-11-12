@@ -1,10 +1,10 @@
+import { useAppTheme } from '@/context/ThemeContext'
 
 
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import {
-  Image,
     ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
@@ -21,7 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/context/AuthContext'
-import { supabase } from '@/services/supabase'
+import { supabase, withValidSession } from '@/services/supabase'
 
 // --------------------------------------------------
 // TYPES
@@ -72,7 +72,7 @@ const PAGE_SIZE = 10
 
 import { UserMenuButton } from '@/components/user-navigation'
 
-const COLORS = {
+const LIGHT_COLORS = {
   canvas: '#f6f7f5',
   ink: '#14201c',
   muted: '#4b5754',
@@ -81,6 +81,16 @@ const COLORS = {
   danger: '#b42318',
   orange: '#c2410c',
 }
+function getCOLORS(dark: boolean) { return dark ? {
+  canvas: '#101a18',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+  danger: '#ff8178',
+  orange: '#ffad70',
+} : LIGHT_COLORS }
+
 
 // --------------------------------------------------
 // HELPERS
@@ -135,6 +145,16 @@ function emptyForm(): ExpenseForm {
     payment_method: 'Cash',
     note: '',
   }
+}
+
+function formatReceiptDetails(value: string) {
+  return value
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[\t ]+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, 10000)
 }
 
 function cleanAmount(value: string) {
@@ -203,6 +223,11 @@ function getDateError(value: string) {
 // --------------------------------------------------
 
 export default function ExpensesScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const COLORS = getCOLORS(dark)
+  const styles = makeStyles(dark, COLORS)
+
   const { profile } = useAuth()
   const params = useLocalSearchParams<{ openForm?: string; category?: string; receiptDraft?: string; receiptPath?: string; receiptModel?: string; receiptRawText?: string }>()
 
@@ -220,6 +245,7 @@ export default function ExpensesScreen() {
     null,
   )
   const [page, setPage] = useState(1)
+  const [expandedExpenseId, setExpandedExpenseId] = useState<string | null>(null)
 
   const [formVisible, setFormVisible] = useState(false)
   const [editing, setEditing] = useState<Expense | null>(null)
@@ -442,9 +468,9 @@ export default function ExpensesScreen() {
       const category = availableCategories.find(
         (item) => item.name.toLowerCase() === draft.suggestedCategory.toLowerCase(),
       )
-      // Merchant and purchased items have dedicated fields in this receipt form.
-      // Keep the optional note clean instead of copying raw OCR/header text into it.
-      const note = ''
+      // Preserve the complete OCR text in the Receipt Details field.
+      // Keep each detected receipt line separate for easier reading and editing.
+      const note = formatReceiptDetails(params.receiptRawText || '')
 
       setEditing(null)
       setReceiptContext({
@@ -596,8 +622,8 @@ export default function ExpensesScreen() {
       return
     }
 
-    if (form.note.length > 200) {
-      setFormError('Note cannot exceed 200 characters.')
+    if (form.note.length > (receiptContext ? 10000 : 200)) {
+      setFormError(receiptContext ? 'Receipt details are too long.' : 'Note cannot exceed 200 characters.')
       return
     }
 
@@ -622,35 +648,36 @@ export default function ExpensesScreen() {
         note: form.note.trim() || null,
       }
 
-      if (receiptContext && !editing) {
-        const { error } = await supabase.rpc('save_receipt_expense', {
-          p_storage_path: receiptContext.path,
-          p_merchant_name: receiptContext.draft.merchant_name.trim(),
-          p_receipt_date: form.spent_on,
-          p_subtotal: receiptContext.draft.subtotal,
-          p_tax: receiptContext.draft.tax,
-          p_total: Number(form.amount),
-          p_currency: 'PHP',
-          p_category_id: form.category_id,
-          p_amount: Number(form.amount),
-          p_spent_on: form.spent_on,
-          p_payment_method: form.payment_method,
-          p_note: form.note.trim() || null,
-          p_items: receiptContext.draft.items.filter((item) => item.item_name.trim()).map((item) => ({
-            item_name: item.item_name.trim(),
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            line_total: item.line_total,
-          })),
-          p_recognition_data: {
-            model: receiptContext.model,
-            raw_text: receiptContext.rawText,
-            confirmed_at: new Date().toISOString(),
-          },
-        })
-        if (error) throw error
-      } else {
-        const result = editing
+      const result = await withValidSession(async () => {
+        if (receiptContext && !editing) {
+          return await supabase.rpc('save_receipt_expense', {
+            p_storage_path: receiptContext.path,
+            p_merchant_name: receiptContext.draft.merchant_name.trim(),
+            p_receipt_date: form.spent_on,
+            p_subtotal: receiptContext.draft.subtotal,
+            p_tax: receiptContext.draft.tax,
+            p_total: Number(form.amount),
+            p_currency: 'PHP',
+            p_category_id: form.category_id,
+            p_amount: Number(form.amount),
+            p_spent_on: form.spent_on,
+            p_payment_method: form.payment_method,
+            p_note: form.note.trim() || null,
+            p_items: receiptContext.draft.items.filter((item) => item.item_name.trim()).map((item) => ({
+              item_name: item.item_name.trim(),
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              line_total: item.line_total,
+            })),
+            p_recognition_data: {
+              model: receiptContext.model,
+              raw_text: receiptContext.rawText,
+              confirmed_at: new Date().toISOString(),
+            },
+          })
+        }
+
+        return editing
           ? await supabase
               .from('expenses')
               .update(row)
@@ -662,9 +689,9 @@ export default function ExpensesScreen() {
                 ...row,
                 user_id: profile.id,
               })
+      })
 
-        if (result.error) throw result.error
-      }
+      if (result.error) throw result.error
 
       setFormVisible(false)
       setEditing(null)
@@ -683,11 +710,18 @@ export default function ExpensesScreen() {
             : 'Your expense has been recorded.',
       )
     } catch (error) {
-      setFormError(
+      const message =
         error instanceof Error
           ? error.message
-          : 'Unable to save your expense. Please try again.',
-      )
+          : typeof error === 'object' &&
+              error !== null &&
+              'message' in error &&
+              typeof error.message === 'string'
+            ? error.message
+            : 'Unable to save your expense. Please try again.'
+
+      console.error('Expense save error:', error)
+      setFormError(message)
     } finally {
       setSaving(false)
     }
@@ -777,9 +811,7 @@ export default function ExpensesScreen() {
             </Text>
           </View>
 
-          <View style={styles.brandMark}>
-            <Image source={require('../../../assets/trackmo-logo.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
-          </View>
+          <View style={styles.headerSpacer} />
         </View>
 
         {/* EXPENSE ACTIONS */}
@@ -946,9 +978,7 @@ export default function ExpensesScreen() {
                 }}
                 style={styles.clearFiltersButton}
               >
-                <Text style={styles.clearFiltersText}>
-                  Clear filters
-                </Text>
+                <Text style={styles.clearFiltersText}>Clear filters</Text>
               </Pressable>
             ) : null}
           </View>
@@ -956,72 +986,103 @@ export default function ExpensesScreen() {
           <View style={styles.listCard}>
             {visibleExpenses.map((expense) => {
               const category = categoryMap.get(expense.category_id)
+              const expanded = expandedExpenseId === expense.id
+              const note = expense.note?.trim() ?? ''
+              const isReceiptDetails = note.length > 200 || note.includes('\n')
 
               return (
                 <View key={expense.id} style={styles.expenseRow}>
-                  <View
-                    style={[
-                      styles.categoryIcon,
-                      {
-                        backgroundColor: category?.bg || '#e6f4f1',
-                      },
-                    ]}
+                  <Pressable
+                    style={styles.expenseRecordHeader}
+                    onPress={() => setExpandedExpenseId(expanded ? null : expense.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded }}
                   >
-                    <Text
+                    <View
                       style={[
-                        styles.categorySymbol,
-                        {
-                          color: category?.color || COLORS.brand,
-                        },
+                        styles.categoryIcon,
+                        { backgroundColor: category?.bg || '#e6f4f1' },
                       ]}
                     >
-                      {categorySymbol(category?.icon ?? 'coins')}
-                    </Text>
-                  </View>
-
-                  <View style={styles.expenseContent}>
-                    <Text
-                      style={styles.expenseName}
-                      numberOfLines={1}
-                    >
-                      {expense.note?.trim() ||
-                        category?.name ||
-                        'Expense'}
-                    </Text>
-
-                    <Text style={styles.expenseCategory}>
-                      {category?.name ?? 'Uncategorized'}
-                    </Text>
-
-                    <Text style={styles.expenseMeta}>
-                      {shortDate(expense.spent_on)} ·{' '}
-                      {expense.payment_method}
-                    </Text>
-
-                    <Text style={styles.expenseAmount}>
-                      -{peso(expense.amount)}
-                    </Text>
-
-                    <View style={styles.actionRow}>
-                      <Pressable
-                        style={styles.editButton}
-                        onPress={() => openEdit(expense)}
+                      <Text
+                        style={[
+                          styles.categorySymbol,
+                          { color: category?.color || COLORS.brand },
+                        ]}
                       >
-                        <Text style={styles.editButtonText}>
-                          ✎ Edit
-                        </Text>
-                      </Pressable>
-
-                      <Pressable
-                        style={styles.archiveButton}
-                        onPress={() => archiveExpense(expense)}
-                      >
-                        <Text style={styles.archiveButtonText}>
-                          ▣ Archive
-                        </Text>
-                      </Pressable>
+                        {categorySymbol(category?.icon ?? 'coins')}
+                      </Text>
                     </View>
-                  </View>
+
+                    <View style={styles.expenseContent}>
+                      <Text style={styles.expenseName}>
+                        {category?.name ?? 'Expense'}
+                      </Text>
+                      <Text style={styles.expenseMeta}>
+                        {shortDate(expense.spent_on)} · {expense.payment_method}
+                      </Text>
+                    </View>
+
+                    <View style={styles.expenseSummaryRight}>
+                      <Text style={styles.expenseAmount}>
+                        -{peso(expense.amount)}
+                      </Text>
+                      <Text style={styles.expandHint}>
+                        {expanded ? 'Hide details －' : 'View details ＋'}
+                      </Text>
+                    </View>
+                  </Pressable>
+
+                  {expanded ? (
+                    <View style={styles.expandedExpenseDetails}>
+                      <View style={styles.detailsDivider} />
+                      <View style={styles.detailLine}>
+                        <Text style={styles.detailLabel}>Category</Text>
+                        <Text style={styles.detailValue}>{category?.name ?? 'Expense'}</Text>
+                      </View>
+                      <View style={styles.detailLine}>
+                        <Text style={styles.detailLabel}>Date</Text>
+                        <Text style={styles.detailValue}>{shortDate(expense.spent_on)}</Text>
+                      </View>
+                      <View style={styles.detailLine}>
+                        <Text style={styles.detailLabel}>Payment method</Text>
+                        <Text style={styles.detailValue}>{expense.payment_method}</Text>
+                      </View>
+                      <View style={styles.detailLine}>
+                        <Text style={styles.detailLabel}>Amount</Text>
+                        <Text style={styles.detailAmount}>-{peso(expense.amount)}</Text>
+                      </View>
+
+                      {note ? (
+                        <View style={styles.expandedNoteBlock}>
+                          <Text style={styles.detailLabel}>
+                            {isReceiptDetails ? 'Receipt Details' : 'Note'}
+                          </Text>
+                          <Text style={styles.expandedNoteText}>{note}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.noNoteText}>
+                          No additional notes for this expense.
+                        </Text>
+                      )}
+
+                      <View style={styles.actionRow}>
+                        <Pressable
+                          style={styles.editButton}
+                          onPress={() => openEdit(expense)}
+                        >
+                          <Text style={styles.editButtonText}>✎ Edit</Text>
+                        </Pressable>
+
+                        <Pressable
+                          style={styles.archiveButton}
+                          onPress={() => archiveExpense(expense)}
+                        >
+                          <Text style={styles.archiveButtonText}>▣ Archive</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : null}
                 </View>
               )
             })}
@@ -1187,7 +1248,7 @@ export default function ExpensesScreen() {
                   <Text style={styles.fieldHint}>Use YYYY-MM-DD format. Future dates are not allowed.</Text>
 
                   {/* AMOUNT */}
-                  <Text style={styles.fieldLabel}>Receipt Total (₱)</Text>
+                  <Text style={styles.fieldLabel}>Receipt Total Amount (₱)</Text>
                   <TextInput
                     style={styles.input}
                     value={form.amount}
@@ -1216,95 +1277,20 @@ export default function ExpensesScreen() {
                     })}
                   </View>
 
-                  {/* EDITABLE EXTRACTED ITEMS */}
-                  <View style={styles.receiptItemsEditor}>
-                    <View style={styles.receiptItemsTitleRow}>
-                      <Text style={styles.fieldLabel}>Extracted Items</Text>
-                      <Pressable
-                        onPress={() => setReceiptContext((current) => current ? ({
-                          ...current,
-                          draft: {
-                            ...current.draft,
-                            items: [...current.draft.items, { item_name: '', quantity: 1, unit_price: 0, line_total: 0 }],
-                          },
-                        }) : current)}
-                        disabled={saving}
-                      >
-                        <Text style={styles.addReceiptItemText}>+ Add item</Text>
-                      </Pressable>
-                    </View>
-                    <View style={styles.receiptTableHeader}>
-                      <Text style={[styles.receiptTableHeading, styles.receiptItemColumn]}>Item</Text>
-                      <Text style={[styles.receiptTableHeading, styles.receiptAmountColumn]}>Amount (₱)</Text>
-                      <View style={styles.receiptRemoveColumn} />
-                    </View>
-                    {receiptContext.draft.items.length > 0 ? receiptContext.draft.items.map((item, index) => (
-                      <View key={`receipt-item-${index}`} style={styles.receiptEditableRow}>
-                        <TextInput
-                          style={[styles.input, styles.receiptEditableName]}
-                          value={item.item_name}
-                          onChangeText={(value) => setReceiptContext((current) => {
-                            if (!current) return current
-                            const items = [...current.draft.items]
-                            items[index] = { ...items[index], item_name: value }
-                            return { ...current, draft: { ...current.draft, items } }
-                          })}
-                          placeholder="Item name"
-                          placeholderTextColor="#84908b"
-                          editable={!saving}
-                        />
-                        <TextInput
-                          style={[styles.input, styles.receiptEditableAmount]}
-                          value={String(item.line_total ?? item.unit_price ?? 0)}
-                          onChangeText={(value) => setReceiptContext((current) => {
-                            if (!current) return current
-                            const items = [...current.draft.items]
-                            const amount = Number(cleanAmount(value)) || 0
-                            items[index] = { ...items[index], unit_price: amount, line_total: amount, quantity: 1 }
-                            return { ...current, draft: { ...current.draft, items } }
-                          })}
-                          placeholder="0.00"
-                          placeholderTextColor="#84908b"
-                          keyboardType="decimal-pad"
-                          editable={!saving}
-                        />
-                        <Pressable
-                          style={styles.removeReceiptItem}
-                          onPress={() => setReceiptContext((current) => current ? ({
-                            ...current,
-                            draft: { ...current.draft, items: current.draft.items.filter((_, itemIndex) => itemIndex !== index) },
-                          }) : current)}
-                          disabled={saving}
-                        >
-                          <Text style={styles.removeReceiptItemText}>×</Text>
-                        </Pressable>
-                      </View>
-                    )) : (
-                      <Text style={styles.receiptEmptyItems}>No items detected. Add the items you want to include.</Text>
-                    )}
-                    <View style={styles.receiptTotalRow}>
-                      <Text style={styles.receiptTotalLabel}>Extracted items total</Text>
-                      <Text style={styles.receiptTotalValue}>
-                        {peso(receiptContext.draft.items.reduce((sum, item) => sum + (Number(item.line_total) || 0), 0))}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* OPTIONAL NOTE */}
-                  <Text style={styles.fieldLabel}>Note (Optional)</Text>
+                  {/* RECEIPT DETAILS */}
+                  <Text style={styles.fieldLabel}>Receipt Details</Text>
                   <TextInput
-                    style={[styles.input, styles.noteInput]}
+                    style={[styles.input, styles.noteInput, styles.receiptDetailsInput]}
                     value={form.note}
-                    onChangeText={(value) => updateForm({ note: value.slice(0, 200) })}
-                    placeholder="Add a short description..."
+                    onChangeText={(value) => updateForm({ note: value.slice(0, 10000) })}
+                    placeholder="The recognized receipt details will appear here..."
                     placeholderTextColor="#84908b"
                     multiline
-                    numberOfLines={3}
                     textAlignVertical="top"
                     editable={!saving}
-                    maxLength={200}
+                    maxLength={10000}
                   />
-                  <Text style={styles.characterCount}>{form.note.length}/200 characters</Text>
+                  <Text style={styles.characterCount}>{form.note.length}/10000 characters</Text>
                 </>
               ) : (
                 <>
@@ -1512,7 +1498,7 @@ export default function ExpensesScreen() {
 // STYLES
 // --------------------------------------------------
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.canvas,
@@ -1537,33 +1523,21 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   header: {
-    position: 'relative',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 19,
-    minHeight: 44,
-  },
-  pageTitle: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: COLORS.ink,
-   textAlign: 'center' },
-  pageSubtitle: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginTop: 5,
-   textAlign: 'center' },
-  brandMark: {
-    width: 43,
-    height: 43,
-    borderRadius: 14,
-    backgroundColor: COLORS.brand,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      minHeight: 72,
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderBottomWidth: 1,
+      borderBottomColor: dark ? '#30413a' : '#e4e8e5',
+    },
+  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
+  headerSpacer: { width: 44, height: 44 },
   brandMarkText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 25,
     fontWeight: '800',
   },
@@ -1591,13 +1565,13 @@ const styles = StyleSheet.create({
     borderColor: COLORS.brand,
   },
   expenseActionIcon: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 25,
     fontWeight: '800',
     marginBottom: 7,
   },
   expenseActionTitle: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 13,
     fontWeight: '800',
     textAlign: 'center',
@@ -1617,13 +1591,13 @@ const styles = StyleSheet.create({
     marginBottom: 17,
   },
   addButtonText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 14,
     fontWeight: '800',
   },
   errorCard: {
-    backgroundColor: '#fff0ef',
-    borderColor: '#f3c3bf',
+    backgroundColor: (dark ? '#402725' : '#fff0ef'),
+    borderColor: (dark ? '#75423e' : '#f3c3bf'),
     borderWidth: 1,
     borderRadius: 15,
     padding: 15,
@@ -1635,7 +1609,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   errorMessage: {
-    color: '#7f1d1d',
+    color: (dark ? '#ffaaa3' : '#7f1d1d'),
     fontSize: 12,
     marginTop: 5,
     marginBottom: 9,
@@ -1646,7 +1620,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.line,
@@ -1673,7 +1647,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 13,
@@ -1710,7 +1684,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.line,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
@@ -1724,7 +1698,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   filterChipTextActive: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontWeight: '800',
   },
   listHeader: {
@@ -1741,19 +1715,83 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   listCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 18,
     paddingHorizontal: 14,
   },
   expenseRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 11,
-    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f2f0',
+    borderBottomColor: COLORS.line,
+  },
+  expenseRecordHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingVertical: 14,
+  },
+  expenseSummaryRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  expandHint: {
+    color: COLORS.brand,
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  expandedExpenseDetails: {
+    paddingLeft: 54,
+    paddingRight: 2,
+    paddingBottom: 14,
+  },
+  detailsDivider: {
+    height: 1,
+    backgroundColor: COLORS.line,
+    marginBottom: 10,
+  },
+  detailLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 6,
+  },
+  detailLabel: {
+    color: COLORS.muted,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  detailValue: {
+    color: COLORS.ink,
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'right',
+    flexShrink: 1,
+  },
+  detailAmount: {
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  expandedNoteBlock: {
+    backgroundColor: dark ? '#202f2a' : '#f7faf8',
+    borderRadius: 10,
+    padding: 11,
+    marginTop: 9,
+  },
+  expandedNoteText: {
+    color: COLORS.ink,
+    fontSize: 11,
+    lineHeight: 18,
+    marginTop: 6,
+  },
+  noNoteText: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontStyle: 'italic',
+    marginTop: 9,
   },
   categoryIcon: {
     width: 43,
@@ -1774,11 +1812,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
-  expenseCategory: {
+  expenseNoteContainer: {
+    marginTop: 5,
+  },
+  expenseNoteLabel: {
     color: COLORS.brand,
+    fontSize: 10,
+    fontWeight: '800',
+    marginBottom: 3,
+  },
+  expenseNote: {
+    color: COLORS.muted,
     fontSize: 11,
-    fontWeight: '700',
-    marginTop: 3,
+    lineHeight: 16,
   },
   expenseMeta: {
     color: COLORS.muted,
@@ -1797,29 +1843,29 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   editButton: {
-    backgroundColor: '#eef0ff',
+    backgroundColor: (dark ? '#2b3155' : '#eef0ff'),
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
   editButtonText: {
-    color: '#3b49df',
+    color: (dark ? '#aab4ff' : '#3b49df'),
     fontSize: 11,
     fontWeight: '700',
   },
   archiveButton: {
-    backgroundColor: '#fff1e8',
+    backgroundColor: (dark ? '#453020' : '#fff1e8'),
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
   archiveButtonText: {
-    color: '#c2410c',
+    color: (dark ? '#ffad70' : '#c2410c'),
     fontSize: 11,
     fontWeight: '700',
   },
   emptyCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 18,
@@ -1828,7 +1874,7 @@ const styles = StyleSheet.create({
   },
   emptySymbol: {
     fontSize: 35,
-    color: '#a8b5ae',
+    color: (dark ? '#9aaba3' : '#a8b5ae'),
     fontWeight: '800',
   },
   emptyTitle: {
@@ -1846,7 +1892,7 @@ const styles = StyleSheet.create({
   },
   clearFiltersButton: {
     marginTop: 14,
-    backgroundColor: '#e6f4f1',
+    backgroundColor: (dark ? '#203d36' : '#e6f4f1'),
     paddingHorizontal: 15,
     paddingVertical: 9,
     borderRadius: 9,
@@ -1874,7 +1920,7 @@ const styles = StyleSheet.create({
   pageButton: {
     width: 34,
     height: 34,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 9,
@@ -1944,7 +1990,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1997,7 +2043,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#fff0ef',
+    backgroundColor: (dark ? '#402725' : '#fff0ef'),
   },
   removeReceiptItemText: {
     color: COLORS.danger,
@@ -2005,7 +2051,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   receiptReview: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 14,
@@ -2086,7 +2132,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   receiptInfoCard: {
-    backgroundColor: '#f7faf8',
+    backgroundColor: (dark ? '#202f2a' : '#f7faf8'),
     borderRadius: 11,
     paddingHorizontal: 12,
     paddingVertical: 4,
@@ -2129,7 +2175,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 11,
@@ -2147,7 +2193,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryChoice: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 11,
@@ -2159,7 +2205,7 @@ const styles = StyleSheet.create({
   },
   categoryChoiceActive: {
     borderColor: COLORS.brand,
-    backgroundColor: '#edf8f5',
+    backgroundColor: (dark ? '#203d36' : '#edf8f5'),
   },
   choiceIcon: {
     width: 34,
@@ -2189,7 +2235,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   methodChip: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 20,
@@ -2206,12 +2252,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   methodTextActive: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontWeight: '800',
   },
   noteInput: {
     minHeight: 85,
     paddingTop: 12,
+  },
+  receiptDetailsInput: {
+    minHeight: 180,
+    lineHeight: 19,
+    paddingVertical: 12,
   },
   characterCount: {
     textAlign: 'right',
@@ -2220,7 +2271,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   budgetCheckCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 12,
@@ -2239,20 +2290,20 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   warningCard: {
-    backgroundColor: '#fff7e8',
+    backgroundColor: (dark ? '#3b3020' : '#fff7e8'),
     borderWidth: 1,
-    borderColor: '#f2d39c',
+    borderColor: (dark ? '#68512b' : '#f2d39c'),
     borderRadius: 12,
     padding: 14,
     marginTop: 14,
   },
   warningTitle: {
-    color: '#92400e',
+    color: (dark ? '#f6c17b' : '#92400e'),
     fontSize: 13,
     fontWeight: '800',
   },
   warningDescription: {
-    color: '#92400e',
+    color: (dark ? '#f6c17b' : '#92400e'),
     fontSize: 11,
     lineHeight: 18,
     marginTop: 7,
@@ -2265,7 +2316,7 @@ const styles = StyleSheet.create({
     marginTop: 13,
   },
   formErrorCard: {
-    backgroundColor: '#fff0ef',
+    backgroundColor: (dark ? '#402725' : '#fff0ef'),
     borderRadius: 10,
     padding: 11,
     marginTop: 13,
@@ -2283,7 +2334,7 @@ const styles = StyleSheet.create({
   cancelButton: {
     borderWidth: 1,
     borderColor: COLORS.line,
-    backgroundColor: '#ffffff',
+    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -2300,7 +2351,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   saveButtonText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 12,
     fontWeight: '800',
   },
@@ -2314,8 +2365,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   recordAnywayText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
     fontSize: 12,
     fontWeight: '800',
   },
-})
+}) }

@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 import React, { useState } from 'react'
 import {
   ActivityIndicator,
@@ -34,7 +35,7 @@ type CategoryRow = {
   name: string
 }
 
-const C = {
+const LIGHT_C = {
   background: '#f6f7f5',
   card: '#ffffff',
   ink: '#14201c',
@@ -42,6 +43,15 @@ const C = {
   line: '#e4e8e5',
   brand: '#0f766e',
 }
+function getC(dark: boolean) { return dark ? {
+  background: '#101a18',
+  card: '#1b2a26',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+} : LIGHT_C }
+
 
 const money = (value: number) =>
   `₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -59,6 +69,11 @@ const htmlText = (value: unknown) =>
   })[character] || character)
 
 export default function ReportExportScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const C = getC(dark)
+  const styles = makeStyles(dark, C)
+
   const { profile } = useAuth()
   const params = useLocalSearchParams<{ format?: string }>()
   const initialFormat = params.format === 'pdf' ? 'pdf' : 'csv'
@@ -262,6 +277,7 @@ export default function ReportExportScreen() {
           <Text style={styles.title}>Export report</Text>
           <Text style={styles.subtitle}>Create a file you can share</Text>
         </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -319,27 +335,24 @@ export default function ReportExportScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  headerText: { flex: 1 },
-  title: { color: C.ink, fontSize: 22, fontWeight: '800' },
-  subtitle: { color: C.muted, fontSize: 13, marginTop: 2 },
-  content: { padding: 16, paddingBottom: 40, gap: 14 },
-  card: {
-    backgroundColor: C.card,
-    borderRadius: 16,
-    padding: 17,
-    borderWidth: 1,
-    borderColor: C.line,
-    gap: 10,
-  },
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      minHeight: 72,
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderBottomWidth: 1,
+      borderBottomColor: dark ? '#30413a' : '#e4e8e5',
+    },
+  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
+  headerSpacer: { width: 44, height: 44 },
+  subtitle: { color: C.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
+  title: { color: C.ink, fontSize: 24, fontWeight: '800', textAlign: 'center' },
   sectionTitle: {
     color: C.ink,
     fontSize: 15,
@@ -357,7 +370,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     flex: 1,
   },
-  optionSelected: { backgroundColor: '#e5f3ef', borderColor: C.brand },
+  optionSelected: { backgroundColor: (dark ? '#203d36' : '#e5f3ef'), borderColor: C.brand },
   optionText: { color: C.muted, fontSize: 13, fontWeight: '600', textAlign: 'center' },
   optionTextSelected: { color: C.brand, fontWeight: '800' },
   description: { color: C.muted, fontSize: 13, lineHeight: 20 },
@@ -368,7 +381,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   disabledButton: { opacity: 0.65 },
-  primaryButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '800' },
+  primaryButtonText: { color: (dark ? '#1b2a26' : '#ffffff'), fontSize: 15, fontWeight: '800' },
   backButton: { alignItems: 'center', padding: 12 },
   backText: { color: C.brand, fontWeight: '700' },
-})
+}) }

@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/context/ThemeContext'
 
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -45,7 +46,7 @@ type Budget = {
 
 type Tab = 'expenses' | 'budgets'
 
-const C = {
+const LIGHT_C = {
   canvas: '#f6f7f5',
   card: '#ffffff',
   ink: '#14201c',
@@ -54,6 +55,16 @@ const C = {
   brand: '#0f766e',
   danger: '#b42318',
 }
+function getC(dark: boolean) { return dark ? {
+  canvas: '#101a18',
+  card: '#1b2a26',
+  ink: '#edf5f1',
+  muted: '#a9b8b1',
+  line: '#30413a',
+  brand: '#55c6b0',
+  danger: '#ff8178',
+} : LIGHT_C }
+
 
 function peso(value: number) {
   return `₱ ${value.toLocaleString('en-PH', {
@@ -79,6 +90,11 @@ function monthLabel(month: number, year: number) {
 }
 
 export default function ArchiveScreen() {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+  const C = getC(dark)
+  const styles = makeStyles(dark, C)
+
   const { profile } = useAuth()
 
   const [tab, setTab] = useState<Tab>('expenses')
@@ -302,7 +318,7 @@ export default function ArchiveScreen() {
 
           {tab === 'expenses' ? (
             expenses.length === 0 ? (
-              <EmptyState message="No archived expenses. Expenses you archive will appear here." />
+              <EmptyState styles={styles} message="No archived expenses. Expenses you archive will appear here." />
             ) : (
               expenses.map((item) => {
                 const category = categoryMap.get(item.category_id)
@@ -335,6 +351,7 @@ export default function ArchiveScreen() {
                     </View>
 
                     <ActionButtons
+                      styles={styles}
                       busy={busyId === item.id}
                       onRestore={() =>
                         confirmAction(
@@ -356,7 +373,7 @@ export default function ArchiveScreen() {
               })
             )
           ) : budgets.length === 0 ? (
-            <EmptyState message="No archived budgets. Budgets you archive will appear here." />
+            <EmptyState styles={styles} message="No archived budgets. Budgets you archive will appear here." />
           ) : (
             budgets.map((item) => {
               const category = categoryMap.get(item.category_id)
@@ -383,6 +400,7 @@ export default function ArchiveScreen() {
                   </View>
 
                   <ActionButtons
+                    styles={styles}
                     busy={busyId === item.id}
                     onRestore={() =>
                       confirmAction(
@@ -409,7 +427,7 @@ export default function ArchiveScreen() {
   )
 }
 
-function EmptyState({ message }: { message: string }) {
+function EmptyState({ message, styles }: { message: string; styles: ReturnType<typeof makeStyles> }) {
   return (
     <View style={styles.empty}>
       <Text style={styles.emptyIcon}>▣</Text>
@@ -420,10 +438,12 @@ function EmptyState({ message }: { message: string }) {
 }
 
 function ActionButtons({
+  styles,
   busy,
   onRestore,
   onDelete,
 }: {
+  styles: ReturnType<typeof makeStyles>
   busy: boolean
   onRestore: () => void
   onDelete: () => void
@@ -451,48 +471,27 @@ function ActionButtons({
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: C.canvas,
   },
   header: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 18,
-    minHeight: 80,
-  },
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      minHeight: 72,
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderBottomWidth: 1,
+      borderBottomColor: dark ? '#30413a' : '#e4e8e5',
+    },
+  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
   headerSpacer: { width: 44, height: 44 },
-  headerText: {
-    position: 'absolute',
-    left: 72,
-    right: 72,
-    alignItems: 'center',
-  },
-  title: {
-    color: C.ink,
-    fontSize: 24,
-    fontWeight: '800',
-   textAlign: 'center' },
-  subtitle: {
-    color: C.muted,
-    fontSize: 13,
-    marginTop: 3,
-   textAlign: 'center' },
-  tabs: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    backgroundColor: C.card,
-    borderRadius: 12,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    padding: 12,
-    alignItems: 'center',
-  },
+  subtitle: { color: C.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
+  title: { color: C.ink, fontSize: 24, fontWeight: '800', textAlign: 'center' },
   activeTab: {
     backgroundColor: C.brand,
     borderRadius: 9,
@@ -502,7 +501,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   activeTabText: {
-    color: '#ffffff',
+    color: (dark ? '#1b2a26' : '#ffffff'),
   },
   center: {
     flex: 1,
@@ -576,14 +575,14 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
   restoreButton: {
-    backgroundColor: '#e0f2ef',
+    backgroundColor: (dark ? '#203d36' : '#e0f2ef'),
   },
   restoreText: {
     color: C.brand,
     fontWeight: '800',
   },
   deleteButton: {
-    backgroundColor: '#fce8e6',
+    backgroundColor: (dark ? '#402725' : '#fce8e6'),
   },
   deleteText: {
     color: C.danger,
@@ -605,4 +604,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-})
+}) }
