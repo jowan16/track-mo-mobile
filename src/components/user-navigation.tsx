@@ -421,3 +421,52 @@ function makeStyles(dark: boolean) {
   },
   })
 }
+
+
+export function UserPageHeader({
+  title,
+  subtitle,
+}: {
+  title: string
+  subtitle: string
+}) {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+
+  return (
+    <View style={{
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      minHeight: 72,
+      backgroundColor: dark ? '#1b2421' : '#ffffff',
+      borderBottomWidth: 1,
+      borderBottomColor: dark ? '#34423c' : '#e4e8e5',
+    }}>
+      <UserMenuButton />
+      <View style={{
+        position: 'absolute',
+        left: 72,
+        right: 72,
+        alignItems: 'center',
+      }}>
+        <Text style={{
+          color: dark ? '#f1f5f3' : '#14201c',
+          fontSize: 24,
+          fontWeight: '800',
+          textAlign: 'center',
+        }} numberOfLines={1}>{title}</Text>
+        <Text style={{
+          color: dark ? '#a0ada7' : '#64716b',
+          fontSize: 12,
+          marginTop: 3,
+          textAlign: 'center',
+        }} numberOfLines={1}>{subtitle}</Text>
+      </View>
+      <View style={{ width: 44, height: 44 }} />
+    </View>
+  )
+}
