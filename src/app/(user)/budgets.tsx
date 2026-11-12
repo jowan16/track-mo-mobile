@@ -512,6 +512,7 @@ export default function BudgetsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <UserPageHeader title="Budgets" subtitle="Manage your monthly spending limits." />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -524,10 +525,6 @@ export default function BudgetsScreen() {
           />
         }
       >
-        {/* HEADER */}
-
-        <UserPageHeader title="Budgets" subtitle="Manage your monthly spending limits." />
-
         {/* MONTH */}
 
         <View style={styles.monthBadge}>
