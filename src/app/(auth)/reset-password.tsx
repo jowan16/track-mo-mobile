@@ -4,9 +4,11 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -25,23 +27,30 @@ export default function ResetPasswordScreen() {
   const [verifying, setVerifying] = useState(true)
   const [verified, setVerified] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [confirmError, setConfirmError] = useState('')
+
+  const hasMinLength = password.length >= 8
+  const hasLetter = /[A-Za-z]/.test(password)
+  const hasNumber = /\\d/.test(password)
+  const passwordIsValid = hasMinLength && hasLetter && hasNumber
+  const passwordsMatch = password.length > 0 && password === confirmPassword
 
   const strength = Math.min(
     100,
-    (password.length >= 8 ? 40 : password.length * 4) +
-      (/[A-Za-z]/.test(password) ? 20 : 0) +
-      (/\d/.test(password) ? 20 : 0) +
+    (hasMinLength ? 40 : password.length * 4) +
+      (hasLetter ? 20 : 0) +
+      (hasNumber ? 20 : 0) +
       (/[^A-Za-z0-9]/.test(password) ? 20 : 0),
   )
   const strengthLabel =
-    strength < 40 ? 'weak' : strength < 80 ? 'fair' : 'strong'
+    strength < 40 ? 'Weak' : strength < 80 ? 'Fair' : 'Strong'
 
   useEffect(() => {
     let mounted = true
 
     const verifyResetLink = async (incomingCode?: string) => {
-      if (hasExchangedCode.current) return
-      if (!incomingCode) return
+      if (hasExchangedCode.current || !incomingCode) return
 
       hasExchangedCode.current = true
 
@@ -100,32 +109,64 @@ export default function ResetPasswordScreen() {
     }
   }, [code])
 
+  const handlePasswordChange = (value: string) => {
+    setPassword(value)
+    setPasswordError(
+      value.length > 0 && value.length < 8
+        ? 'Password must contain at least 8 characters.'
+        : value.length > 0 && !/[A-Za-z]/.test(value)
+          ? 'Include at least one letter.'
+          : value.length > 0 && !/\\d/.test(value)
+            ? 'Include at least one number.'
+            : '',
+    )
+
+    if (confirmPassword && value !== confirmPassword) {
+      setConfirmError('Passwords do not match.')
+    } else {
+      setConfirmError('')
+    }
+  }
+
+  const handleConfirmChange = (value: string) => {
+    setConfirmPassword(value)
+    setConfirmError(
+      value.length > 0 && value !== password ? 'Passwords do not match.' : '',
+    )
+  }
+
   const handleUpdatePassword = async () => {
-    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-      Alert.alert(
-        'Invalid password',
-        'Password must be at least 8 characters and include a letter and a number.',
+    Keyboard.dismiss()
+    let hasError = false
+
+    if (!password) {
+      setPasswordError('Please enter a new password.')
+      hasError = true
+    } else if (!passwordIsValid) {
+      setPasswordError(
+        'Use at least 8 characters, including at least one letter and one number.',
       )
-      return
+      hasError = true
+    } else {
+      setPasswordError('')
     }
 
     if (!confirmPassword) {
-      Alert.alert('Missing confirmation', 'Please confirm your password.')
-      return
+      setConfirmError('Please confirm your new password.')
+      hasError = true
+    } else if (password !== confirmPassword) {
+      setConfirmError('Passwords do not match.')
+      hasError = true
+    } else {
+      setConfirmError('')
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Password mismatch', 'Passwords do not match.')
-      return
-    }
+    if (hasError || saving) return
 
     try {
       setSaving(true)
 
-      const { error } = await supabase.auth.updateUser({
-        password,
-      })
-
+      const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
 
       await supabase.auth.signOut()
@@ -155,7 +196,7 @@ export default function ResetPasswordScreen() {
   if (verifying) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#5EEAD4" />
         <Text style={styles.loadingText}>Verifying reset link...</Text>
       </View>
     )
@@ -187,75 +228,124 @@ export default function ResetPasswordScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.card}>
-        <Text style={styles.logo}>Track Mo, Pake Ko!</Text>
-        <Text style={styles.title}>Create a New Password</Text>
-        <Text style={styles.description}>
-          Enter your new password below.
-        </Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.brand}>
+          <View style={styles.brandIcon}>
+            <Text style={styles.brandIconText}>₱</Text>
+          </View>
+          <Text style={styles.brandName}>Track Mo, Pake Ko!</Text>
+          <Text style={styles.brandTagline}>Your money. Your control.</Text>
+        </View>
 
-        <Text style={styles.label}>New password</Text>
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.passwordInput}
-            placeholder="At least 8 characters"
-            placeholderTextColor="#9CA3AF"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            editable={!saving}
-          />
+        <View style={styles.card}>
+          <Text style={styles.title}>Create a new password</Text>
+          <Text style={styles.description}>
+            Choose a strong password to keep your account secure.
+          </Text>
+
+          <Text style={styles.label}>New password</Text>
+          <View style={[styles.passwordContainer, passwordError ? styles.inputInvalid : null]}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="At least 8 characters"
+              placeholderTextColor="#94A3B8"
+              value={password}
+              onChangeText={handlePasswordChange}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!saving}
+              returnKeyType="next"
+            />
+            <Pressable
+              onPress={() => setShowPassword((previous) => !previous)}
+              disabled={saving}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+            >
+              <Text style={styles.showPassword}>{showPassword ? 'Hide' : 'Show'}</Text>
+            </Pressable>
+          </View>
+          {passwordError ? <Text style={styles.fieldError}>{passwordError}</Text> : null}
+
+          <View style={styles.strengthContainer}>
+            <View style={styles.strengthTrack}>
+              <View
+                style={[
+                  styles.strengthFill,
+                  {
+                    width: `${strength}%`,
+                    backgroundColor: strength < 60 ? '#B42318' : '#0F8A72',
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.strengthText}>
+              Password strength: {password ? strengthLabel : 'Not entered'}
+            </Text>
+          </View>
+
+          <View style={styles.requirements}>
+            <Text style={[styles.requirement, hasMinLength && styles.requirementMet]}>
+              {hasMinLength ? '✓' : '○'} At least 8 characters
+            </Text>
+            <Text style={[styles.requirement, hasLetter && styles.requirementMet]}>
+              {hasLetter ? '✓' : '○'} At least one letter
+            </Text>
+            <Text style={[styles.requirement, hasNumber && styles.requirementMet]}>
+              {hasNumber ? '✓' : '○'} At least one number
+            </Text>
+          </View>
+
+          <Text style={styles.label}>Confirm new password</Text>
+          <View style={[styles.passwordContainer, confirmError ? styles.inputInvalid : null]}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Re-enter your new password"
+              placeholderTextColor="#94A3B8"
+              value={confirmPassword}
+              onChangeText={handleConfirmChange}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!saving}
+              returnKeyType="done"
+              onSubmitEditing={handleUpdatePassword}
+            />
+            <Pressable
+              onPress={() => setShowPassword((previous) => !previous)}
+              disabled={saving}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+            >
+              <Text style={styles.showPassword}>{showPassword ? 'Hide' : 'Show'}</Text>
+            </Pressable>
+          </View>
+          {confirmError ? <Text style={styles.fieldError}>{confirmError}</Text> : null}
+          {confirmPassword && passwordsMatch ? (
+            <Text style={styles.matchText}>✓ Passwords match</Text>
+          ) : null}
 
           <Pressable
-            onPress={() => setShowPassword(!showPassword)}
+            style={[styles.button, saving && styles.disabledButton]}
+            onPress={handleUpdatePassword}
             disabled={saving}
           >
-            <Text style={styles.showPassword}>
-              {showPassword ? 'Hide' : 'Show'}
-            </Text>
+            {saving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>Update Password</Text>
+            )}
           </Pressable>
         </View>
 
-        <View style={styles.strengthContainer}>
-          <View style={styles.strengthTrack}>
-            <View
-              style={[
-                styles.strengthFill,
-                {
-                  width: `${strength}%`,
-                  backgroundColor: strength < 60 ? '#B42318' : '#0F766E',
-                },
-              ]}
-            />
-          </View>
-          <Text style={styles.strengthText}>Strength: {strengthLabel}</Text>
-        </View>
-
-        <Text style={styles.label}>Confirm new password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Re-enter your new password"
-          placeholderTextColor="#9CA3AF"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry={!showPassword}
-          autoCapitalize="none"
-          editable={!saving}
-        />
-
-        <Pressable
-          style={[styles.button, saving && styles.disabledButton]}
-          onPress={handleUpdatePassword}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>Update Password</Text>
-          )}
-        </Pressable>
-      </View>
+        <Text style={styles.footer}>Track your expenses. Manage your budget. Stay in control.</Text>
+      </ScrollView>
     </KeyboardAvoidingView>
   )
 }
@@ -263,55 +353,117 @@ export default function ResetPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0A211C',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    padding: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 36,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0A211C',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: '#64748B',
+    color: '#B7CEC6',
     marginTop: 14,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  brand: {
+    alignItems: 'center',
+    marginBottom: 26,
   },
-  logo: {
-    fontSize: 22,
+  brandIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 15,
+    backgroundColor: '#5EEAD4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  brandIconText: {
+    color: '#0A211C',
+    fontSize: 26,
+    fontWeight: '900',
+  },
+  brandName: {
+    color: '#FFFFFF',
+    fontSize: 23,
     fontWeight: '800',
-    color: '#2563EB',
-    textAlign: 'center',
-    marginBottom: 24,
+  },
+  brandTagline: {
+    color: '#B7CEC6',
+    fontSize: 13,
+    marginTop: 6,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 460,
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: '#DCE8E3',
   },
   title: {
-    fontSize: 24,
+    color: '#10231D',
+    fontSize: 22,
     fontWeight: '800',
-    color: '#0F172A',
+    textAlign: 'center',
   },
   description: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 8,
+    color: '#64776F',
+    fontSize: 13,
+    marginTop: 7,
     marginBottom: 24,
-    lineHeight: 21,
+    lineHeight: 19,
+    textAlign: 'center',
   },
   label: {
+    color: '#334B41',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 7,
+  },
+  passwordContainer: {
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD8D1',
+    borderRadius: 11,
+    paddingHorizontal: 12,
+    marginBottom: 17,
+    backgroundColor: '#FFFFFF',
+  },
+  inputInvalid: {
+    borderColor: '#DC2626',
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    color: '#10231D',
     fontSize: 14,
-    fontWeight: '600',
-    color: '#334155',
-    marginBottom: 8,
+  },
+  showPassword: {
+    color: '#0F766E',
+    fontSize: 12,
+    fontWeight: '700',
+    paddingLeft: 8,
+  },
+  fieldError: {
+    color: '#DC2626',
+    fontSize: 12,
+    marginTop: -11,
+    marginBottom: 13,
   },
   strengthContainer: {
-    marginTop: -10,
-    marginBottom: 18,
+    marginTop: -5,
+    marginBottom: 12,
   },
   strengthTrack: {
     height: 7,
@@ -324,47 +476,44 @@ const styles = StyleSheet.create({
     borderRadius: 99,
   },
   strengthText: {
-    color: '#64748B',
+    color: '#64776F',
+    fontSize: 11,
+    marginTop: 6,
+  },
+  requirements: {
+    backgroundColor: '#F5F8F6',
+    borderRadius: 10,
+    padding: 11,
+    marginBottom: 20,
+    gap: 6,
+  },
+  requirement: {
+    color: '#718078',
     fontSize: 12,
-    marginTop: 5,
   },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: '#0F172A',
-    marginBottom: 20,
+  requirementMet: {
+    color: '#0F766E',
+    fontWeight: '700',
   },
-  passwordContainer: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  passwordInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#0F172A',
-  },
-  showPassword: {
-    color: '#2563EB',
-    fontWeight: '600',
-    paddingLeft: 10,
+  matchText: {
+    color: '#0F766E',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: -10,
+    marginBottom: 14,
   },
   button: {
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: '#2563EB',
+    height: 50,
+    borderRadius: 11,
+    backgroundColor: '#0F8A72',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
+    shadowColor: '#064E3B',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   disabledButton: {
     opacity: 0.7,
@@ -372,6 +521,13 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+  footer: {
+    color: '#A8BDB4',
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 22,
+    lineHeight: 17,
   },
 })
