@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 
@@ -276,14 +276,7 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <UserMenuButton />
-        <View style={styles.headerText}>
-          <Text style={styles.brand}>Reports</Text>
-          <Text style={styles.subtitle}>Understand where your money goes.</Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      <UserPageHeader title="Reports" subtitle="Understand where your money goes." />
 
       <ScrollView
         contentContainerStyle={styles.content}
