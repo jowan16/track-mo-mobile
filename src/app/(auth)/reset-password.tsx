@@ -142,7 +142,8 @@ export default function ResetPasswordScreen() {
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
 
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'local' })
+      router.replace('/(auth)/login')
 
       Alert.alert(
         'Password updated',
@@ -178,20 +179,47 @@ export default function ResetPasswordScreen() {
   if (!verified) {
     return (
       <View style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Invalid or expired link</Text>
-          <Text style={styles.description}>
-            This password reset link is invalid or has expired. Request a new
-            password reset email to continue.
-          </Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.brand}>
+            <View style={styles.brandIcon}>
+              <Text style={styles.brandIconText}>₱</Text>
+            </View>
+            <Text style={styles.brandName}>Track Mo, Pake Ko!</Text>
+            <Text style={styles.brandTagline}>Your money. Your control.</Text>
+          </View>
 
-          <Pressable
-            style={styles.button}
-            onPress={() => router.replace('/(auth)/forgot-password')}
-          >
-            <Text style={styles.buttonText}>Request a New Link</Text>
-          </Pressable>
-        </View>
+          <View style={styles.card}>
+            <View style={styles.statusIcon}>
+              <Text style={styles.statusIconText}>!</Text>
+            </View>
+            <Text style={styles.title}>Invalid or expired link</Text>
+            <Text style={styles.description}>
+              This password reset link is invalid or has expired. Request a
+              new password reset email to continue.
+            </Text>
+
+            <Pressable
+              style={styles.button}
+              onPress={() => router.replace('/(auth)/forgot-password')}
+            >
+              <Text style={styles.buttonText}>Request a New Link</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={() => router.replace('/(auth)/login')}
+            >
+              <Text style={styles.secondaryButtonText}>Back to Log in</Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.footer}>
+            Track your expenses. Manage your budget. Stay in control.
+          </Text>
+        </ScrollView>
       </View>
     )
   }
@@ -412,6 +440,23 @@ const styles = StyleSheet.create({
     marginTop: -10,
     marginBottom: 14,
   },
+  statusIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    marginBottom: 16,
+  },
+  statusIconText: {
+    color: '#B91C1C',
+    fontSize: 30,
+    fontWeight: '800',
+  },
   button: {
     height: 50,
     borderRadius: 11,
@@ -424,6 +469,20 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
+  },
+  secondaryButton: {
+    height: 46,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#C7D8D0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  secondaryButtonText: {
+    color: '#0F766E',
+    fontSize: 14,
+    fontWeight: '700',
   },
   disabledButton: {
     opacity: 0.7,
