@@ -107,7 +107,7 @@ export default function Financial2048Screen() {
   const { resolvedTheme } = useAppTheme()
   const dark = resolvedTheme === 'dark'
   const C = getC(dark)
-  const styles = makeStyles(C)
+  const styles = makeStyles(C, dark)
   const [board, setBoard] = useState<Board>(() => newGame())
   const [score, setScore] = useState(0)
   const [best, setBest] = useState(0)
@@ -233,7 +233,7 @@ function getC(dark: boolean) {
   }
 }
 
-function makeStyles(C: ReturnType<typeof getC>) {
+function makeStyles(C: ReturnType<typeof getC>, dark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
     header: {
