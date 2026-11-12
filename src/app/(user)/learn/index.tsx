@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native'
 import { router } from 'expo-router'
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
 import { supabase } from '@/services/supabase'
 
 type Lesson = {
@@ -85,14 +85,7 @@ export default function LearnHubScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <UserMenuButton />
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Financial Literacy</Text>
-          <Text style={styles.subtitle}>Learn to make better money decisions</Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      <UserPageHeader title="Financial Literacy" subtitle="Learn to make better money decisions" />
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
