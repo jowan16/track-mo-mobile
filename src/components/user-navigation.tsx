@@ -182,6 +182,7 @@ export function UserDrawerProvider({
                     styles.menuItem,
                     item.label === 'Dashboard' && styles.activeMenuItem,
                     pressed && styles.menuItemPressed,
+                    item.label === 'Archive' && pressed && styles.archivePressed,
                   ]}
                   onPress={() =>
                     handleMenuPress(item.label, item.path, item.available)
@@ -192,6 +193,7 @@ export function UserDrawerProvider({
                     style={[
                       styles.menuIcon,
                       item.label === 'Dashboard' && styles.activeMenuIcon,
+                      item.label === 'Archive' && styles.archivePressedText,
                     ]}
                   >
                     {item.icon}
@@ -200,6 +202,7 @@ export function UserDrawerProvider({
                     style={[
                       styles.menuText,
                       item.label === 'Dashboard' && styles.activeMenuText,
+                      item.label === 'Archive' && styles.archivePressedText,
                     ]}
                   >
                     {item.label}
@@ -350,6 +353,12 @@ function makeStyles(dark: boolean) {
   },
   menuItemPressed: {
     backgroundColor: palette.subtle,
+  },
+  archivePressed: {
+    backgroundColor: '#0f766e',
+  },
+  archivePressedText: {
+    color: '#ffffff',
   },
   menuIcon: {
     width: 30,
