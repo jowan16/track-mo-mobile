@@ -499,14 +499,9 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     borderRadius: 10,
   },
   activeTab: {
-    backgroundColor: C.card,
+    backgroundColor: C.brand,
     borderWidth: 1,
-    borderColor: C.line,
-    shadowColor: '#000000',
-    shadowOpacity: dark ? 0 : 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: dark ? 0 : 1,
+    borderColor: C.brand,
   },
   tabIcon: {
     color: C.muted,
@@ -514,7 +509,7 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     fontWeight: '800',
   },
   activeTabIcon: {
-    color: C.brand,
+    color: '#ffffff',
   },
   tabText: {
     color: C.muted,
@@ -522,7 +517,7 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     fontWeight: '700',
   },
   activeTabText: {
-    color: C.ink,
+    color: '#ffffff',
   },
   tabCount: {
     minWidth: 22,
@@ -534,7 +529,7 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     backgroundColor: dark ? '#30413a' : '#dce5e0',
   },
   activeTabCount: {
-    backgroundColor: dark ? '#24483f' : '#d9f1eb',
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   tabCountText: {
     color: C.muted,
@@ -542,7 +537,7 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     fontWeight: '800',
   },
   activeTabCountText: {
-    color: C.brand,
+    color: '#ffffff',
   },
   center: {
     flex: 1,
