@@ -194,9 +194,6 @@ export default function LoginScreen() {
 
         <View style={styles.card}>
           <View style={styles.headingRow}>
-            <View style={styles.headingIcon}>
-              <Text style={styles.headingIconText}>₱</Text>
-            </View>
             <View style={styles.headingCopy}>
               <Text style={styles.heading}>Welcome back</Text>
               <Text style={styles.description}>
@@ -359,37 +356,25 @@ const styles = StyleSheet.create({
     borderColor: '#DCE8E3',
   },
   headingRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     marginBottom: 24,
   },
-  headingIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 13,
-    backgroundColor: '#CCFBF1',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headingIconText: {
-    color: '#0F766E',
-    fontSize: 24,
-    fontWeight: '900',
-  },
   headingCopy: {
-    flex: 1,
+    width: '100%',
+    alignItems: 'center',
   },
   heading: {
     color: '#10231D',
     fontSize: 22,
     fontWeight: '800',
+    textAlign: 'center',
   },
   description: {
     color: '#64776F',
     fontSize: 12,
     marginTop: 4,
     lineHeight: 18,
+    textAlign: 'center',
   },
   banner: {
     backgroundColor: '#FEF2F2',
