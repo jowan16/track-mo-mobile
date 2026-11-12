@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
 
 // --------------------------------------------------
 // TYPES
@@ -568,6 +568,7 @@ export default function UserDashboard() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <UserPageHeader title="Track Mo, Pake Ko!" subtitle="Your personal finance overview" />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -580,19 +581,6 @@ export default function UserDashboard() {
           />
         }
       >
-        {/* HEADER */}
-
-        <View style={styles.header}>
-          <UserMenuButton />
-
-          <View style={styles.headerText}>
-            <Text style={styles.brandName} numberOfLines={1}>
-              Track Mo, Pake Ko!
-            </Text>
-          </View>
-          <View style={styles.headerSpacer} />
-        </View>
-
         {/* WELCOME PANEL */}
 
         <LinearGradient

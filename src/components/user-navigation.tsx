@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native'
-import { router } from 'expo-router'
+import { router, usePathname } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { useAppTheme } from '@/context/ThemeContext'
 
@@ -36,6 +36,7 @@ export function UserDrawerProvider({
 }) {
   const [visible, setVisible] = useState(false)
   const { profile, signOut } = useAuth()
+  const pathname = usePathname()
   const { resolvedTheme } = useAppTheme()
   const styles = makeStyles(resolvedTheme === 'dark')
 
@@ -44,6 +45,13 @@ export function UserDrawerProvider({
   const navigate = (path: string) => {
     closeDrawer()
     router.push(path as any)
+  }
+
+  const isMenuItemActive = (path: string) => {
+    const target = path.replace('/(user)', '')
+    const current = pathname.replace('/(user)', '') || '/'
+    if (!target || target === '/') return current === '/'
+    return current === target || current.startsWith(`${target}/`)
   }
 
   const handleMenuPress = (label: string, path: string, available: boolean) => {
@@ -180,7 +188,7 @@ export function UserDrawerProvider({
                   key={item.label}
                   style={({ pressed }) => [
                     styles.menuItem,
-                    item.label === 'Dashboard' && styles.activeMenuItem,
+                    isMenuItemActive(item.path) && styles.activeMenuItem,
                     pressed && styles.menuItemPressed,
                   ]}
                   onPress={() =>
@@ -191,7 +199,7 @@ export function UserDrawerProvider({
                   <Text
                     style={[
                       styles.menuIcon,
-                      item.label === 'Dashboard' && styles.activeMenuIcon,
+                      isMenuItemActive(item.path) && styles.activeMenuIcon,
                     ]}
                   >
                     {item.icon}
@@ -199,7 +207,7 @@ export function UserDrawerProvider({
                   <Text
                     style={[
                       styles.menuText,
-                      item.label === 'Dashboard' && styles.activeMenuText,
+                      isMenuItemActive(item.path) && styles.activeMenuText,
                     ]}
                   >
                     {item.label}
@@ -420,4 +428,53 @@ function makeStyles(dark: boolean) {
     fontWeight: '800',
   },
   })
+}
+
+
+export function UserPageHeader({
+  title,
+  subtitle,
+}: {
+  title: string
+  subtitle: string
+}) {
+  const { resolvedTheme } = useAppTheme()
+  const dark = resolvedTheme === 'dark'
+
+  return (
+    <View style={{
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      minHeight: 72,
+      backgroundColor: dark ? '#1b2421' : '#ffffff',
+      borderBottomWidth: 1,
+      borderBottomColor: dark ? '#34423c' : '#e4e8e5',
+    }}>
+      <UserMenuButton />
+      <View style={{
+        position: 'absolute',
+        left: 72,
+        right: 72,
+        alignItems: 'center',
+      }}>
+        <Text style={{
+          color: dark ? '#f1f5f3' : '#14201c',
+          fontSize: 24,
+          fontWeight: '800',
+          textAlign: 'center',
+        }} numberOfLines={1}>{title}</Text>
+        <Text style={{
+          color: dark ? '#a0ada7' : '#64716b',
+          fontSize: 12,
+          marginTop: 3,
+          textAlign: 'center',
+        }} numberOfLines={1}>{subtitle}</Text>
+      </View>
+      <View style={{ width: 44, height: 44 }} />
+    </View>
+  )
 }

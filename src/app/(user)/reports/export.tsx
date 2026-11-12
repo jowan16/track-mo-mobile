@@ -14,7 +14,7 @@ import { useLocalSearchParams, router } from 'expo-router'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Print from 'expo-print'
 import * as Sharing from 'expo-sharing'
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 
@@ -271,14 +271,7 @@ export default function ReportExportScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <UserMenuButton />
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Export report</Text>
-          <Text style={styles.subtitle}>Create a file you can share</Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      <UserPageHeader title="Export report" subtitle="Create a file you can share" />
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>

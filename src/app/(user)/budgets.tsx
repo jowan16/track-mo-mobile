@@ -16,7 +16,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 
@@ -512,6 +512,7 @@ export default function BudgetsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <UserPageHeader title="Budgets" subtitle="Manage your monthly spending limits." />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -524,20 +525,6 @@ export default function BudgetsScreen() {
           />
         }
       >
-        {/* HEADER */}
-
-        <View style={styles.header}>
-          <UserMenuButton />
-          <View style={styles.headerText}>
-            <Text style={styles.pageTitle}>Budgets</Text>
-            <Text style={styles.pageSubtitle}>
-              Manage your monthly spending limits.
-            </Text>
-          </View>
-
-          <View style={styles.headerSpacer} />
-        </View>
-
         {/* MONTH */}
 
         <View style={styles.monthBadge}>
@@ -650,10 +637,13 @@ export default function BudgetsScreen() {
                   ? (categorySpent / budget.amount) * 100
                   : 0
 
+              const show100Warning = percent >= 100 && !!profile?.warn_100
+              const show80Warning = percent >= 80 && !!profile?.warn_80
+
               const progressColor =
-                percent >= 100
+                show100Warning
                   ? COLORS.danger
-                  : percent >= 80
+                  : show80Warning
                     ? COLORS.orange
                     : COLORS.brand
 
@@ -717,17 +707,19 @@ export default function BudgetsScreen() {
                     />
                   </View>
 
-                  {percent >= 100 ? (
+                  {show100Warning ? (
                     <Text style={styles.dangerAlert}>
                       Over budget
                     </Text>
-                  ) : percent >= 80 ? (
+                  ) : show80Warning ? (
                     <Text style={styles.warningAlert}>
                       Alert at 80% reached
                     </Text>
                   ) : (
                     <Text style={styles.normalAlert}>
-                      Within budget
+                      {profile?.warn_80 || profile?.warn_100
+                        ? 'Within budget'
+                        : 'Budget alerts are turned off'}
                     </Text>
                   )}
 

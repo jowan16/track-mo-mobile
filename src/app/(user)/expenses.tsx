@@ -70,7 +70,7 @@ type ExpenseForm = {
 const METHODS = ['Cash', 'E-wallet', 'Card', 'Bank transfer']
 const PAGE_SIZE = 10
 
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
 
 const LIGHT_COLORS = {
   canvas: '#f6f7f5',
@@ -788,6 +788,7 @@ export default function ExpensesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <UserPageHeader title="Expenses" subtitle="Keep track of your spending and transactions." />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -800,20 +801,6 @@ export default function ExpensesScreen() {
           />
         }
       >
-        {/* HEADER */}
-
-        <View style={styles.header}>
-          <UserMenuButton />
-          <View style={styles.headerText}>
-            <Text style={styles.pageTitle}>Expenses</Text>
-            <Text style={styles.pageSubtitle}>
-              Keep track of your spending and transactions.
-            </Text>
-          </View>
-
-          <View style={styles.headerSpacer} />
-        </View>
-
         {/* EXPENSE ACTIONS */}
 
         <View style={styles.expenseActions}>

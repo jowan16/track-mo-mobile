@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
 import { useAppTheme, type ThemePreference } from '@/context/ThemeContext'
 import { supabase } from '@/services/supabase'
@@ -242,14 +242,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <View style={styles.header}>
-        <UserMenuButton />
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>Manage your account and preferences</Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      <UserPageHeader title="Settings" subtitle="Manage your account and preferences" />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -414,7 +407,7 @@ export default function SettingsScreen() {
           <Section title="NOTIFICATIONS">
             <PreferenceSwitch
               title="Email Budget Alerts"
-              description="Receive budget notifications through email."
+              description="Master switch for all budget-warning emails. Turn this off to stop 80% and 100% email alerts."
               value={profile.email_alerts}
               onValueChange={(value) =>
                 handleNotificationChange('email_alerts', value)}
@@ -424,7 +417,7 @@ export default function SettingsScreen() {
 
             <PreferenceSwitch
               title="80% Budget Warning"
-              description="Get notified when spending reaches 80% of a budget."
+              description="Show the 80% warning in each category and allow its email alert when Email Budget Alerts is on."
               value={profile.warn_80}
               onValueChange={(value) =>
                 handleNotificationChange('warn_80', value)}
@@ -434,7 +427,7 @@ export default function SettingsScreen() {
 
             <PreferenceSwitch
               title="100% Budget Warning"
-              description="Get notified when a budget is fully used."
+              description="Show the 100% warning in each category and allow its email alert when Email Budget Alerts is on."
               value={profile.warn_100}
               onValueChange={(value) =>
                 handleNotificationChange('warn_100', value)}
