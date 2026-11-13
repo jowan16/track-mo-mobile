@@ -81,19 +81,8 @@ export function AdminShell({
             <Text style={styles.brand} numberOfLines={1}>Track Mo, Pake Ko!</Text>
             <Text style={styles.brandSubtitle}>Administration</Text>
           </View>
-          <Pressable
-            style={styles.signOutButton}
-            onPress={confirmSignOut}
-            disabled={signingOut}
-          >
-            <Text style={styles.signOutText}>
-              {signingOut ? 'Signing out…' : 'Sign out'}
-            </Text>
-          </Pressable>
+          <View style={styles.headerSpacer} />
         </View>
-        <Text style={styles.adminName}>
-          {profile?.full_name || profile?.email || 'Administrator'}
-        </Text>
       </View>
 
       <ScrollView
@@ -235,22 +224,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuButtonText: { color: adminColors.primary, fontSize: 22, fontWeight: '800' },
-  brandText: { flex: 1 },
-  brand: { color: adminColors.text, fontSize: 15, fontWeight: '900' },
-  brandSubtitle: { color: adminColors.muted, fontSize: 10, marginTop: 2 },
-  signOutButton: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 9,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
-  },
-  signOutText: { color: adminColors.danger, fontSize: 11, fontWeight: '800' },
-  adminName: {
-    color: adminColors.muted,
-    fontSize: 11,
-    paddingHorizontal: 16,
-    paddingTop: 9,
-  },
+  brandText: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  brand: { color: adminColors.text, fontSize: 15, fontWeight: '900', textAlign: 'center' },
+  brandSubtitle: { color: adminColors.muted, fontSize: 10, marginTop: 2, textAlign: 'center' },
+  headerSpacer: { width: 42, height: 42 },
   body: { flex: 1 },
   bodyContent: { padding: 16, paddingBottom: 36, gap: 15 },
   pageHeading: { marginBottom: 1 },
