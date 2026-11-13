@@ -210,17 +210,75 @@ export const parseReceiptText = (text: string): ParsedReceipt => {
     : ''
   const categoryText = (merchant_name + ' ' + items.map((item) => item.item_name).join(' ') + ' ' + full).toLowerCase()
 
-  // Classify from merchant and purchased items, using the same category names
-  // that are available in the expense category picker.
-  const suggestedCategory =
-    /\b(pharmacy|drugstore|drug\s+store|medicine|medicines|medical|pharmaceutical|watsons|mercury\s+drug|la\s+nueva|tablet|tablets|capsule|capsules)\b/i.test(categoryText) ? 'Medicine'
-    : /\b(rent|rental|landlord|lease|apartment rent|house rent|boarding house|dormitory fee)\b/i.test(categoryText) ? 'Rent'
-    : /\b(electricity|electric bill|water bill|utility bill|utilities|internet bill|broadband|wifi bill|telephone bill|converge|pldt|globe at home|maynilad|manila water|meralco)\b/i.test(categoryText) ? 'Bills & Utilities'
-    : /\b(gasoline|diesel|fuel|jeepney|jeep|bus fare|bus ticket|train ticket|airline ticket|flight ticket|taxi|grab ride|angkas|joyride|tricycle|fare|toll|parking fee|transport|commute)\b/i.test(categoryText) ? 'Transportation'
-    : /\b(clothing|apparel|shirt|shirts|pants|jeans|shoes|sneakers|dress|blouse|jacket|fashion|department store|sm store|uniqlo|penshoppe|bench|h\s*&\s*m|zara|school supplies|notebook|stationery|shopping)\b/i.test(categoryText) ? 'Shopping'
-    : /\b(cinema|movie|movies|film|concert|amusement|theme park|arcade|bowling|karaoke|netflix|spotify|disney\+|youtube premium|subscription|video game|gaming|entertainment|ticket)\b/i.test(categoryText) ? 'Entertainment'
-    : /\b(supermarket|grocery|groceries|puregold|savemore|alfamart|robinsons supermarket|metro supermarket|gaisano supermarket|bottled water|drinking water|water gallon|purified water|rice|milk|bread|eggs|vegetable|meat|fish|market|restaurant|cafe|coffee|fast food|foodpanda|grabfood|jollibee|mcdonald|mang inasal|chowking|food|meal|snack|bakery)\b/i.test(categoryText) ? 'Food & Water'
-    : 'Others'
+  // Score the complete OCR text instead of stopping at the first broad
+  // keyword. This avoids words such as "ticket" or "store" overriding the
+  // actual products and merchant on a receipt.
+  const categoryRules: Array<{ name: string; patterns: RegExp[]; merchantPatterns?: RegExp[] }> = [
+    {
+      name: 'Medicine',
+      patterns: [
+        /\\b(pharmacy|drugstore|drug\\s+store|medicine|medicines|medical|pharmaceutical|tablet|tablets|capsule|capsules|prescription|vitamins|paracetamol|biogesic|neozep|medication)\\b/gi,
+      ],
+      merchantPatterns: [/\\b(watsons|mercury\\s+drug|southstar\\s+drug|generika|tgp|rose\\s+pharmacy|medexpress|la\\s+nueva)\\b/gi],
+    },
+    {
+      name: 'Rent',
+      patterns: [
+        /\\b(rent|rental|landlord|lease|apartment\\s+rent|house\\s+rent|boarding\\s+house|dormitory\\s+fee|monthly\\s+rent)\\b/gi,
+      ],
+    },
+    {
+      name: 'Bills & Utilities',
+      patterns: [
+        /\\b(electricity|electric\\s+bill|water\\s+bill|utility\\s+bill|utilities|internet\\s+bill|broadband|wifi\\s+bill|telephone\\s+bill|converge|pldt|globe\\s+at\\s+home|maynilad|manila\\s+water|meralco|bill\\s+payment)\\b/gi,
+      ],
+    },
+    {
+      name: 'Transportation',
+      patterns: [
+        /\\b(gasoline|diesel|fuel|jeepney|jeep|bus\\s+fare|bus\\s+ticket|train\\s+ticket|airline\\s+ticket|flight\\s+ticket|taxi|grab\\s+ride|angkas|joyride|tricycle|fare|toll|parking\\s+fee|transport|commute|petron|shell|caltex|seaoil|phoenix\\s+petroleum)\\b/gi,
+      ],
+    },
+    {
+      name: 'Shopping',
+      patterns: [
+        /\\b(clothing|apparel|shirt|shirts|pants|jeans|shoes|sneakers|dress|blouse|jacket|fashion|department\\s+store|uniqlo|penshoppe|bench|h\\s*&\\s*m|zara|mr\\s+ diy|national\\s+book\\s+store|school\\s+supplies|notebook|stationery|hardware|appliance|shopping)\\b/gi,
+      ],
+      merchantPatterns: [/\\b(sm\\s+store|uniqlo|penshoppe|bench|mr\\s*\\.?\\s*diy|h\\s*&\\s*m|zara|national\\s+book\\s+store)\\b/gi],
+    },
+    {
+      name: 'Entertainment',
+      patterns: [
+        /\\b(cinema|movie|movies|film|concert|amusement|theme\\s+park|arcade|bowling|karaoke|netflix|spotify|disney\\+|youtube\\s+premium|subscription|video\\s+game|gaming|entertainment)\\b/gi,
+      ],
+      merchantPatterns: [/\\b(cinema\\s+.*|sm\\s+cinema| ayala\\s+cinemas|ticketnet|ticketworld)\\b/gi],
+    },
+    {
+      name: 'Food & Water',
+      patterns: [
+        /\\b(supermarket|grocery|groceries|sari[- ]?sari|puregold|savemore|alfamart|robinsons\\s+(?:supermarket|easy)|metro\\s+supermarket|gaisano|bottled\\s+water|drinking\\s+water|water\\s+gallon|purified\\s+water|rice|mil[k|o]|bread|eggs|vegetable|vegetables|meat|pork|beef|chicken|fish|seafood|fruit|fruits|noodles|instant\\s+noodles|canned\\s+goods|grocery\\s+items|market|restaurant|cafe|coffee|fast\\s+food|foodpanda|grabfood|jollibee|mcdonald'?s?|mang\\s+inasal|chowking|greenwich|kfc|pizza\\s+hut|burger\\s+king|wendy'?s|potato\\s+corner|7[- ]?eleven|ministop|lawson|food|meal|snack|bakery|panaderia|carinderia|canteen|milk\\s+tea|milkshake|soft\\s+drink|coke|pepsi|nestle|nido|milo|piattos|skyflakes|fita|oishi)\\b/gi,
+      ],
+      merchantPatterns: [/\\b(jollibee|mcdonald'?s?|mang\\s+inasal|chowking|greenwich|kfc|pizza\\s+hut|burger\\s+king|puregold|savemore|alfamart|robinsons\\s+supermarket|metro\\s+supermarket|gaisano|7[- ]?eleven|lawson)\\b/gi],
+    },
+  ]
+
+  const countMatches = (text: string, patterns: RegExp[]) =>
+    patterns.reduce((total, pattern) => total + [...text.matchAll(pattern)].length, 0)
+
+  const scoredCategories = categoryRules.map((rule) => ({
+    name: rule.name,
+    // Merchant names are stronger evidence than generic words elsewhere
+    // in the receipt (for example, a supermarket selling school supplies).
+    score:
+      countMatches(merchant_name.toLowerCase(), rule.merchantPatterns ?? []) * 12 +
+      countMatches(categoryText, rule.patterns) * 2,
+  }))
+
+  const bestCategory = scoredCategories
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)[0]
+
+  const suggestedCategory = bestCategory?.name ?? 'Others'
 
   return { merchant_name, receipt_date, subtotal: null, tax: null, total, items, suggestedCategory, payment_method }
 }
