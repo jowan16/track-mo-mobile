@@ -232,7 +232,7 @@ export default function AdminCategoriesScreen() {
         </View>
       ))}
 
-      <Modal transparent visible={!!draft} animationType="slide" onRequestClose={() => !saving && setDraft(null)}>
+      <Modal transparent visible={!!draft} animationType="slide" onRequestClose={() => { if (!saving) setDraft(null) }}>
         <View style={styles.modalBackdrop}>
           <ScrollView contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled">
             <View style={styles.modalCard}>
@@ -298,7 +298,7 @@ export default function AdminCategoriesScreen() {
         </View>
       </Modal>
 
-      <Modal transparent visible={!!toggleTarget} animationType="fade" onRequestClose={() => !saving && setToggleTarget(null)}>
+      <Modal transparent visible={!!toggleTarget} animationType="fade" onRequestClose={() => { if (!saving) setToggleTarget(null) }}>
         <View style={styles.modalBackdrop}>
           <View style={styles.confirmCard}>
             <Text style={styles.modalTitle}>Disable {toggleTarget?.name}?</Text>
