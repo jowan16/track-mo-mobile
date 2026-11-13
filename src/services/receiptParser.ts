@@ -217,48 +217,48 @@ export const parseReceiptText = (text: string): ParsedReceipt => {
     {
       name: 'Medicine',
       patterns: [
-        /\\b(pharmacy|drugstore|drug\\s+store|medicine|medicines|medical|pharmaceutical|tablet|tablets|capsule|capsules|prescription|vitamins|paracetamol|biogesic|neozep|medication)\\b/gi,
+        /\b(pharmacy|drugstore|drug\s+store|medicine|medicines|medical|pharmaceutical|tablet|tablets|capsule|capsules|prescription|vitamins|paracetamol|biogesic|neozep|medication)\b/gi,
       ],
-      merchantPatterns: [/\\b(watsons|mercury\\s+drug|southstar\\s+drug|generika|tgp|rose\\s+pharmacy|medexpress|la\\s+nueva)\\b/gi],
+      merchantPatterns: [/\b(watsons|mercury\s+drug|southstar\s+drug|generika|tgp|rose\s+pharmacy|medexpress|la\s+nueva)\b/gi],
     },
     {
       name: 'Rent',
       patterns: [
-        /\\b(rent|rental|landlord|lease|apartment\\s+rent|house\\s+rent|boarding\\s+house|dormitory\\s+fee|monthly\\s+rent)\\b/gi,
+        /\b(rent|rental|landlord|lease|apartment\s+rent|house\s+rent|boarding\s+house|dormitory\s+fee|monthly\s+rent)\b/gi,
       ],
     },
     {
       name: 'Bills & Utilities',
       patterns: [
-        /\\b(electricity|electric\\s+bill|water\\s+bill|utility\\s+bill|utilities|internet\\s+bill|broadband|wifi\\s+bill|telephone\\s+bill|converge|pldt|globe\\s+at\\s+home|maynilad|manila\\s+water|meralco|bill\\s+payment)\\b/gi,
+        /\b(electricity|electric\s+bill|water\s+bill|utility\s+bill|utilities|internet\s+bill|broadband|wifi\s+bill|telephone\s+bill|converge|pldt|globe\s+at\s+home|maynilad|manila\s+water|meralco|bill\s+payment)\b/gi,
       ],
     },
     {
       name: 'Transportation',
       patterns: [
-        /\\b(gasoline|diesel|fuel|jeepney|jeep|bus\\s+fare|bus\\s+ticket|train\\s+ticket|airline\\s+ticket|flight\\s+ticket|taxi|grab\\s+ride|angkas|joyride|tricycle|fare|toll|parking\\s+fee|transport|commute|petron|shell|caltex|seaoil|phoenix\\s+petroleum)\\b/gi,
+        /\b(gasoline|diesel|fuel|jeepney|jeep|bus\s+fare|bus\s+ticket|train\s+ticket|airline\s+ticket|flight\s+ticket|taxi|grab\s+ride|angkas|joyride|tricycle|fare|toll|parking\s+fee|transport|commute|petron|shell|caltex|seaoil|phoenix\s+petroleum)\b/gi,
       ],
     },
     {
       name: 'Shopping',
       patterns: [
-        /\\b(clothing|apparel|shirt|shirts|pants|jeans|shoes|sneakers|dress|blouse|jacket|fashion|department\\s+store|uniqlo|penshoppe|bench|h\\s*&\\s*m|zara|mr\\s+ diy|national\\s+book\\s+store|school\\s+supplies|notebook|stationery|hardware|appliance|shopping)\\b/gi,
+        /\b(clothing|apparel|shirt|shirts|pants|jeans|shoes|sneakers|dress|blouse|jacket|fashion|department\s+store|uniqlo|penshoppe|bench|h\s*&\s*m|zara|mr\s*diy|national\s+book\s+store|school\s+supplies|notebook|stationery|hardware|appliance|shopping)\b/gi,
       ],
-      merchantPatterns: [/\\b(sm\\s+store|uniqlo|penshoppe|bench|mr\\s*\\.?\\s*diy|h\\s*&\\s*m|zara|national\\s+book\\s+store)\\b/gi],
+      merchantPatterns: [/\b(sm\s+store|uniqlo|penshoppe|bench|mr\s*\.?\s*diy|h\s*&\s*m|zara|national\s+book\s+store)\b/gi],
     },
     {
       name: 'Entertainment',
       patterns: [
-        /\\b(cinema|movie|movies|film|concert|amusement|theme\\s+park|arcade|bowling|karaoke|netflix|spotify|disney\\+|youtube\\s+premium|subscription|video\\s+game|gaming|entertainment)\\b/gi,
+        /\b(cinema|movie|movies|film|concert|amusement|theme\s+park|arcade|bowling|karaoke|netflix|spotify|disney\+|youtube\s+premium|subscription|video\s+game|gaming|entertainment)\b/gi,
       ],
-      merchantPatterns: [/\\b(cinema\\s+.*|sm\\s+cinema| ayala\\s+cinemas|ticketnet|ticketworld)\\b/gi],
+      merchantPatterns: [/\b(cinema\s+.*|sm\s+cinema|ayala\s+cinemas|ticketnet|ticketworld)\b/gi],
     },
     {
       name: 'Food & Water',
       patterns: [
-        /\\b(supermarket|grocery|groceries|sari[- ]?sari|puregold|savemore|alfamart|robinsons\\s+(?:supermarket|easy)|metro\\s+supermarket|gaisano|bottled\\s+water|drinking\\s+water|water\\s+gallon|purified\\s+water|rice|mil[k|o]|bread|eggs|vegetable|vegetables|meat|pork|beef|chicken|fish|seafood|fruit|fruits|noodles|instant\\s+noodles|canned\\s+goods|grocery\\s+items|market|restaurant|cafe|coffee|fast\\s+food|foodpanda|grabfood|jollibee|mcdonald'?s?|mang\\s+inasal|chowking|greenwich|kfc|pizza\\s+hut|burger\\s+king|wendy'?s|potato\\s+corner|7[- ]?eleven|ministop|lawson|food|meal|snack|bakery|panaderia|carinderia|canteen|milk\\s+tea|milkshake|soft\\s+drink|coke|pepsi|nestle|nido|milo|piattos|skyflakes|fita|oishi)\\b/gi,
+        /\b(supermarket|grocery|groceries|sari[- ]?sari|puregold|savemore|alfamart|robinsons\s+(?:supermarket|easy)|metro\s+supermarket|gaisano|bottled\s+water|drinking\s+water|water\s+gallon|purified\s+water|rice|milk|milo|bread|eggs|vegetable|vegetables|meat|pork|beef|chicken|fish|seafood|fruit|fruits|noodles|instant\s+noodles|canned\s+goods|grocery\s+items|market|restaurant|cafe|coffee|fast\s+food|foodpanda|grabfood|jollibee|mcdonald'?s?|mang\s+inasal|chowking|greenwich|kfc|pizza\s+hut|burger\s+king|wendy'?s|potato\s+corner|7[- ]?eleven|ministop|lawson|food|meal|snack|bakery|panaderia|carinderia|canteen|milk\s+tea|milkshake|soft\s+drink|coke|pepsi|nestle|nido|milo|piattos|skyflakes|fita|oishi)\b/gi,
       ],
-      merchantPatterns: [/\\b(jollibee|mcdonald'?s?|mang\\s+inasal|chowking|greenwich|kfc|pizza\\s+hut|burger\\s+king|puregold|savemore|alfamart|robinsons\\s+supermarket|metro\\s+supermarket|gaisano|7[- ]?eleven|lawson)\\b/gi],
+      merchantPatterns: [/\b(jollibee|mcdonald'?s?|mang\s+inasal|chowking|greenwich|kfc|pizza\s+hut|burger\s+king|puregold|savemore|alfamart|robinsons\s+supermarket|metro\s+supermarket|gaisano|7[- ]?eleven|lawson)\b/gi],
     },
   ]
 
