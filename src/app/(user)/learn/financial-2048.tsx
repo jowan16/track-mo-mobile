@@ -267,7 +267,7 @@ function makeStyles(C: ReturnType<typeof getC>, dark: boolean) {
     boardRow: { flex: 1, flexDirection: 'row', gap: 8 },
     tile: { flex: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
     tileText: { fontWeight: '900' },
-    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10, 20, 16, 0.88)', borderRadius: 14, alignItems: 'center', justifyContent: 'center', padding: 24 },
+    overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10, 20, 16, 0.88)', borderRadius: 14, alignItems: 'center', justifyContent: 'center', padding: 24 },
     overlayTitle: { color: '#ffffff', fontSize: 22, fontWeight: '900', textAlign: 'center' },
     overlayText: { color: '#e1ebe5', fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 8 },
     primaryButton: { backgroundColor: C.brand, borderRadius: 11, paddingVertical: 12, paddingHorizontal: 18, alignItems: 'center', marginTop: 15, width: '100%' },
