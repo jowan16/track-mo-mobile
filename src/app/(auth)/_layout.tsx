@@ -9,11 +9,14 @@ export default function AuthLayout() {
 
   const isResetPassword = pathname.endsWith('/reset-password')
   const isLogin = pathname.endsWith('/login')
+  const isForgotPassword = pathname.endsWith('/forgot-password')
+  const isRegister = pathname.endsWith('/register')
 
-  // Keep the login screen mounted after authentication so the login handler
-  // can check saved category selections before choosing the next destination.
-  // Also allow password recovery to finish even with a recovery session.
-  if (isResetPassword || isLogin) {
+  // Keep public authentication screens accessible regardless of whether a
+  // previous Supabase session is still being restored or is already active.
+  // Login, registration, forgot-password, and password recovery must not be
+  // blocked by the authenticated-user redirect.
+  if (isResetPassword || isLogin || isForgotPassword || isRegister) {
     return <Stack screenOptions={{ headerShown: false, animation: "none" }} />
   }
 
