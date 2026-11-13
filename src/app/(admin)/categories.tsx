@@ -321,7 +321,7 @@ export default function AdminCategoriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  newButton: { alignSelf: 'flex-end', backgroundColor: adminColors.primary, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 11 },
+  newButton: { alignSelf: 'flex-start', backgroundColor: adminColors.primary, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 11 },
   newButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
   error: { color: adminColors.danger, backgroundColor: '#FEECEC', padding: 11, borderRadius: 9, fontSize: 11 },
   empty: { color: adminColors.muted, textAlign: 'center', padding: 25, backgroundColor: '#FFFFFF', borderRadius: 12 },
