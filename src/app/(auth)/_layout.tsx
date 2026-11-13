@@ -14,7 +14,7 @@ export default function AuthLayout() {
   // can check saved category selections before choosing the next destination.
   // Also allow password recovery to finish even with a recovery session.
   if (isResetPassword || isLogin) {
-    return <Stack screenOptions={{ headerShown: false }} />
+    return <Stack screenOptions={{ headerShown: false, animation: "none" }} />
   }
 
   if (loading) {
@@ -33,7 +33,7 @@ export default function AuthLayout() {
     return <Redirect href="/(user)" />
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />
+  return <Stack screenOptions={{ headerShown: false, animation: "none" }} />
 }
 
 const styles = StyleSheet.create({
