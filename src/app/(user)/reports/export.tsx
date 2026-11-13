@@ -143,7 +143,7 @@ export default function ReportExportScreen() {
       const rows = await loadRows()
 
       if (!rows.length) {
-        Alert.alert('No records', 'There are no expenses to export for this month.')
+        Alert.alert('No records', 'There are no expenses to export for {reportPeriodLabel}.')
         return
       }
 
@@ -293,32 +293,118 @@ export default function ReportExportScreen() {
     <SafeAreaView style={styles.safe}>
       <UserPageHeader title="Export report" subtitle="Create a file you can share" />
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>File format</Text>
-          <View style={styles.optionsRow}>
-            <Option label="CSV spreadsheet" selected={format === 'csv'} onPress={() => setFormat('csv')} />
-            <Option label="PDF document" selected={format === 'pdf'} onPress={() => setFormat('pdf')} />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.introCard}>
+          <View style={styles.introIcon}>
+            <Text style={styles.introIconText}>{format === 'csv' ? 'CSV' : 'PDF'}</Text>
           </View>
-
-          <Text style={styles.sectionTitle}>Report type</Text>
-          <Option label="Detailed report" selected={kind === 'detailed'} onPress={() => setKind('detailed')} />
-          <Option label="Category summary" selected={kind === 'category'} onPress={() => setKind('category')} />
-          <Option label="Monthly summary" selected={kind === 'monthly'} onPress={() => setKind('monthly')} />
-
-          <Text style={styles.sectionTitle}>Include archived expenses</Text>
-          <View style={styles.optionsRow}>
-            <Option label="No" selected={!includeArchived} onPress={() => setIncludeArchived(false)} />
-            <Option label="Yes" selected={includeArchived} onPress={() => setIncludeArchived(true)} />
+          <View style={styles.introCopy}>
+            <Text style={styles.introTitle}>Prepare your report</Text>
+            <Text style={styles.introDescription}>Choose how your spending information should be organized.</Text>
+          </View>
+          <View style={styles.periodPill}>
+            <Text style={styles.periodPillText}>{reportPeriodLabel}</Text>
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Report period</Text>
-          <Text style={styles.description}>
-            This export covers {reportPeriodLabel}.
-          </Text>
-          <Text style={styles.description}>
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeading}>
+            <Text style={styles.sectionTitle}>1. File format</Text>
+            <Text style={styles.sectionHint}>Choose an export file type</Text>
+          </View>
+          <View style={styles.formatGrid}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: format === 'csv' }}
+              onPress={() => setFormat('csv')}
+              style={[styles.formatCard, format === 'csv' && styles.formatCardSelected]}
+            >
+              <View style={[styles.formatIcon, styles.csvIcon]}>
+                <Text style={styles.formatIconText}>CSV</Text>
+              </View>
+              <Text style={[styles.formatName, format === 'csv' && styles.selectedText]}>CSV Spreadsheet</Text>
+              <Text style={styles.formatDescription}>For spreadsheets and data analysis</Text>
+              <View style={[styles.selectionMark, format === 'csv' && styles.selectionMarkActive]}>
+                {format === 'csv' ? <Text style={styles.checkMark}>✓</Text> : null}
+              </View>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: format === 'pdf' }}
+              onPress={() => setFormat('pdf')}
+              style={[styles.formatCard, format === 'pdf' && styles.formatCardSelected]}
+            >
+              <View style={[styles.formatIcon, styles.pdfIcon]}>
+                <Text style={[styles.formatIconText, styles.pdfText]}>PDF</Text>
+              </View>
+              <Text style={[styles.formatName, format === 'pdf' && styles.selectedText]}>PDF Document</Text>
+              <Text style={styles.formatDescription}>For printing and sharing</Text>
+              <View style={[styles.selectionMark, format === 'pdf' && styles.selectionMarkActive]}>
+                {format === 'pdf' ? <Text style={styles.checkMark}>✓</Text> : null}
+              </View>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeading}>
+            <Text style={styles.sectionTitle}>2. Report content</Text>
+            <Text style={styles.sectionHint}>Select the information to include</Text>
+          </View>
+          {([
+            { value: 'detailed', title: 'Detailed report', description: 'Every expense with date, category, note and payment method' },
+            { value: 'category', title: 'Category summary', description: 'Spending totals grouped by category with percentage share' },
+            { value: 'monthly', title: reportMode === 'yearly' ? 'Monthly breakdown' : 'Period summary', description: reportMode === 'yearly' ? 'Expense totals grouped by month' : 'One summary of total expenses for this month' },
+          ] as { value: ExportKind; title: string; description: string }[]).map((item) => (
+            <Pressable
+              key={item.value}
+              accessibilityRole="button"
+              accessibilityState={{ selected: kind === item.value }}
+              onPress={() => setKind(item.value)}
+              style={[styles.reportType, kind === item.value && styles.reportTypeSelected]}
+            >
+              <View style={styles.reportTypeCopy}>
+                <Text style={[styles.reportTypeTitle, kind === item.value && styles.selectedText]}>{item.title}</Text>
+                <Text style={styles.reportTypeDescription}>{item.description}</Text>
+              </View>
+              <View style={[styles.radioOuter, kind === item.value && styles.radioOuterSelected]}>
+                {kind === item.value ? <View style={styles.radioInner} /> : null}
+              </View>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeading}>
+            <Text style={styles.sectionTitle}>3. Archived expenses</Text>
+            <Text style={styles.sectionHint}>Choose whether archived transactions are included</Text>
+          </View>
+          <View style={styles.archiveOptions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: !includeArchived }}
+              onPress={() => setIncludeArchived(false)}
+              style={[styles.archiveOption, !includeArchived && styles.archiveOptionSelected]}
+            >
+              <Text style={[styles.archiveOptionTitle, !includeArchived && styles.selectedText]}>Exclude</Text>
+              <Text style={styles.archiveOptionHint}>Active expenses only</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: includeArchived }}
+              onPress={() => setIncludeArchived(true)}
+              style={[styles.archiveOption, includeArchived && styles.archiveOptionSelected]}
+            >
+              <Text style={[styles.archiveOptionTitle, includeArchived && styles.selectedText]}>Include</Text>
+              <Text style={styles.archiveOptionHint}>Active and archived</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.periodCard}>
+          <Text style={styles.periodCardTitle}>Report period</Text>
+          <Text style={styles.periodCardValue}>{reportPeriodLabel}</Text>
+          <Text style={styles.periodCardDescription}>
             Only expenses from your tracked categories are included. Archived expenses are {includeArchived ? 'included' : 'excluded'}.
           </Text>
         </View>
@@ -326,14 +412,15 @@ export default function ReportExportScreen() {
         <Pressable
           disabled={loading}
           onPress={exportReport}
-          style={[styles.primaryButton, loading && styles.disabledButton]}
+          style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed, loading && styles.disabledButton]}
         >
           {loading ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
-            <Text style={styles.primaryButtonText}>
-              Generate {format.toUpperCase()} report
-            </Text>
+            <>
+              <Text style={styles.primaryButtonText}>Generate {format.toUpperCase()} report</Text>
+              <Text style={styles.primaryButtonHint}>Create and share your file</Text>
+            </>
           )}
         </Pressable>
 
@@ -347,51 +434,55 @@ export default function ReportExportScreen() {
 
 function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
-  header: {
-      position: 'relative',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 18,
-      paddingVertical: 14,
-      minHeight: 72,
-      backgroundColor: dark ? '#1b2a26' : '#ffffff',
-      borderBottomWidth: 1,
-      borderBottomColor: dark ? '#30413a' : '#e4e8e5',
-    },
-  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
-  headerSpacer: { width: 44, height: 44 },
-  subtitle: { color: C.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
-  title: { color: C.ink, fontSize: 24, fontWeight: '800', textAlign: 'center' },
-  sectionTitle: {
-    color: C.ink,
-    fontSize: 15,
-    fontWeight: '800',
-    marginTop: 7,
-    marginBottom: 3,
-  },
-  optionsRow: { flexDirection: 'row', gap: 8 },
-  option: {
-    borderWidth: 1,
-    borderColor: C.line,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 13,
-    marginBottom: 4,
-    flex: 1,
-  },
-  optionSelected: { backgroundColor: (dark ? '#203d36' : '#e5f3ef'), borderColor: C.brand },
-  optionText: { color: C.muted, fontSize: 13, fontWeight: '600', textAlign: 'center' },
-  optionTextSelected: { color: C.brand, fontWeight: '800' },
-  description: { color: C.muted, fontSize: 13, lineHeight: 20 },
-  primaryButton: {
-    backgroundColor: C.brand,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
+  content: { padding: 16, paddingBottom: 36, gap: 14 },
+  introCard: { backgroundColor: C.card, borderRadius: 17, borderWidth: 1, borderColor: C.line, padding: 16, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
+  introIcon: { width: 48, height: 48, borderRadius: 13, backgroundColor: dark ? '#203d36' : '#e5f3ef', alignItems: 'center', justifyContent: 'center' },
+  introIconText: { color: C.brand, fontSize: 12, fontWeight: '900' },
+  introCopy: { flex: 1, minWidth: 150, gap: 4 },
+  introTitle: { color: C.ink, fontSize: 17, fontWeight: '900' },
+  introDescription: { color: C.muted, fontSize: 12, lineHeight: 17 },
+  periodPill: { backgroundColor: dark ? '#203d36' : '#e5f3ef', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
+  periodPillText: { color: C.brand, fontSize: 11, fontWeight: '800' },
+  sectionCard: { backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.line, padding: 15, gap: 12 },
+  sectionHeading: { gap: 4 },
+  sectionTitle: { color: C.ink, fontSize: 15, fontWeight: '900' },
+  sectionHint: { color: C.muted, fontSize: 11, lineHeight: 16 },
+  formatGrid: { flexDirection: 'row', gap: 10 },
+  formatCard: { flex: 1, minWidth: 0, minHeight: 142, borderWidth: 1, borderColor: C.line, borderRadius: 13, padding: 11, gap: 7, backgroundColor: C.background },
+  formatCardSelected: { borderColor: C.brand, backgroundColor: dark ? '#203d36' : '#f0f8f5' },
+  formatIcon: { width: 40, height: 38, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  csvIcon: { backgroundColor: dark ? '#29483f' : '#e0f2eb' },
+  pdfIcon: { backgroundColor: dark ? '#4a302d' : '#fff0ed' },
+  formatIconText: { color: C.brand, fontSize: 11, fontWeight: '900' },
+  pdfText: { color: dark ? '#ff9b8e' : '#bd3e32' },
+  formatName: { color: C.ink, fontSize: 12, fontWeight: '800' },
+  formatDescription: { color: C.muted, fontSize: 10, lineHeight: 14 },
+  selectionMark: { position: 'absolute', top: 9, right: 9, width: 19, height: 19, borderRadius: 10, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  selectionMarkActive: { backgroundColor: C.brand, borderColor: C.brand },
+  checkMark: { color: '#ffffff', fontSize: 12, fontWeight: '900' },
+  reportType: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: C.line, borderRadius: 12, padding: 12, backgroundColor: C.background },
+  reportTypeSelected: { borderColor: C.brand, backgroundColor: dark ? '#203d36' : '#f0f8f5' },
+  reportTypeCopy: { flex: 1, gap: 4 },
+  reportTypeTitle: { color: C.ink, fontSize: 13, fontWeight: '800' },
+  reportTypeDescription: { color: C.muted, fontSize: 11, lineHeight: 16 },
+  radioOuter: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  radioOuterSelected: { borderColor: C.brand },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.brand },
+  archiveOptions: { flexDirection: 'row', gap: 10 },
+  archiveOption: { flex: 1, borderWidth: 1, borderColor: C.line, borderRadius: 12, padding: 12, gap: 4, backgroundColor: C.background },
+  archiveOptionSelected: { borderColor: C.brand, backgroundColor: dark ? '#203d36' : '#f0f8f5' },
+  archiveOptionTitle: { color: C.ink, fontSize: 13, fontWeight: '800' },
+  archiveOptionHint: { color: C.muted, fontSize: 10, lineHeight: 14 },
+  selectedText: { color: C.brand },
+  periodCard: { backgroundColor: C.card, borderRadius: 15, borderWidth: 1, borderColor: C.line, padding: 15, gap: 5 },
+  periodCardTitle: { color: C.muted, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
+  periodCardValue: { color: C.ink, fontSize: 19, fontWeight: '900' },
+  periodCardDescription: { color: C.muted, fontSize: 11, lineHeight: 17 },
+  primaryButton: { backgroundColor: C.brand, borderRadius: 13, paddingVertical: 15, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 58 },
+  primaryButtonPressed: { opacity: 0.88 },
   disabledButton: { opacity: 0.65 },
-  primaryButtonText: { color: (dark ? '#1b2a26' : '#ffffff'), fontSize: 15, fontWeight: '800' },
+  primaryButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '900' },
+  primaryButtonHint: { color: '#d8efeb', fontSize: 10, fontWeight: '600' },
   backButton: { alignItems: 'center', padding: 12 },
-  backText: { color: C.brand, fontWeight: '700' },
+  backText: { color: C.brand, fontWeight: '800', fontSize: 13 },
 }) }
