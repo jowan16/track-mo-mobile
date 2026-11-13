@@ -143,7 +143,7 @@ export default function ReportExportScreen() {
       const rows = await loadRows()
 
       if (!rows.length) {
-        Alert.alert('No records', 'There are no expenses to export for {reportPeriodLabel}.')
+        Alert.alert('No records', `There are no expenses to export for ${reportPeriodLabel}.`)
         return
       }
 
@@ -270,24 +270,7 @@ export default function ReportExportScreen() {
     }
   }
 
-  const Option = ({
-    label,
-    selected,
-    onPress,
-  }: {
-    label: string
-    selected: boolean
-    onPress: () => void
-  }) => (
-    <Pressable
-      onPress={onPress}
-      style={[styles.option, selected && styles.optionSelected]}
-    >
-      <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
-        {label}
-      </Text>
-    </Pressable>
-  )
+
 
   return (
     <SafeAreaView style={styles.safe}>
