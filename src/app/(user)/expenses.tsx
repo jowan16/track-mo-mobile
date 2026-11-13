@@ -93,6 +93,36 @@ function getCOLORS(dark: boolean) { return dark ? {
 
 
 // --------------------------------------------------
+// RECEIPT CATEGORY MATCHING
+// --------------------------------------------------
+
+const RECEIPT_CATEGORY_ALIASES: Record<string, string[]> = {
+  'Food & Water': ['food & water', 'food and water', 'food', 'grocery', 'groceries', 'dining'],
+  Shopping: ['shopping', 'clothing', 'apparel', 'clothes'],
+  Rent: ['rent', 'housing'],
+  Entertainment: ['entertainment', 'leisure'],
+  'Bills & Utilities': ['bills & utilities', 'bills and utilities', 'utilities', 'bills'],
+  Transportation: ['transportation', 'transport', 'commute'],
+  Medicine: ['medicine', 'medical', 'health'],
+  Others: ['others', 'other', 'others/savings', 'other/savings', 'savings'],
+}
+
+function normalizeCategoryName(value: string) {
+  return value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function findReceiptCategory(categories: Category[], suggestedCategory: string) {
+  const suggested = normalizeCategoryName(suggestedCategory)
+  const aliases = Object.entries(RECEIPT_CATEGORY_ALIASES).find(([canonical]) =>
+    normalizeCategoryName(canonical) === suggested,
+  )?.[1] ?? [suggestedCategory]
+
+  const acceptedNames = new Set([suggested, ...aliases.map(normalizeCategoryName)])
+  return categories.find((category) => acceptedNames.has(normalizeCategoryName(category.name))) ?? null
+}
+
+
+// --------------------------------------------------
 // HELPERS
 // --------------------------------------------------
 
@@ -465,9 +495,9 @@ export default function ExpensesScreen() {
 
     try {
       const draft = JSON.parse(params.receiptDraft) as import('@/services/receiptParser').ParsedReceipt
-      const category = availableCategories.find(
-        (item) => item.name.toLowerCase() === draft.suggestedCategory.toLowerCase(),
-      )
+      // Match the OCR suggestion against the user's active, selected categories.
+      // The form remains editable if no matching category is available.
+      const category = findReceiptCategory(availableCategories, draft.suggestedCategory)
       // Preserve the complete OCR text in the Receipt Details field.
       // Keep each detected receipt line separate for easier reading and editing.
       const note = formatReceiptDetails(params.receiptRawText || '')
