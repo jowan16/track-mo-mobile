@@ -426,40 +426,23 @@ export default function ReportsScreen() {
               ))}
             </View>
 
-            <View style={styles.exportCard}>
-              <View style={styles.exportHeader}>
-                <View style={styles.exportHeadingIcon}>
-                  <Text style={styles.exportHeadingIconText}>⇩</Text>
-                </View>
-                <View style={styles.exportHeadingCopy}>
-                  <Text style={styles.cardTitle}>Export your report</Text>
-                  <Text style={styles.muted}>Export your spending activity for {periodName}.</Text>
-                </View>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Export your report</Text>
+              <Text style={styles.muted}>Create a detailed report or a summary you can share.</Text>
+              <View style={styles.exportRow}>
+                <Pressable
+                  style={styles.exportButton}
+                  onPress={() => router.push({ pathname: '/(user)/reports/export' as any, params: { format: 'csv' } })}
+                >
+                  <Text style={styles.exportButtonText}>Export CSV</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.exportButton}
+                  onPress={() => router.push({ pathname: '/(user)/reports/export' as any, params: { format: 'pdf' } })}
+                >
+                  <Text style={styles.exportButtonText}>Export PDF</Text>
+                </Pressable>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push({ pathname: '/(user)/reports/export' as any, params: { format: 'csv', mode, year: String(year), month: String(month) } })}
-                style={({ pressed }) => [styles.exportAction, pressed && styles.exportActionPressed]}
-              >
-                <View style={styles.exportFormatIcon}><Text style={styles.csvIconText}>CSV</Text></View>
-                <View style={styles.exportActionCopy}>
-                  <Text style={styles.exportActionTitle}>Export CSV</Text>
-                  <Text style={styles.exportActionHint}>Spreadsheet format · Easy to sort and analyze</Text>
-                </View>
-                <Text style={styles.exportChevron}>›</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push({ pathname: '/(user)/reports/export' as any, params: { format: 'pdf', mode, year: String(year), month: String(month) } })}
-                style={({ pressed }) => [styles.exportAction, pressed && styles.exportActionPressed]}
-              >
-                <View style={[styles.exportFormatIcon, styles.pdfFormatIcon]}><Text style={styles.pdfIconText}>PDF</Text></View>
-                <View style={styles.exportActionCopy}>
-                  <Text style={styles.exportActionTitle}>Export PDF</Text>
-                  <Text style={styles.exportActionHint}>Printable document · Ready to share</Text>
-                </View>
-                <Text style={styles.exportChevron}>›</Text>
-              </Pressable>
             </View>
           </>
         )}
@@ -548,21 +531,9 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   insightRow: { flexDirection: 'row', gap: 9, alignItems: 'flex-start' },
   insightBullet: { color: C.brand, fontSize: 20, lineHeight: 21 },
   insightText: { color: C.muted, fontSize: 13, lineHeight: 19, flex: 1 },
-  exportCard: { backgroundColor: C.white, borderRadius: 16, padding: 17, borderWidth: 1, borderColor: C.line, gap: 13 },
-  exportHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 2 },
-  exportHeadingIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: C.pale, alignItems: 'center', justifyContent: 'center' },
-  exportHeadingIconText: { color: C.brand, fontSize: 25, fontWeight: '900' },
-  exportHeadingCopy: { flex: 1, gap: 3 },
-  exportAction: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 13, borderWidth: 1, borderColor: C.line, backgroundColor: C.white },
-  exportActionPressed: { backgroundColor: C.pale, borderColor: C.brand },
-  exportFormatIcon: { width: 44, height: 44, borderRadius: 11, backgroundColor: C.pale, alignItems: 'center', justifyContent: 'center' },
-  csvIconText: { color: C.brand, fontSize: 12, fontWeight: '900', letterSpacing: 0.4 },
-  pdfFormatIcon: { backgroundColor: dark ? '#452b2b' : '#fff0ee' },
-  pdfIconText: { color: C.red, fontSize: 12, fontWeight: '900', letterSpacing: 0.4 },
-  exportActionCopy: { flex: 1, gap: 4 },
-  exportActionTitle: { color: C.ink, fontSize: 14, fontWeight: '800' },
-  exportActionHint: { color: C.muted, fontSize: 11, lineHeight: 15 },
-  exportChevron: { color: C.muted, fontSize: 25, fontWeight: '500', marginLeft: 2 },
+  exportRow: { flexDirection: 'row', gap: 10 },
+  exportButton: { flex: 1, backgroundColor: C.pale, padding: 13, borderRadius: 10, alignItems: 'center' },
+  exportButtonText: { color: C.brand, fontSize: 13, fontWeight: '800' },
   error: { color: C.red, fontSize: 13 },
   link: { color: C.brand, fontWeight: '800' },
 }) }
