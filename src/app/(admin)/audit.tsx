@@ -64,10 +64,6 @@ export default function AdminAuditScreen() {
 
   return (
     <AdminShell title="Audit log" subtitle="Review recorded administrative actions. Audit entries cannot be edited or deleted.">
-      <Pressable style={styles.refresh} onPress={loadLogs} disabled={loading}>
-        <Text style={styles.refreshText}>{loading ? 'Refreshing…' : '↻ Refresh'}</Text>
-      </Pressable>
-
       <View style={styles.summary}>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Total recorded activities</Text>
@@ -137,8 +133,6 @@ export default function AdminAuditScreen() {
 }
 
 const styles = StyleSheet.create({
-  refresh: { alignSelf: 'flex-end', backgroundColor: '#E8EAFE', borderRadius: 9, paddingHorizontal: 13, paddingVertical: 9 },
-  refreshText: { color: adminColors.primary, fontSize: 11, fontWeight: '900' },
   summary: { flexDirection: 'row', gap: 9 },
   summaryCard: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 12, padding: 12 },
   summaryLabel: { color: adminColors.muted, fontSize: 10 },
