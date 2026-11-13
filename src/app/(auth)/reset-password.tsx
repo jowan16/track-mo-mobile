@@ -60,7 +60,7 @@ export default function ResetPasswordScreen() {
       }
 
       try {
-        const initialUrl = await Linking.getInitialURL()
+        const initialUrl = await ExpoLinking.getInitialURL()
         const parsed = initialUrl ? ExpoLinking.parse(initialUrl) : null
         const queryCode = parsed?.queryParams?.code
         const incomingCode = Array.isArray(queryCode) ? queryCode[0] : queryCode
@@ -80,7 +80,7 @@ export default function ResetPasswordScreen() {
 
     void readIncomingLink()
 
-    const subscription = Linking.addEventListener('url', ({ url }) => {
+    const subscription = ExpoLinking.addEventListener('url', ({ url }) => {
       const parsed = ExpoLinking.parse(url)
       const queryCode = parsed.queryParams?.code
       const incomingCode = Array.isArray(queryCode) ? queryCode[0] : queryCode
