@@ -498,11 +498,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   createButton: {
-    height: 48,
-    minHeight: 48,
-    width: '100%',
-    zIndex: 3,
-    elevation: 3,
+    height: 44,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#C7D8D0',
