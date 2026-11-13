@@ -182,7 +182,8 @@ export default function LoginScreen() {
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
+        nestedScrollEnabled
       >
         <View style={styles.brand}>
           <View style={styles.brandIcon}>
@@ -265,8 +266,13 @@ export default function LoginScreen() {
 
           <Pressable
             style={styles.forgotContainer}
-            onPress={() => router.push('/(auth)/forgot-password')}
-            disabled={loading}
+            onPress={() => {
+              Keyboard.dismiss()
+              router.navigate('/(auth)/forgot-password')
+            }}
+            hitSlop={12}
+            accessibilityRole="link"
+            accessibilityLabel="Forgot password"
           >
             <Text style={styles.forgotText}>Forgot password?</Text>
           </Pressable>
@@ -291,8 +297,13 @@ export default function LoginScreen() {
 
           <Pressable
             style={styles.createButton}
-            onPress={() => router.push('/(auth)/register')}
-            disabled={loading}
+            onPress={() => {
+              Keyboard.dismiss()
+              router.navigate('/(auth)/register')
+            }}
+            hitSlop={8}
+            accessibilityRole="link"
+            accessibilityLabel="Create an account"
           >
             <Text style={styles.createButtonText}>Create an account</Text>
           </Pressable>
@@ -346,6 +357,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   card: {
+    position: 'relative',
+    zIndex: 2,
+    elevation: 2,
     width: '100%',
     maxWidth: 460,
     alignSelf: 'center',
@@ -434,6 +448,11 @@ const styles = StyleSheet.create({
   },
   forgotContainer: {
     alignSelf: 'flex-end',
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    zIndex: 3,
+    elevation: 3,
     marginTop: -5,
     marginBottom: 20,
   },
@@ -479,7 +498,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   createButton: {
-    height: 44,
+    height: 48,
+    minHeight: 48,
+    width: '100%',
+    zIndex: 3,
+    elevation: 3,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#C7D8D0',
