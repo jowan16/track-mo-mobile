@@ -27,7 +27,7 @@ export default function AdminLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, animation: "none" }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="users" />
       <Stack.Screen name="categories" />
