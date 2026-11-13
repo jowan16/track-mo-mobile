@@ -150,15 +150,6 @@ export default function AdminReportsScreen() {
         ))}
       </View>
 
-      <View style={styles.exportRow}>
-        <Pressable style={styles.exportButton} onPress={exportPdf} disabled={loading || exporting || !stats}>
-          <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export PDF'}</Text>
-        </Pressable>
-        <Pressable style={[styles.exportButton, styles.csvButton]} onPress={exportCsv} disabled={loading || exporting || !stats}>
-          <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export CSV'}</Text>
-        </Pressable>
-      </View>
-
       {loading ? <ActivityIndicator color={adminColors.primary} style={{ margin: 30 }} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -186,6 +177,15 @@ export default function AdminReportsScreen() {
               </View>
             ))}
           </View>
+
+      <View style={styles.exportRow}>
+        <Pressable style={styles.exportButton} onPress={exportPdf} disabled={loading || exporting || !stats}>
+          <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export PDF'}</Text>
+        </Pressable>
+        <Pressable style={[styles.exportButton, styles.csvButton]} onPress={exportCsv} disabled={loading || exporting || !stats}>
+          <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export CSV'}</Text>
+        </Pressable>
+      </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Most used categories</Text>
