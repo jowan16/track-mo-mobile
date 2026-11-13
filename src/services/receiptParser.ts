@@ -208,12 +208,18 @@ export const parseReceiptText = (text: string): ParsedReceipt => {
     : /\b(BANK TRANSFER|ONLINE TRANSFER)\b/i.test(full) ? 'Bank transfer'
     : /\b(CASH|CHANGE|TENDERED)\b/i.test(full) ? 'Cash'
     : ''
-  const categoryText = (merchant_name + ' ' + full).toLowerCase()
+  const categoryText = (merchant_name + ' ' + items.map((item) => item.item_name).join(' ') + ' ' + full).toLowerCase()
+
+  // Classify from merchant and purchased items, using the same category names
+  // that are available in the expense category picker.
   const suggestedCategory =
     /\b(pharmacy|drugstore|drug\s+store|medicine|medicines|medical|pharmaceutical|watsons|mercury\s+drug|la\s+nueva|tablet|tablets|capsule|capsules)\b/i.test(categoryText) ? 'Medicine'
-    : /\b(supermarket|grocery|groceries|rice|milk|bread|eggs|vegetable|meat|fish|market)\b/i.test(categoryText) ? 'Food & Water'
-    : /\b(clothing|apparel|shirt|pants|shoes|department store|school supplies|notebook|stationery)\b/i.test(categoryText) ? 'Shopping'
-    : /\b(restaurant|cafe|coffee|fast food|foodpanda|grabfood|jollibee|mcdonald)\b/i.test(categoryText) ? 'Food & Water'
+    : /\b(rent|rental|landlord|lease|apartment rent|house rent|boarding house|dormitory fee)\b/i.test(categoryText) ? 'Rent'
+    : /\b(electricity|electric bill|water bill|utility bill|utilities|internet bill|broadband|wifi bill|telephone bill|converge|pldt|globe at home|maynilad|manila water|meralco)\b/i.test(categoryText) ? 'Bills & Utilities'
+    : /\b(gasoline|diesel|fuel|jeepney|jeep|bus fare|taxi|grab ride|angkas|joyride|tricycle|fare|toll|parking fee|transport|commute)\b/i.test(categoryText) ? 'Transportation'
+    : /\b(clothing|apparel|shirt|shirts|pants|jeans|shoes|sneakers|dress|blouse|jacket|fashion|department store|uniqlo|penshoppe|bench|h\s*&\s*m|zara|school supplies|notebook|stationery|shopping)\b/i.test(categoryText) ? 'Shopping'
+    : /\b(cinema|movie|movies|film|concert|amusement|theme park|arcade|bowling|karaoke|netflix|spotify|disney\+|youtube premium|subscription|video game|gaming|entertainment|ticket)\b/i.test(categoryText) ? 'Entertainment'
+    : /\b(supermarket|grocery|groceries|rice|milk|bread|eggs|vegetable|meat|fish|market|restaurant|cafe|coffee|fast food|foodpanda|grabfood|jollibee|mcdonald|mang inasal|chowking|food|meal|snack|bakery)\b/i.test(categoryText) ? 'Food & Water'
     : 'Others'
 
   return { merchant_name, receipt_date, subtotal: null, tax: null, total, items, suggestedCategory, payment_method }
