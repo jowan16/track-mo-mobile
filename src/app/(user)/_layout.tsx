@@ -26,7 +26,7 @@ export default function UserLayout() {
 
   return (
     <UserDrawerProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false, animation: "none" }} />
     </UserDrawerProvider>
   )
 }
