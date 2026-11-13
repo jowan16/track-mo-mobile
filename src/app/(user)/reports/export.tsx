@@ -75,8 +75,15 @@ export default function ReportExportScreen() {
   const styles = makeStyles(dark, C)
 
   const { profile } = useAuth()
-  const params = useLocalSearchParams<{ format?: string }>()
+  const params = useLocalSearchParams<{ format?: string; mode?: string; year?: string; month?: string }>()
   const initialFormat = params.format === 'pdf' ? 'pdf' : 'csv'
+  const reportMode = params.mode === 'yearly' ? 'yearly' : 'monthly'
+  const currentDate = new Date()
+  const reportYear = Number(params.year) || currentDate.getFullYear()
+  const reportMonth = Math.min(12, Math.max(1, Number(params.month) || currentDate.getMonth() + 1))
+  const reportPeriodLabel = reportMode === 'monthly'
+    ? new Date(reportYear, reportMonth - 1, 1).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
+    : String(reportYear)
 
   const [format, setFormat] = useState<'csv' | 'pdf'>(initialFormat)
   const [kind, setKind] = useState<ExportKind>('detailed')
@@ -86,9 +93,12 @@ export default function ReportExportScreen() {
   const loadRows = async () => {
     if (!profile?.id) throw new Error('Please sign in again.')
 
-    const now = new Date()
-    const start = new Date(now.getFullYear(), now.getMonth(), 1)
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    const start = reportMode === 'monthly'
+      ? new Date(reportYear, reportMonth - 1, 1)
+      : new Date(reportYear, 0, 1)
+    const end = reportMode === 'monthly'
+      ? new Date(reportYear, reportMonth, 1)
+      : new Date(reportYear + 1, 0, 1)
     const from = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-01`
     const to = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-01`
 
@@ -138,10 +148,7 @@ export default function ReportExportScreen() {
       }
 
       const now = new Date()
-      const monthLabel = now.toLocaleDateString('en-PH', {
-        month: 'long',
-        year: 'numeric',
-      })
+      const monthLabel = reportPeriodLabel
 
       let headers: string[]
       let data: (string | number)[][]
@@ -175,8 +182,21 @@ export default function ReportExportScreen() {
           ])
       } else {
         headers = ['Month', 'Total', 'Number of expenses']
-        const total = rows.reduce((sum, row) => sum + row.amount, 0)
-        data = [[monthLabel, total.toFixed(2), rows.length]]
+        if (reportMode === 'yearly') {
+          const grouped = new Map<string, { total: number; count: number }>()
+          rows.forEach((row) => {
+            const date = new Date(`${row.date}T00:00:00`)
+            const label = date.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
+            const current = grouped.get(label) || { total: 0, count: 0 }
+            current.total += row.amount
+            current.count += 1
+            grouped.set(label, current)
+          })
+          data = [...grouped.entries()].map(([label, value]) => [label, value.total.toFixed(2), value.count])
+        } else {
+          const total = rows.reduce((sum, row) => sum + row.amount, 0)
+          data = [[monthLabel, total.toFixed(2), rows.length]]
+        }
       }
 
       const csv = [headers, ...data]
@@ -296,13 +316,10 @@ export default function ReportExportScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Report period</Text>
           <Text style={styles.description}>
-            This export currently covers {new Date().toLocaleDateString('en-PH', {
-              month: 'long',
-              year: 'numeric',
-            })}.
+            This export covers {reportPeriodLabel}.
           </Text>
           <Text style={styles.description}>
-            Only expenses from your tracked categories are included.
+            Only expenses from your tracked categories are included. Archived expenses are {includeArchived ? 'included' : 'excluded'}.
           </Text>
         </View>
 
