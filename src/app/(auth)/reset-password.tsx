@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router'
+import * as ExpoLinking from 'expo-linking'
 import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -61,7 +61,7 @@ export default function ResetPasswordScreen() {
 
       try {
         const initialUrl = await Linking.getInitialURL()
-        const parsed = initialUrl ? Linking.parse(initialUrl) : null
+        const parsed = initialUrl ? ExpoLinking.parse(initialUrl) : null
         const queryCode = parsed?.queryParams?.code
         const incomingCode = Array.isArray(queryCode) ? queryCode[0] : queryCode
         if (typeof incomingCode === 'string' && incomingCode) {
@@ -81,7 +81,7 @@ export default function ResetPasswordScreen() {
     void readIncomingLink()
 
     const subscription = Linking.addEventListener('url', ({ url }) => {
-      const parsed = Linking.parse(url)
+      const parsed = ExpoLinking.parse(url)
       const queryCode = parsed.queryParams?.code
       const incomingCode = Array.isArray(queryCode) ? queryCode[0] : queryCode
       if (typeof incomingCode === 'string' && incomingCode) {
