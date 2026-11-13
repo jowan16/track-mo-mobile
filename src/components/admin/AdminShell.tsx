@@ -78,8 +78,8 @@ export function AdminShell({
             <Text style={styles.menuButtonText}>☰</Text>
           </Pressable>
           <View style={styles.brandText}>
-            <Text style={styles.brand} numberOfLines={1}>Track Mo, Pake Ko!</Text>
-            <Text style={styles.brandSubtitle}>Administration</Text>
+            <Text style={styles.brand} numberOfLines={2}>{title}</Text>
+            {subtitle ? <Text style={styles.brandSubtitle}>{subtitle}</Text> : null}
           </View>
           <View style={styles.headerSpacer} />
         </View>
@@ -91,10 +91,6 @@ export function AdminShell({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.pageHeading}>
-          <Text style={styles.pageTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.pageSubtitle}>{subtitle}</Text> : null}
-        </View>
         {children}
       </ScrollView>
 
@@ -225,8 +221,8 @@ const styles = StyleSheet.create({
   },
   menuButtonText: { color: adminColors.primary, fontSize: 22, fontWeight: '800' },
   brandText: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  brand: { color: adminColors.text, fontSize: 15, fontWeight: '900', textAlign: 'center' },
-  brandSubtitle: { color: adminColors.muted, fontSize: 10, marginTop: 2, textAlign: 'center' },
+  brand: { color: adminColors.text, fontSize: 16, fontWeight: '900', textAlign: 'center' },
+  brandSubtitle: { color: adminColors.muted, fontSize: 10, lineHeight: 14, marginTop: 3, textAlign: 'center' },
   headerSpacer: { width: 42, height: 42 },
   body: { flex: 1 },
   bodyContent: { padding: 16, paddingBottom: 36, gap: 15 },
