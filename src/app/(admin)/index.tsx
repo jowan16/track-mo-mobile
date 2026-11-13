@@ -88,10 +88,6 @@ export default function AdminOverviewScreen() {
 
   return (
     <AdminShell title="Overview" subtitle="A summary of Track Mo, Pake Ko! system activity.">
-      <Pressable style={styles.refresh} onPress={loadData} disabled={loading}>
-        <Text style={styles.refreshText}>{loading ? 'Refreshing…' : '↻ Refresh overview'}</Text>
-      </Pressable>
-
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.grid}>
@@ -151,11 +147,9 @@ export default function AdminOverviewScreen() {
 }
 
 const styles = StyleSheet.create({
-  refresh: { alignSelf: 'flex-end', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 9, backgroundColor: '#E8EAFE' },
-  refreshText: { color: adminColors.primary, fontSize: 11, fontWeight: '800' },
   error: { color: adminColors.danger, backgroundColor: '#FEECEC', padding: 12, borderRadius: 9, fontSize: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statCard: { width: '48%', minHeight: 104, backgroundColor: '#FFFFFF', borderRadius: 13, borderWidth: 1, borderColor: adminColors.border, padding: 14 },
+  statCard: { flexGrow: 1, flexBasis: '45%', minWidth: 130, minHeight: 104, backgroundColor: '#FFFFFF', borderRadius: 13, borderWidth: 1, borderColor: adminColors.border, padding: 14 },
   statLabel: { color: adminColors.muted, fontSize: 11, fontWeight: '600' },
   statValue: { color: adminColors.text, fontSize: 27, fontWeight: '900', marginTop: 12 },
   section: { backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: adminColors.border, padding: 15 },
