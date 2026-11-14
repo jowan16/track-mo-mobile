@@ -1,3 +1,4 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 
 import { LinearGradient } from 'expo-linear-gradient'
@@ -5,7 +6,6 @@ import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Modal,
-  ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
@@ -565,7 +565,7 @@ export default function UserDashboard() {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.brand} />
+        <StaticLoader size="large" color={COLORS.brand} />
         <Text style={styles.loadingText}>Preparing your dashboard...</Text>
       </SafeAreaView>
     )
@@ -1323,7 +1323,7 @@ export default function UserDashboard() {
               </Pressable>
             </View>
             <Pressable onPress={handleSaveCategories} disabled={savingCategories} style={{ backgroundColor: COLORS.brand, borderRadius: 13, paddingVertical: 14, alignItems: 'center', opacity: savingCategories ? 0.65 : 1 }}>
-              {savingCategories ? <ActivityIndicator color="#ffffff" /> : <Text style={{ color: (dark ? '#1b2a26' : '#ffffff'), fontSize: 14, fontWeight: '800' }}>Save categories</Text>}
+              {savingCategories ? <StaticLoader color="#ffffff" /> : <Text style={{ color: (dark ? '#1b2a26' : '#ffffff'), fontSize: 14, fontWeight: '800' }}>Save categories</Text>}
             </Pressable>
           </View>
         </View>
