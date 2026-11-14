@@ -1,7 +1,7 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 import React, { useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   SafeAreaView,
@@ -395,10 +395,10 @@ export default function ReportExportScreen() {
         <Pressable
           disabled={loading}
           onPress={exportReport}
-          style={[styles.primaryButton, loading && styles.disabledButton]}
+          style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed, loading && styles.disabledButton]}
         >
           {loading ? (
-            <StaticLoader color="#ffffff" />
+            <ActivityIndicator color="#ffffff" />
           ) : (
             <>
               <Text style={styles.primaryButtonText}>Generate {format.toUpperCase()} report</Text>
@@ -462,6 +462,7 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   periodCardValue: { color: C.ink, fontSize: 19, fontWeight: '900' },
   periodCardDescription: { color: C.muted, fontSize: 11, lineHeight: 17 },
   primaryButton: { backgroundColor: C.brand, borderRadius: 13, paddingVertical: 15, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 58 },
+  primaryButtonPressed: { opacity: 0.88 },
   disabledButton: { opacity: 0.65 },
   primaryButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '900' },
   primaryButtonHint: { color: '#d8efeb', fontSize: 10, fontWeight: '600' },
