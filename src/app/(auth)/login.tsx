@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { router } from 'expo-router'
+import { useState } from 'react'
 import {
   ActivityIndicator,
   Keyboard,
@@ -41,7 +41,6 @@ async function readLock(): Promise<LoginLock> {
 
 export default function LoginScreen() {
   const { signIn } = useAuth()
-  const { verification } = useLocalSearchParams<{ verification?: string }>()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -50,14 +49,6 @@ export default function LoginScreen() {
   const [banner, setBanner] = useState('')
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
-
-  useEffect(() => {
-    if (verification === 'success') {
-      setBanner('Your email has been successfully verified! You can now log in to your account.')
-    } else if (verification === 'error') {
-      setBanner('We could not verify your email link. It may have expired or already been used. Request a new verification email and try again.')
-    }
-  }, [verification])
 
   const handleLogin = async () => {
     Keyboard.dismiss()
