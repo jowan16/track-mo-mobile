@@ -53,7 +53,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (verification === 'success') {
-      setBanner('Your email has been verified successfully. You can now log in.')
+      setBanner('Your email has been successfully verified! You can now log in to your account.')
     } else if (verification === 'error') {
       setBanner('We could not verify your email link. It may have expired or already been used. Request a new verification email and try again.')
     }
