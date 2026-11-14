@@ -75,17 +75,28 @@ export default function ReportExportScreen() {
   const styles = makeStyles(dark, C)
 
   const { profile } = useAuth()
-  const params = useLocalSearchParams<{ format?: string; mode?: string; year?: string; month?: string }>()
+  const params = useLocalSearchParams<{ format?: string; mode?: string; year?: string; month?: string; weekStart?: string }>()
   const initialFormat = params.format === 'pdf' ? 'pdf' : 'csv'
-  const reportMode = params.mode === 'yearly' ? 'yearly' : 'monthly'
+  const [format, setFormat] = useState<'csv' | 'pdf'>(initialFormat)
+  const reportMode = params.mode === 'weekly' || params.mode === 'yearly' ? params.mode : 'monthly'
   const currentDate = new Date()
   const reportYear = Number(params.year) || currentDate.getFullYear()
   const reportMonth = Math.min(12, Math.max(1, Number(params.month) || currentDate.getMonth() + 1))
-  const reportPeriodLabel = reportMode === 'monthly'
-    ? new Date(reportYear, reportMonth - 1, 1).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
-    : String(reportYear)
-
-  const [format, setFormat] = useState<'csv' | 'pdf'>(initialFormat)
+  const currentWeekStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate())
+  currentWeekStart.setDate(currentWeekStart.getDate() - ((currentWeekStart.getDay() + 6) % 7))
+  const parsedWeekStart = params.weekStart && /^\d{4}-\d{2}-\d{2}$/.test(params.weekStart)
+    ? new Date(params.weekStart + 'T00:00:00')
+    : currentWeekStart
+  const reportWeekStart = Number.isNaN(parsedWeekStart.getTime()) ? currentWeekStart : parsedWeekStart
+  const reportPeriodLabel = reportMode === 'weekly'
+    ? (() => {
+        const end = new Date(reportWeekStart)
+        end.setDate(end.getDate() + 6)
+        return reportWeekStart.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) + ' – ' + end.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+      })()
+    : reportMode === 'monthly'
+      ? new Date(reportYear, reportMonth - 1, 1).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
+      : String(reportYear)
   const [kind, setKind] = useState<ExportKind>('detailed')
   const [includeArchived, setIncludeArchived] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -93,14 +104,20 @@ export default function ReportExportScreen() {
   const loadRows = async () => {
     if (!profile?.id) throw new Error('Please sign in again.')
 
-    const start = reportMode === 'monthly'
-      ? new Date(reportYear, reportMonth - 1, 1)
-      : new Date(reportYear, 0, 1)
-    const end = reportMode === 'monthly'
-      ? new Date(reportYear, reportMonth, 1)
-      : new Date(reportYear + 1, 0, 1)
-    const from = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-01`
-    const to = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-01`
+    const start = reportMode === 'weekly'
+      ? new Date(reportWeekStart)
+      : reportMode === 'monthly'
+        ? new Date(reportYear, reportMonth - 1, 1)
+        : new Date(reportYear, 0, 1)
+    const end = reportMode === 'weekly'
+      ? new Date(reportWeekStart)
+      : reportMode === 'monthly'
+        ? new Date(reportYear, reportMonth, 1)
+        : new Date(reportYear + 1, 0, 1)
+    if (reportMode === 'weekly') end.setDate(end.getDate() + 7)
+    const dateKey = (date: Date) => date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0')
+    const from = dateKey(start)
+    const to = dateKey(end)
 
     const [categoryResult, trackedResult, expenseResult] = await Promise.all([
       supabase.from('categories').select('id,name'),
@@ -136,140 +153,158 @@ export default function ReportExportScreen() {
     }))
   }
 
-  const exportReport = async () => {
-    setLoading(true)
+  const buildReportData = (rows: Awaited<ReturnType<typeof loadRows>>) => {
+    let headers: string[]
+    let data: (string | number)[][]
 
+    if (kind === 'detailed') {
+      headers = ['Date', 'Category', 'Note', 'Payment method', 'Amount']
+      data = rows.map((row) => [row.date, row.category, row.note, row.payment, row.amount.toFixed(2)])
+    } else if (kind === 'category') {
+      headers = ['Category', 'Total', 'Share (%)', 'Number of expenses']
+      const grouped = new Map<string, { total: number; count: number }>()
+      rows.forEach((row) => {
+        const current = grouped.get(row.category) || { total: 0, count: 0 }
+        current.total += row.amount
+        current.count += 1
+        grouped.set(row.category, current)
+      })
+      const total = rows.reduce((sum, row) => sum + row.amount, 0)
+      data = [...grouped.entries()].sort((a, b) => b[1].total - a[1].total)
+        .map(([name, value]) => [name, value.total.toFixed(2), total ? ((value.total / total) * 100).toFixed(1) : '0', value.count])
+    } else if (reportMode === 'yearly') {
+      headers = ['Month', 'Total', 'Number of expenses']
+      const grouped = new Map<string, { total: number; count: number }>()
+      rows.forEach((row) => {
+        const date = new Date(row.date + 'T00:00:00')
+        const label = date.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
+        const current = grouped.get(label) || { total: 0, count: 0 }
+        current.total += row.amount
+        current.count += 1
+        grouped.set(label, current)
+      })
+      data = [...grouped.entries()].map(([label, value]) => [label, value.total.toFixed(2), value.count])
+    } else if (reportMode === 'weekly') {
+      headers = ['Date', 'Day', 'Total', 'Number of expenses']
+      const grouped = new Map<string, { total: number; count: number }>()
+      rows.forEach((row) => {
+        const current = grouped.get(row.date) || { total: 0, count: 0 }
+        current.total += row.amount
+        current.count += 1
+        grouped.set(row.date, current)
+      })
+      data = Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(reportWeekStart)
+        date.setDate(date.getDate() + index)
+        const key = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0')
+        const value = grouped.get(key) || { total: 0, count: 0 }
+        return [key, date.toLocaleDateString('en-PH', { weekday: 'long' }), value.total.toFixed(2), value.count]
+      })
+    } else {
+      headers = ['Month', 'Total', 'Number of expenses']
+      const total = rows.reduce((sum, row) => sum + row.amount, 0)
+      data = [[reportPeriodLabel, total.toFixed(2), rows.length]]
+    }
+    return { headers, data }
+  }
+
+  const getExportFileBase = () => {
+    const period = reportMode === 'weekly'
+      ? 'week-' + reportWeekStart.getFullYear() + '-' + String(reportWeekStart.getMonth() + 1).padStart(2, '0') + '-' + String(reportWeekStart.getDate()).padStart(2, '0')
+      : reportMode === 'monthly'
+        ? reportYear + '-' + String(reportMonth).padStart(2, '0')
+        : String(reportYear)
+    return 'trackmo-' + kind + '-' + period + '-' + Date.now()
+  }
+
+  const exportCsv = async () => {
+    setLoading(true)
     try {
       const rows = await loadRows()
-
       if (!rows.length) {
-        Alert.alert('No records', `There are no expenses to export for ${reportPeriodLabel}.`)
+        Alert.alert('No records', 'There are no expenses to export for ' + reportPeriodLabel + '.')
         return
       }
-
-      const now = new Date()
-      const monthLabel = reportPeriodLabel
-
-      let headers: string[]
-      let data: (string | number)[][]
-
-      if (kind === 'detailed') {
-        headers = ['Date', 'Category', 'Note', 'Payment method', 'Amount']
-        data = rows.map((row) => [
-          row.date,
-          row.category,
-          row.note,
-          row.payment,
-          row.amount.toFixed(2),
-        ])
-      } else if (kind === 'category') {
-        headers = ['Category', 'Total', 'Share (%)', 'Number of expenses']
-        const grouped = new Map<string, { total: number; count: number }>()
-        rows.forEach((row) => {
-          const current = grouped.get(row.category) || { total: 0, count: 0 }
-          current.total += row.amount
-          current.count += 1
-          grouped.set(row.category, current)
-        })
-        const total = rows.reduce((sum, row) => sum + row.amount, 0)
-        data = [...grouped.entries()]
-          .sort((a, b) => b[1].total - a[1].total)
-          .map(([name, value]) => [
-            name,
-            value.total.toFixed(2),
-            total ? ((value.total / total) * 100).toFixed(1) : '0',
-            value.count,
-          ])
-      } else {
-        headers = ['Month', 'Total', 'Number of expenses']
-        if (reportMode === 'yearly') {
-          const grouped = new Map<string, { total: number; count: number }>()
-          rows.forEach((row) => {
-            const date = new Date(`${row.date}T00:00:00`)
-            const label = date.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
-            const current = grouped.get(label) || { total: 0, count: 0 }
-            current.total += row.amount
-            current.count += 1
-            grouped.set(label, current)
-          })
-          data = [...grouped.entries()].map(([label, value]) => [label, value.total.toFixed(2), value.count])
-        } else {
-          const total = rows.reduce((sum, row) => sum + row.amount, 0)
-          data = [[monthLabel, total.toFixed(2), rows.length]]
-        }
+      const { headers, data } = buildReportData(rows)
+      const csv = [headers, ...data].map((line) => line.map(csvCell).join(',')).join('\r\n')
+      if (!FileSystem.cacheDirectory) throw new Error('File storage is unavailable on this device.')
+      const uri = FileSystem.cacheDirectory + getExportFileBase() + '.csv'
+      await FileSystem.writeAsStringAsync(uri, '\uFEFF' + csv, { encoding: FileSystem.EncodingType.UTF8 })
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('Sharing unavailable', 'File sharing is not available on this device.')
+        return
       }
-
-      const csv = [headers, ...data]
-        .map((line) => line.map(csvCell).join(','))
-        .join('\n')
-
-      if (format === 'csv') {
-        const uri = `${FileSystem.cacheDirectory}trackmo-${kind}-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.csv`
-        await FileSystem.writeAsStringAsync(uri, csv, {
-          encoding: FileSystem.EncodingType.UTF8,
-        })
-
-        const canShare = await Sharing.isAvailableAsync()
-        if (!canShare) {
-          Alert.alert('Sharing unavailable', 'File sharing is not available on this device.')
-          return
-        }
-        await Sharing.shareAsync(uri, {
-          mimeType: 'text/csv',
-          dialogTitle: 'Share your Track Mo report',
-        })
-      } else {
-        const tableRows = data.map((line) =>
-          `<tr>${line.map((cell) => `<td>${htmlText(cell)}</td>`).join('')}</tr>`,
-        ).join('')
-
-        const html = `
-          <html>
-            <head>
-              <meta name="viewport" content="width=device-width, initial-scale=1" />
-              <style>
-                body { font-family: Arial, sans-serif; padding: 24px; color: #14201c; }
-                h1 { color: #0f766e; }
-                p { color: #64716c; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #dfe5e1; padding: 9px; text-align: left; }
-                th { background: #edf5f2; }
-              </style>
-            </head>
-            <body>
-              <h1>Track Mo, Pake Ko!</h1>
-              <h2>${htmlText(kind.charAt(0).toUpperCase() + kind.slice(1))} Report</h2>
-              <p>Period: ${htmlText(monthLabel)}</p>
-              <table>
-                <thead><tr>${headers.map((head) => `<th>${htmlText(head)}</th>`).join('')}</tr></thead>
-                <tbody>${tableRows}</tbody>
-              </table>
-              <p>Generated by Track Mo, Pake Ko!</p>
-            </body>
-          </html>
-        `
-
-        const result = await Print.printToFileAsync({ html })
-        const canShare = await Sharing.isAvailableAsync()
-        if (!canShare) {
-          Alert.alert('Sharing unavailable', 'File sharing is not available on this device.')
-          return
-        }
-        await Sharing.shareAsync(result.uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Share your Track Mo PDF report',
-        })
-      }
+      await Sharing.shareAsync(uri, {
+        mimeType: 'text/csv',
+        UTI: 'public.comma-separated-values-text',
+        dialogTitle: 'Share your Track Mo CSV report',
+      })
     } catch (error) {
-      Alert.alert(
-        'Export failed',
-        error instanceof Error ? error.message : 'Something went wrong while exporting.',
-      )
+      Alert.alert('CSV export failed', error instanceof Error ? error.message : 'Unable to create the CSV file.')
     } finally {
       setLoading(false)
     }
   }
 
+  const exportPdf = async () => {
+    setLoading(true)
+    try {
+      const rows = await loadRows()
+      if (!rows.length) {
+        Alert.alert('No records', 'There are no expenses to export for ' + reportPeriodLabel + '.')
+        return
+      }
+      const { headers, data } = buildReportData(rows)
+      const tableRows = data.map((line) =>
+        '<tr>' + line.map((cell) => '<td>' + htmlText(cell) + '</td>').join('') + '</tr>',
+      ).join('')
+      const html = `
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <meta charset="utf-8" />
+            <style>
+              body { font-family: Arial, sans-serif; padding: 24px; color: #14201c; }
+              h1 { color: #0f766e; }
+              p { color: #64716c; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { border: 1px solid #dfe5e1; padding: 9px; text-align: left; }
+              th { background: #edf5f2; }
+            </style>
+          </head>
+          <body>
+            <h1>Track Mo, Pake Ko!</h1>
+            <h2>${htmlText(kind.charAt(0).toUpperCase() + kind.slice(1))} Report</h2>
+            <p>Period: ${htmlText(reportPeriodLabel)}</p>
+            <table>
+              <thead><tr>${headers.map((head) => '<th>' + htmlText(head) + '</th>').join('')}</tr></thead>
+              <tbody>${tableRows}</tbody>
+            </table>
+            <p>Generated by Track Mo, Pake Ko!</p>
+          </body>
+        </html>
+      `
+      const printed = await Print.printToFileAsync({ html })
+      if (!FileSystem.cacheDirectory) throw new Error('File storage is unavailable on this device.')
+      const uri = FileSystem.cacheDirectory + getExportFileBase() + '.pdf'
+      await FileSystem.copyAsync({ from: printed.uri, to: uri })
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('Sharing unavailable', 'File sharing is not available on this device.')
+        return
+      }
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        UTI: 'com.adobe.pdf',
+        dialogTitle: 'Share your Track Mo PDF report',
+      })
+    } catch (error) {
+      Alert.alert('PDF export failed', error instanceof Error ? error.message : 'Unable to create the PDF file.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const exportReport = format === 'csv' ? exportCsv : exportPdf
 
 
   return (
