@@ -360,11 +360,11 @@ export default function AdminReportsScreen() {
           </View>
 
           <View style={styles.exportRow}>
-            <Pressable style={styles.exportButton} onPress={exportPdf} disabled={loading || exporting || !stats}>
-              <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export PDF'}</Text>
+            <Pressable style={styles.exportButton} onPress={exportPdf} disabled={loading || exporting !== null || !stats}>
+              <Text style={styles.exportText}>{exporting === 'pdf' ? 'Preparing PDF…' : 'Export PDF'}</Text>
             </Pressable>
-            <Pressable style={[styles.exportButton, styles.csvButton]} onPress={exportCsv} disabled={loading || exporting || !stats}>
-              <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export CSV'}</Text>
+            <Pressable style={[styles.exportButton, styles.csvButton]} onPress={exportCsv} disabled={loading || exporting !== null || !stats}>
+              <Text style={styles.exportText}>{exporting === 'csv' ? 'Preparing CSV…' : 'Export CSV'}</Text>
             </Pressable>
           </View>
         </>
