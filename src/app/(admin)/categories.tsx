@@ -180,7 +180,7 @@ export default function AdminCategoriesScreen() {
         setSaving(true)
         const { error: deleteError } = await supabase.from('categories').update({ is_active: false }).eq('id', category.id).is('user_id', null)
         if (deleteError) Alert.alert('Unable to delete category', deleteError.message)
-        else { await writeAudit('Removed category "' + category.name + '" (soft delete)'); await loadCategories(); Alert.alert('Category deleted', 'The category is hidden. Historical records remain unchanged.') }
+        else { await writeAudit('Deleted category "' + category.name + '" (soft delete)'); await loadCategories(); Alert.alert('Category deleted', 'The category is hidden. Historical records remain unchanged.') }
         setSaving(false)
       })() } },
     ])
