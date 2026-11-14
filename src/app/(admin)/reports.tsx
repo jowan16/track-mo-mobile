@@ -99,7 +99,7 @@ function downloadWebFile(filename: string, content: string, mimeType: string) {
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 export default function AdminReportsScreen() {
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   exportText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
   error: { color: adminColors.danger, backgroundColor: '#FEECEC', padding: 11, borderRadius: 9, fontSize: 11 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-  statCard: { width: '48%', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 12, padding: 12, minHeight: 88, justifyContent: 'space-between' },
+  statCard: { width: '47%', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 12, padding: 12, minHeight: 88, justifyContent: 'space-between' },
   totalCard: { width: '100%' },
   statLabel: { color: adminColors.muted, fontSize: 10, fontWeight: '700' },
   statValue: { color: adminColors.text, fontSize: 23, fontWeight: '900', marginTop: 12 },
