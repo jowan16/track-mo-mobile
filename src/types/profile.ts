@@ -16,4 +16,5 @@ export interface Profile {
   daily_reminder_time: string
   daily_reminder_timezone: string
   created_at: string
+  last_seen_at: string | null
 }
