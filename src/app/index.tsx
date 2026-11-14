@@ -1,7 +1,6 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { Redirect } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
@@ -84,7 +83,7 @@ export default function IndexScreen() {
   if (loading || checkingCategories) {
     return (
       <View style={styles.container}>
-        <StaticLoader size="large" color="#0F766E" />
+        <ActivityIndicator size="large" color="#0F766E" />
       </View>
     )
   }
@@ -107,7 +106,7 @@ export default function IndexScreen() {
 
   return (
     <View style={styles.container}>
-      <StaticLoader size="large" color="#0F766E" />
+      <ActivityIndicator size="large" color="#0F766E" />
     </View>
   )
 }
