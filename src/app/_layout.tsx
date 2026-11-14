@@ -35,7 +35,7 @@ function AppContent() {
         if (error) throw error
 
         // Email confirmation should not automatically sign the user in.
-        const { error: signOutError } = await supabase.auth.signOut()
+        const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
         if (signOutError) throw signOutError
 
         router.replace('/(auth)/login?verification=success')
