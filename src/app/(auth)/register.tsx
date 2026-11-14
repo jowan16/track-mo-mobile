@@ -290,8 +290,12 @@ export default function RegisterScreen() {
               placeholder="At least 8 characters, with a letter and number"
               placeholderTextColor="#94A3B8"
               secureTextEntry={!showPassword}
-              autoComplete="new-password"
+              // Prevent Android/iOS password autofill from inserting different
+              // generated values into the two confirmation fields.
+              autoComplete="off"
+              importantForAutofill="no"
               autoCapitalize="none"
+              autoCorrect={false}
               editable={!loading}
             />
             <Pressable
@@ -317,8 +321,12 @@ export default function RegisterScreen() {
               placeholder="Re-enter your password"
               placeholderTextColor="#94A3B8"
               secureTextEntry={!showConfirmPassword}
-              autoComplete="new-password"
+              // Prevent Android/iOS password autofill from inserting different
+              // generated values into the two confirmation fields.
+              autoComplete="off"
+              importantForAutofill="no"
               autoCapitalize="none"
+              autoCorrect={false}
               editable={!loading}
             />
             <Pressable
