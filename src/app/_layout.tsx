@@ -42,8 +42,10 @@ function AppContent() {
             ? 'expired'
             : /already|used|token_not_found/.test(errorValue)
               ? 'already-used'
-              : /token|invalid|missing|not found/.test(errorValue)
-                ? 'invalid'
+              : /token_not_found|already|used|one-time token not found|token not found/.test(errorValue)
+                ? 'already-used'
+                : /token|invalid|missing/.test(errorValue)
+                  ? 'invalid'
                 : 'verification'
           router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } })
           return
@@ -66,18 +68,35 @@ function AppContent() {
           if (error) throw error
         } else {
           console.warn('Track Mo received an auth deep link without a supported verification token.')
-          router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType: 'verification' } })
+          router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType: 'missing' } })
           return
         }
 
-        // Verification is complete; do not keep the temporary callback session.
+        // Ask Supabase Auth to confirm the account's persisted verification status.
+        const { data: verifiedUser, error: userError } = await supabase.auth.getUser()
+        if (userError) throw userError
+        if (!verifiedUser.user?.email_confirmed_at) {
+          throw new Error('Supabase did not confirm the email verification status.')
+        }
+
+        // The verification is complete. Clear the temporary callback session.
         const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
-        if (signOutError) throw signOutError
+        if (signOutError) {
+          console.warn('Email was verified, but the temporary session could not be cleared:', signOutError)
+        }
 
         router.replace('/(auth)/verify-email?status=success')
       } catch (error) {
         console.error('Unable to complete email verification:', error)
-        router.replace('/(auth)/login?verification=error')
+        const message = error instanceof Error ? error.message.toLowerCase() : ''
+        const errorType = /expired/.test(message)
+          ? 'expired'
+          : /already|used|token_not_found|one-time token not found/.test(message)
+            ? 'already-used'
+            : /token|invalid|missing/.test(message)
+              ? 'invalid'
+              : 'verification'
+        router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } })
       }
     }
 
