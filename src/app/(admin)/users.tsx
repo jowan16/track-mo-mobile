@@ -230,7 +230,7 @@ export default function AdminUsersScreen() {
         </View>
       ))}
 
-      <Modal transparent visible={!!pending} animationType="fade" onRequestClose={() => { if (!working) setPending(null) }}>
+      <Modal transparent visible={!!pending} animationType="none" onRequestClose={() => { if (!working) setPending(null) }}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>
@@ -255,7 +255,7 @@ export default function AdminUsersScreen() {
         </View>
       </Modal>
 
-      <Modal transparent visible={addAdminOpen} animationType="fade" onRequestClose={() => { if (!working) setAddAdminOpen(false) }}>
+      <Modal transparent visible={addAdminOpen} animationType="none" onRequestClose={() => { if (!working) setAddAdminOpen(false) }}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Add admin</Text>
