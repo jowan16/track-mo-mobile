@@ -1,7 +1,7 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 import React, { useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   SafeAreaView,
@@ -398,7 +398,7 @@ export default function ReportExportScreen() {
           style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed, loading && styles.disabledButton]}
         >
           {loading ? (
-            <ActivityIndicator color="#ffffff" />
+            <StaticLoader color="#ffffff" />
           ) : (
             <>
               <Text style={styles.primaryButtonText}>Generate {format.toUpperCase()} report</Text>
