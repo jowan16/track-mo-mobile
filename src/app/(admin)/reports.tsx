@@ -1,6 +1,6 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { useEffect, useMemo, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   Share,
@@ -150,7 +150,7 @@ export default function AdminReportsScreen() {
         ))}
       </View>
 
-      {loading ? <StaticLoader color={adminColors.primary} style={{ margin: 30 }} /> : null}
+      {loading ? <ActivityIndicator color={adminColors.primary} style={{ margin: 30 }} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {!loading && !error && stats ? (
