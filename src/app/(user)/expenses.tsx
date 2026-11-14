@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/context/AuthContext'
+import { CategoryIcon } from '@/components/CategoryIcon'
 import { supabase, withValidSession } from '@/services/supabase'
 
 // --------------------------------------------------
@@ -1051,14 +1052,7 @@ export default function ExpensesScreen() {
                         { backgroundColor: category?.bg || '#e6f4f1' },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.categorySymbol,
-                          { color: category?.color || COLORS.brand },
-                        ]}
-                      >
-                        {categorySymbol(category?.icon ?? 'coins')}
-                      </Text>
+                      <CategoryIcon icon={category?.icon ?? 'coins'} color={category?.color || COLORS.brand} size={28} />
                     </View>
 
                     <View style={styles.expenseContent}>
@@ -1265,9 +1259,7 @@ export default function ExpensesScreen() {
                             disabled={saving}
                           >
                             <View style={[styles.choiceIcon, { backgroundColor: category.bg || '#e6f4f1' }]}>
-                              <Text style={{ color: category.color || COLORS.brand, fontWeight: '800', fontSize: 17 }}>
-                                {categorySymbol(category.icon)}
-                              </Text>
+                              <CategoryIcon icon={category.icon} color={category.color || COLORS.brand} size={26} />
                             </View>
                             <Text style={[styles.categoryChoiceText, active && styles.categoryChoiceTextActive]}>{category.name}</Text>
                             {active ? <Text style={styles.selectedCheck}>✓</Text> : null}
