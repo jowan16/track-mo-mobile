@@ -21,8 +21,24 @@ type TopCategory = { category_id: number; uses: number }
 type Growth = { label: string; total: number }
 type Category = { id: number; name: string; icon: string; color: string }
 
-function dateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+function manilaDateParts() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value)
+  return { year: value('year'), month: value('month') - 1, day: value('day') }
+}
+
+function dateKey(year: number, month: number, day: number) {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+function addCalendarDays(year: number, month: number, day: number, amount: number) {
+  const date = new Date(Date.UTC(year, month, day + amount))
+  return dateKey(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
 }
 
 export default function AdminReportsScreen() {
@@ -35,17 +51,26 @@ export default function AdminReportsScreen() {
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
 
-  const year = new Date().getFullYear()
-  const month = new Date().getMonth()
+  const today = manilaDateParts()
+  const year = today.year
+  const month = today.month
   const { start, end } = useMemo(() => {
-    if (period === 'year') return { start: `${year}-01-01`, end: `${year + 1}-01-01` }
-    if (period === 'last') {
-      const first = new Date(year, month - 1, 1)
-      const next = new Date(year, month, 1)
-      return { start: dateKey(first), end: dateKey(next) }
+    const firstOfThisMonth = dateKey(year, month, 1)
+    const firstOfNextMonth = dateKey(year, month + 1, 1)
+    const todayExclusive = addCalendarDays(year, month, today.day, 1)
+
+    if (period === 'year') {
+      return { start: dateKey(year, 0, 1), end: todayExclusive }
     }
-    return { start: dateKey(new Date(year, month, 1)), end: dateKey(new Date(year, month + 1, 1)) }
-  }, [period, year, month])
+    if (period === 'last') {
+      const previousMonth = new Date(Date.UTC(year, month - 1, 1))
+      return {
+        start: dateKey(previousMonth.getUTCFullYear(), previousMonth.getUTCMonth(), 1),
+        end: firstOfThisMonth,
+      }
+    }
+    return { start: firstOfThisMonth, end: todayExclusive }
+  }, [period, year, month, today.day])
 
   useEffect(() => {
     let active = true
@@ -178,15 +203,6 @@ export default function AdminReportsScreen() {
             ))}
           </View>
 
-      <View style={styles.exportRow}>
-        <Pressable style={styles.exportButton} onPress={exportPdf} disabled={loading || exporting || !stats}>
-          <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export PDF'}</Text>
-        </Pressable>
-        <Pressable style={[styles.exportButton, styles.csvButton]} onPress={exportCsv} disabled={loading || exporting || !stats}>
-          <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export CSV'}</Text>
-        </Pressable>
-      </View>
-
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Most used categories</Text>
             {top.length === 0 ? <Text style={styles.empty}>No data for the selected period.</Text> : top.map((item, index) => {
@@ -201,6 +217,15 @@ export default function AdminReportsScreen() {
                 </View>
               )
             })}
+          </View>
+
+          <View style={styles.exportRow}>
+            <Pressable style={styles.exportButton} onPress={exportPdf} disabled={loading || exporting || !stats}>
+              <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export PDF'}</Text>
+            </Pressable>
+            <Pressable style={[styles.exportButton, styles.csvButton]} onPress={exportCsv} disabled={loading || exporting || !stats}>
+              <Text style={styles.exportText}>{exporting ? 'Preparing…' : 'Export CSV'}</Text>
+            </Pressable>
           </View>
         </>
       ) : null}
