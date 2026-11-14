@@ -244,108 +244,184 @@ export default function AdminUsersScreen() {
     }
   }
 
+  const userAccounts = accounts.filter((account) => account.role === tab)
+  const activeCount = userAccounts.filter((account) => account.status === 'active').length
+  const suspendedCount = userAccounts.filter((account) => account.status === 'suspended').length
+  const onlineCount = userAccounts.filter((account) => isAccountOnline(account, activitySessions, activityClock)).length
+
   return (
     <AdminShell title="Users" subtitle="Manage registered user and administrator accounts.">
-      <View style={styles.tabs}>
-        {(['user', 'admin'] as Role[]).map((value) => (
-          <Pressable key={value} onPress={() => setTab(value)} style={[styles.tab, tab === value && styles.tabActive]}>
-            <Text style={[styles.tabText, tab === value && styles.tabTextActive]}>
-              {value === 'user' ? 'Users' : 'Admins'} ({accounts.filter((a) => a.role === value).length})
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.introRow}>
+        <View style={styles.introCopy}>
+          <Text style={styles.eyebrow}>ACCOUNT DIRECTORY</Text>
+          <Text style={styles.sectionTitle}>Manage accounts</Text>
+          <Text style={styles.sectionSubtitle}>Review account access and monitor recent activity.</Text>
+        </View>
+        <View style={styles.totalBadge}>
+          <Text style={styles.totalValue}>{userAccounts.length}</Text>
+          <Text style={styles.totalLabel}>TOTAL</Text>
+        </View>
       </View>
-
-      <TextInput
-        value={search}
-        onChangeText={setSearch}
-        placeholder="Search by name or email"
-        placeholderTextColor="#94A3B8"
-        style={styles.search}
-        autoCapitalize="none"
-      />
-
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <View style={[styles.statDot, { backgroundColor: '#16A34A' }]} />
+          <Text style={styles.statValue}>{activeCount}</Text>
+          <Text style={styles.statLabel}>Active accounts</Text>
+        </View>
+        <View style={styles.statCard}>
+          <View style={[styles.statDot, { backgroundColor: '#DC2626' }]} />
+          <Text style={styles.statValue}>{suspendedCount}</Text>
+          <Text style={styles.statLabel}>Suspended</Text>
+        </View>
+        <View style={styles.statCard}>
+          <View style={[styles.statDot, { backgroundColor: '#2563EB' }]} />
+          <Text style={styles.statValue}>{onlineCount}</Text>
+          <Text style={styles.statLabel}>Online now</Text>
+        </View>
+      </View>
+      <View style={styles.directoryCard}>
+        <View>
+          <Text style={styles.directoryTitle}>Accounts</Text>
+          <Text style={styles.directorySubtitle}>Choose an account type, then search the directory.</Text>
+        </View>
+        <View style={styles.tabs}>
+          {(['user', 'admin'] as Role[]).map((value) => {
+            const selected = tab === value
+            return (
+              <Pressable key={value} onPress={() => setTab(value)}
+                style={({ pressed }) => [styles.tab, selected && styles.tabActive, pressed && styles.controlPressed]}
+                accessibilityRole="button" accessibilityState={{ selected }}>
+                <Text style={[styles.tabText, selected && styles.tabTextActive]}>{value === 'user' ? 'Users' : 'Admins'}</Text>
+                <View style={[styles.tabCount, selected && styles.tabCountActive]}>
+                  <Text style={[styles.tabCountText, selected && styles.tabCountTextActive]}>
+                    {accounts.filter((a) => a.role === value).length}
+                  </Text>
+                </View>
+              </Pressable>
+            )
+          })}
+        </View>
+        <View style={styles.searchWrap}>
+          <Text style={styles.searchIcon}>⌕</Text>
+          <TextInput value={search} onChangeText={setSearch}
+            placeholder="Search by name or email" placeholderTextColor="#94A3B8"
+            style={styles.search} autoCapitalize="none" returnKeyType="search"
+            accessibilityLabel="Search accounts by name or email" />
+          {search.length > 0 ? (
+            <Pressable onPress={() => setSearch('')} style={styles.clearSearch}
+              accessibilityRole="button" accessibilityLabel="Clear search">
+              <Text style={styles.clearSearchText}>×</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
       {blocked ? <Text style={styles.error}>{blocked}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      <View style={styles.resultsHeader}>
+        <View>
+          <Text style={styles.resultsTitle}>{tab === 'user' ? 'Registered users' : 'Administrators'}</Text>
+          <Text style={styles.resultsSubtitle}>{filtered.length} {filtered.length === 1 ? 'account' : 'accounts'} found</Text>
+        </View>
+        <View style={styles.liveIndicator}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveText}>Activity tracking</Text>
+        </View>
+      </View>
       {loading ? (
-        <ActivityIndicator color={adminColors.primary} style={{ margin: 30 }} />
+        <View style={styles.loadingCard}>
+          <ActivityIndicator color={adminColors.primary} />
+          <Text style={styles.loadingText}>Loading accounts…</Text>
+        </View>
       ) : filtered.length === 0 ? (
-        <View style={styles.emptyCard}><Text style={styles.emptyText}>No accounts found.</Text></View>
-      ) : filtered.map((account) => (
-        <View key={account.id} style={styles.accountCard}>
-          <View style={styles.accountHeader}>
-            <View style={styles.accountAvatar}>
-              <Text style={styles.accountAvatarText}>
-                {(account.full_name || account.email || '?').slice(0, 1).toUpperCase()}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.accountName}>{account.full_name || 'No name provided'}</Text>
-              <Text style={styles.accountEmail}>{account.email || 'No email'}</Text>
-            </View>
-            <View style={[styles.statusPill, account.status === 'active' ? styles.activePill : styles.suspendedPill]}>
-              <Text style={[styles.statusText, account.status === 'active' ? styles.activeText : styles.suspendedText]}>
-                {`Account: ${account.status}`}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.activityDetails}>
-            <View style={styles.activityColumn}>
-              <Text style={styles.activityLabel}>Activity Status</Text>
-              <View style={[styles.activityPill, isAccountOnline(account, activitySessions, activityClock) ? styles.onlinePill : styles.offlinePill]}>
-                <Text style={[styles.activityText, isAccountOnline(account, activitySessions, activityClock) ? styles.onlineText : styles.offlineText]}>
-                  {isAccountOnline(account, activitySessions, activityClock) ? 'Online' : 'Offline'}
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyIcon}>⌕</Text>
+          <Text style={styles.emptyTitle}>No accounts found</Text>
+          <Text style={styles.emptyText}>Try another name or email search.</Text>
+        </View>
+      ) : filtered.map((account) => {
+        const online = isAccountOnline(account, activitySessions, activityClock)
+        return (
+          <View key={account.id} style={styles.accountCard}>
+            <View style={styles.accountHeader}>
+              <View style={styles.accountAvatar}>
+                <Text style={styles.accountAvatarText}>{(account.full_name || account.email || '?').slice(0, 1).toUpperCase()}</Text>
+              </View>
+              <View style={styles.identity}>
+                <Text style={styles.accountName} numberOfLines={1}>{account.full_name || 'No name provided'}</Text>
+                <Text style={styles.accountEmail} numberOfLines={2}>{account.email || 'No email'}</Text>
+                <Text style={styles.accountRole}>{account.role === 'admin' ? 'ADMINISTRATOR' : 'USER ACCOUNT'}</Text>
+              </View>
+              <View style={[styles.statusPill, account.status === 'active' ? styles.activePill : styles.suspendedPill]}>
+                <Text style={[styles.statusText, account.status === 'active' ? styles.activeText : styles.suspendedText]}>
+                  {account.status === 'active' ? 'Active' : 'Suspended'}
                 </Text>
               </View>
             </View>
-            <View style={styles.lastActiveColumn}>
-              <Text style={styles.activityLabel}>Last Active</Text>
-              <Text style={styles.lastActiveText}>{formatLastActive(account.last_seen_at, activityClock)}</Text>
+            <View style={styles.cardDivider} />
+            <View style={styles.activityDetails}>
+              <View style={styles.activityColumn}>
+                <Text style={styles.activityLabel}>ACTIVITY STATUS</Text>
+                <View style={styles.activityStatusRow}>
+                  <View style={[styles.activityDot, online ? styles.onlineDot : styles.offlineDot]} />
+                  <Text style={[styles.activityText, online ? styles.onlineText : styles.offlineText]}>{online ? 'Online' : 'Offline'}</Text>
+                </View>
+              </View>
+              <View style={styles.lastActiveColumn}>
+                <Text style={styles.activityLabel}>LAST ACTIVE</Text>
+                <Text style={styles.lastActiveText} numberOfLines={2}>{formatLastActive(account.last_seen_at, activityClock)}</Text>
+              </View>
+              <View style={styles.joinedColumn}>
+                <Text style={styles.activityLabel}>JOINED</Text>
+                <Text style={styles.joinedText}>{new Date(account.created_at).toLocaleDateString('en-PH', {
+                  timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric',
+                })}</Text>
+              </View>
+            </View>
+            <View style={styles.cardFooter}>
+              <Text style={styles.actionHint}>ACCOUNT ACCESS</Text>
+              {account.status === 'active' ? (
+                <Pressable style={({ pressed }) => [styles.dangerAction, pressed && styles.actionPressed]}
+                  onPress={() => askAction('suspend', account)} accessibilityRole="button"
+                  accessibilityLabel={'Suspend ' + (account.full_name || account.email || 'account')}>
+                  <Text style={styles.dangerActionIcon}>⊘</Text>
+                  <Text style={styles.dangerActionText}>Suspend</Text>
+                </Pressable>
+              ) : (
+                <Pressable style={({ pressed }) => [styles.successAction, pressed && styles.actionPressed]}
+                  onPress={() => askAction('reactivate', account)} accessibilityRole="button"
+                  accessibilityLabel={'Reactivate ' + (account.full_name || account.email || 'account')}>
+                  <Text style={styles.successActionIcon}>↻</Text>
+                  <Text style={styles.successActionText}>Reactivate</Text>
+                </Pressable>
+              )}
             </View>
           </View>
-          <View style={styles.accountDetails}>
-            <Text style={styles.detailText}>{account.role === 'admin' ? 'Administrator' : 'User'}</Text>
-            <Text style={styles.detailText}>
-              Joined {new Date(account.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </Text>
-          </View>
-          <View style={styles.actions}>
-            {account.status === 'active' ? (
-              <Pressable style={styles.dangerAction} onPress={() => askAction('suspend', account)}>
-                <Text style={styles.dangerActionText}>Suspend</Text>
-              </Pressable>
-            ) : (
-              <Pressable style={styles.successAction} onPress={() => askAction('reactivate', account)}>
-                <Text style={styles.successActionText}>Reactivate</Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
-      ))}
-
+        )
+      })}
       <Modal transparent visible={!!pending} animationType="fade" onRequestClose={() => { if (!working) setPending(null) }}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              {pending?.kind === 'suspend' ? 'Suspend this account?' : 'Reactivate this account?'}
-            </Text>
+            <View style={styles.modalIconWrap}>
+              <Text style={styles.modalIcon}>{pending?.kind === 'suspend' ? '!' : '✓'}</Text>
+            </View>
+            <Text style={styles.modalTitle}>{pending?.kind === 'suspend' ? 'Suspend this account?' : 'Reactivate this account?'}</Text>
             <Text style={styles.modalMessage}>
               {pending?.kind === 'suspend'
-                ? `${pending.target.full_name || pending.target.email} will not be able to log in until reactivated.`
-                : `${pending?.target.full_name || pending?.target.email} will be able to log in again.`}
+                ? (pending.target.full_name || pending.target.email) + ' will not be able to log in until reactivated.'
+                : (pending?.target.full_name || pending?.target.email) + ' will be able to log in again.'}
             </Text>
             <View style={styles.modalActions}>
               <Pressable style={styles.cancelButton} onPress={() => setPending(null)} disabled={working}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
               <Pressable style={styles.primaryButton} onPress={runPending} disabled={working}>
+                {working ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
                 <Text style={styles.primaryButtonText}>{working ? 'Please wait…' : 'Confirm'}</Text>
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
-
     </AdminShell>
   )
 }
