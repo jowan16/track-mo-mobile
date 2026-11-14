@@ -233,12 +233,8 @@ export default function RegisterScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
       >
         <View style={styles.brand}>
-          <View style={styles.brandIcon}>
-            <Text style={styles.brandIconText}>₱</Text>
-          </View>
           <Text style={styles.brandName}>Track Mo, Pake Ko!</Text>
           <Text style={styles.brandTagline}>Start tracking today</Text>
         </View>
@@ -414,17 +410,17 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#071B17' },
+  container: { flex: 1, backgroundColor: '#0A211C' },
   successScrollContent: {
     flexGrow: 1, justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 28,
   },
   successCard: {
-    width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: '#FFFFFF',
+    width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: '#FFFFFF',
     borderRadius: 24, paddingHorizontal: 24, paddingVertical: 28,
-    borderWidth: 1, borderColor: '#DCE9E3', alignItems: 'center',
+    borderWidth: 1, borderColor: '#DCE8E3', alignItems: 'center',
     shadowColor: '#000000', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16, shadowRadius: 22, elevation: 6,
+    shadowOpacity: 0.12, shadowRadius: 18, elevation: 5,
   },
   successIcon: {
     width: 68, height: 68, borderRadius: 34, backgroundColor: '#DCFCE7',
@@ -447,73 +443,53 @@ const styles = StyleSheet.create({
   feedbackSuccessText: { color: '#166534' },
   feedbackErrorText: { color: '#B91C1C' },
   resendButton: {
-    width: '100%', minHeight: 49, borderRadius: 12, borderWidth: 1.4,
+    width: '100%', minHeight: 48, borderRadius: 11, borderWidth: 1.5,
     borderColor: '#0F8A72', backgroundColor: '#FFFFFF', alignItems: 'center',
     justifyContent: 'center', marginTop: 18, paddingHorizontal: 12, paddingVertical: 12,
   },
   resendButtonText: { color: '#0F766E', fontSize: 14, fontWeight: '800', textAlign: 'center' },
   backToLoginButton: {
-    width: '100%', minHeight: 51, borderRadius: 12, backgroundColor: '#0F8A72',
-    alignItems: 'center', justifyContent: 'center', marginTop: 12,
-    paddingHorizontal: 18, paddingVertical: 13,
+    width: '100%', minHeight: 50, borderRadius: 12,
+    backgroundColor: '#0F8A72', alignItems: 'center', justifyContent: 'center',
+    marginTop: 12, paddingHorizontal: 18, paddingVertical: 13,
     shadowColor: '#064E3B', shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.16, shadowRadius: 6, elevation: 3,
   },
-  backToLoginButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.2, textAlign: 'center' },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 28 },
-  brand: { alignItems: 'center', marginBottom: 22 },
-  brandIcon: {
-    width: 54, height: 54, borderRadius: 17, backgroundColor: '#5EEAD4',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 13,
-    shadowColor: '#5EEAD4', shadowOpacity: 0.16, shadowRadius: 14,
-    shadowOffset: { width: 0, height: 5 }, elevation: 3,
+  backToLoginButtonText: {
+    color: '#FFFFFF', fontSize: 15, fontWeight: '800',
+    letterSpacing: 0.2, textAlign: 'center',
   },
-  brandIconText: { color: '#073B32', fontSize: 28, fontWeight: '900' },
-  brandName: { color: '#F8FAFC', fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
-  brandTagline: { color: '#A9C8BE', fontSize: 13, marginTop: 6, letterSpacing: 0.2 },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 22 },
+  brand: { alignItems: 'center', marginBottom: 22 },
+  brandName: { color: '#FFFFFF', fontSize: 23, fontWeight: '800' },
+  brandTagline: { color: '#B7CEC6', fontSize: 13, marginTop: 6 },
   card: {
-    width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 24, paddingHorizontal: 24, paddingVertical: 25,
-    borderWidth: 1, borderColor: '#DCE9E3',
-    shadowColor: '#000000', shadowOpacity: 0.18, shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 }, elevation: 7,
+    width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 22, padding: 22, borderWidth: 1, borderColor: '#DCE8E3',
   },
   logo: { fontSize: 22, fontWeight: '800', color: '#0F766E', marginBottom: 18 },
-  title: { fontSize: 24, fontWeight: '800', color: '#10231D', letterSpacing: -0.5 },
+  title: { fontSize: 23, fontWeight: '800', color: '#10231D' },
   description: { fontSize: 13, color: '#64776F', lineHeight: 20, marginTop: 7, marginBottom: 20 },
-  errorBanner: { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 17 },
+  errorBanner: { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 10, padding: 11, marginBottom: 16 },
   errorBannerText: { color: '#B91C1C', fontSize: 13, lineHeight: 19 },
-  label: { color: '#263F35', fontSize: 13, fontWeight: '700', marginBottom: 8 },
-  input: {
-    minHeight: 51, borderWidth: 1, borderColor: '#D4E0DA', borderRadius: 12,
-    paddingHorizontal: 14, fontSize: 14, color: '#10231D',
-    marginBottom: 15, backgroundColor: '#FBFDFC',
-  },
-  inputInvalid: { borderColor: '#DC2626', backgroundColor: '#FFFBFB' },
-  passwordContainer: {
-    minHeight: 53, flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: '#D4E0DA', borderRadius: 12,
-    paddingHorizontal: 14, marginBottom: 9, backgroundColor: '#FBFDFC',
-  },
-  passwordInput: { flex: 1, minHeight: 51, color: '#10231D', fontSize: 14 },
-  showPassword: { color: '#087B68', fontSize: 12, fontWeight: '800', paddingLeft: 10, paddingVertical: 10 },
-  fieldError: { color: '#C62828', fontSize: 12, marginTop: -5, marginBottom: 11, lineHeight: 17 },
-  hint: { color: '#718078', fontSize: 11, marginBottom: 15, lineHeight: 16 },
-  termsRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 5, marginBottom: 9 },
-  checkbox: { width: 20, height: 20, borderWidth: 1, borderColor: '#94A3B8', borderRadius: 5, marginRight: 10, alignItems: 'center', justifyContent: 'center' },
+  label: { color: '#334B41', fontSize: 13, fontWeight: '700', marginBottom: 7 },
+  input: { height: 48, borderWidth: 1, borderColor: '#CBD8D1', borderRadius: 10, paddingHorizontal: 12, fontSize: 14, color: '#10231D', marginBottom: 14 },
+  inputInvalid: { borderColor: '#DC2626' },
+  passwordContainer: { minHeight: 49, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#CBD8D1', borderRadius: 10, paddingHorizontal: 12, marginBottom: 8 },
+  passwordInput: { flex: 1, minHeight: 47, color: '#10231D', fontSize: 13 },
+  showPassword: { color: '#0F766E', fontSize: 12, fontWeight: '700', paddingLeft: 8 },
+  fieldError: { color: '#DC2626', fontSize: 12, marginTop: -8, marginBottom: 11 },
+  hint: { color: '#718078', fontSize: 11, marginBottom: 14 },
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 4, marginBottom: 8 },
+  checkbox: { width: 19, height: 19, borderWidth: 1, borderColor: '#94A3B8', borderRadius: 4, marginRight: 9, alignItems: 'center', justifyContent: 'center' },
   checkboxChecked: { backgroundColor: '#0F8A72', borderColor: '#0F8A72' },
   checkmark: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
   termsText: { flex: 1, color: '#475569', fontSize: 12, lineHeight: 19 },
   termsEmphasis: { color: '#0F766E', fontWeight: '700', textDecorationLine: 'underline' },
-  button: {
-    minHeight: 52, borderRadius: 12, backgroundColor: '#0F8A72',
-    alignItems: 'center', justifyContent: 'center', marginTop: 9,
-    shadowColor: '#064E3B', shadowOpacity: 0.18, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 }, elevation: 3,
-  },
-  disabledButton: { opacity: 0.65 },
+  button: { height: 49, borderRadius: 11, backgroundColor: '#0F8A72', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  disabledButton: { opacity: 0.7 },
   buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
   loginRow: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', marginTop: 22 },
   loginPrompt: { color: '#64748B', fontSize: 13 },
-  loginLink: { color: '#0F766E', fontSize: 13, fontWeight: '800', textDecorationLine: 'underline' },
+  loginLink: { color: '#0F766E', fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
 })
