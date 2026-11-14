@@ -37,13 +37,12 @@ export default function SettingsScreen() {
     input: dark ? '#26332e' : '#f8faf9',
   }
 
-  const [editingProfile, setEditingProfile] = useState(false)
   const [fullName, setFullName] = useState(profile?.full_name ?? '')
-  const [savingProfile, setSavingProfile] = useState(false)
-
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [savingPassword, setSavingPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [savingAccount, setSavingAccount] = useState(false)
 
   const [reminderTime, setReminderTime] = useState(
     profile?.daily_reminder_time?.slice(0, 5) ?? '08:00',
@@ -65,8 +64,9 @@ export default function SettingsScreen() {
     await refreshProfile()
   }
 
-  const handleSaveProfile = async () => {
+  const handleSaveAccount = async () => {
     const name = fullName.trim()
+    const wantsPasswordChange = password.length > 0 || confirmPassword.length > 0
 
     if (!name) {
       Alert.alert('Required field', 'Please enter your full name.')
@@ -78,53 +78,53 @@ export default function SettingsScreen() {
       return
     }
 
+    if (wantsPasswordChange) {
+      if (!password || !confirmPassword) {
+        Alert.alert('Password required', 'Enter and confirm your new password, or leave both password fields empty.')
+        return
+      }
+
+      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\\d/.test(password)) {
+        Alert.alert(
+          'Invalid password',
+          'Use at least 8 characters, including a letter and a number.',
+        )
+        return
+      }
+
+      if (password !== confirmPassword) {
+        Alert.alert('Password mismatch', 'Your new password and confirmation do not match.')
+        return
+      }
+    }
+
     try {
-      setSavingProfile(true)
+      setSavingAccount(true)
+
       await updateProfile({ full_name: name })
-      setEditingProfile(false)
-      Alert.alert('Success', 'Your profile has been updated.')
-    } catch (error) {
-      Alert.alert(
-        'Update failed',
-        error instanceof Error ? error.message : 'Unable to update your profile.',
-      )
-    } finally {
-      setSavingProfile(false)
-    }
-  }
 
-  const handleChangePassword = async () => {
-    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-      Alert.alert(
-        'Invalid password',
-        'Use at least 8 characters, including a letter and a number.',
-      )
-      return
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Password mismatch', 'Your passwords do not match.')
-      return
-    }
-
-    try {
-      setSavingPassword(true)
-
-      const { error } = await supabase.auth.updateUser({ password })
-
-      if (error) throw error
+      if (wantsPasswordChange) {
+        const { error } = await supabase.auth.updateUser({ password })
+        if (error) throw error
+      }
 
       setPassword('')
       setConfirmPassword('')
-
-      Alert.alert('Success', 'Your password has been changed.')
+      setShowPassword(false)
+      setShowConfirmPassword(false)
+      Alert.alert(
+        'Success',
+        wantsPasswordChange
+          ? 'Your profile and password have been updated.'
+          : 'Your profile has been updated.',
+      )
     } catch (error) {
       Alert.alert(
-        'Password update failed',
-        error instanceof Error ? error.message : 'Unable to update your password.',
+        'Update failed',
+        error instanceof Error ? error.message : 'Unable to update your account.',
       )
     } finally {
-      setSavingPassword(false)
+      setSavingAccount(false)
     }
   }
 
@@ -272,96 +272,73 @@ export default function SettingsScreen() {
 
             <View style={styles.separator} />
 
-            {editingProfile ? (
-              <>
-                <Text style={styles.label}>Full Name</Text>
-                <TextInput
-                  value={fullName}
-                  onChangeText={setFullName}
-                  placeholder="Enter your full name"
-                  placeholderTextColor={C.muted}
-                  maxLength={60}
-                  style={styles.input}
-                />
-
-                <View style={styles.buttonRow}>
-                  <Pressable
-                    style={styles.secondaryButton}
-                    onPress={() => {
-                      setFullName(profile.full_name ?? '')
-                      setEditingProfile(false)
-                    }}
-                  >
-                    <Text style={styles.secondaryButtonText}>Cancel</Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={styles.primaryButton}
-                    onPress={handleSaveProfile}
-                    disabled={savingProfile}
-                  >
-                    {savingProfile
-                      ? <ActivityIndicator color="#fff" />
-                      : <Text style={styles.primaryButtonText}>Save Changes</Text>}
-                  </Pressable>
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={styles.label}>Full Name</Text>
-                <Text style={styles.value}>{profile.full_name || 'Not set'}</Text>
-
-                <Text style={styles.label}>Email Address</Text>
-                <Text style={styles.value}>{profile.email || 'Not available'}</Text>
-
-                <Pressable
-                  style={styles.outlineButton}
-                  onPress={() => {
-                    setFullName(profile.full_name ?? '')
-                    setEditingProfile(true)
-                  }}
-                >
-                  <Text style={styles.outlineButtonText}>Edit Profile</Text>
-                </Pressable>
-              </>
-            )}
-            <View style={styles.separator} />
-
-            <Text style={styles.itemTitle}>SECURITY</Text>
-            <Text style={styles.description}>
-              Change your account password. You will remain signed in.
-            </Text>
-
-            <Text style={styles.label}>New Password</Text>
+            <Text style={styles.label}>Full Name</Text>
             <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="At least 8 characters"
+              value={fullName}
+              onChangeText={setFullName}
+              placeholder="Enter your full name"
               placeholderTextColor={C.muted}
-              secureTextEntry
-              autoCapitalize="none"
+              maxLength={60}
+              autoCapitalize="words"
               style={styles.input}
             />
+
+            <Text style={styles.label}>New Password (Optional)</Text>
+            <View style={styles.passwordInputRow}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Leave blank to keep current password"
+                placeholderTextColor={C.muted}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.passwordInput}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide new password' : 'Show new password'}
+                onPress={() => setShowPassword((visible) => !visible)}
+                style={styles.visibilityButton}
+              >
+                <Text style={styles.visibilityText}>{showPassword ? 'Hide' : 'Show'}</Text>
+              </Pressable>
+            </View>
 
             <Text style={styles.label}>Confirm New Password</Text>
-            <TextInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Re-enter your new password"
-              placeholderTextColor={C.muted}
-              secureTextEntry
-              autoCapitalize="none"
-              style={styles.input}
-            />
+            <View style={styles.passwordInputRow}>
+              <TextInput
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Re-enter your new password"
+                placeholderTextColor={C.muted}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.passwordInput}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}
+                onPress={() => setShowConfirmPassword((visible) => !visible)}
+                style={styles.visibilityButton}
+              >
+                <Text style={styles.visibilityText}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
+              </Pressable>
+            </View>
+
+            <Text style={styles.description}>
+              Leave both password fields empty if you only want to update your name.
+            </Text>
 
             <Pressable
-              style={styles.primaryButton}
-              onPress={handleChangePassword}
-              disabled={savingPassword || !password || !confirmPassword}
+              style={[styles.primaryButton, savingAccount && styles.disabledButton]}
+              onPress={handleSaveAccount}
+              disabled={savingAccount}
             >
-              {savingPassword
+              {savingAccount
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.primaryButtonText}>Update Password</Text>}
+                : <Text style={styles.primaryButtonText}>Save Changes</Text>}
             </Pressable>
           </Section>
 
@@ -582,6 +559,25 @@ function makeStyles(C: {
       color: C.text,
       fontSize: 14,
     },
+    passwordInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: C.input,
+      borderWidth: 1,
+      borderColor: C.border,
+      borderRadius: 10,
+      paddingRight: 10,
+    },
+    passwordInput: {
+      flex: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 11,
+      color: C.text,
+      fontSize: 14,
+    },
+    visibilityButton: { paddingHorizontal: 6, paddingVertical: 8 },
+    visibilityText: { color: C.brand, fontSize: 12, fontWeight: '800' },
+    disabledButton: { opacity: 0.6 },
     buttonRow: { flexDirection: 'row', gap: 10 },
     primaryButton: {
       backgroundColor: C.brand,
