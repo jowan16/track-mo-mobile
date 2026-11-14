@@ -84,9 +84,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
     }
 
-    if (result.status !== 'active') {
+    const status = result.status?.toLowerCase()
+
+    if (status === 'suspended') {
       throw new Error(
-        'Your account has been suspended. Please contact the administrator.',
+        'Your account has been suspended. Please contact the administrator for assistance.',
+      )
+    }
+
+    if (status !== 'active') {
+      throw new Error(
+        'Unable to verify your account status. Please contact the administrator.',
       )
     }
 
@@ -173,11 +181,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (mounted) setProfile(result)
       } catch (error) {
-        console.error('Unable to load user profile:', error)
+        const message = error instanceof Error ? error.message : ''
+        const isSuspension = message.toLowerCase().includes('suspended')
+
+        // A suspension is an expected access-control result, not an app error.
+        if (!isSuspension) {
+          console.error('Unable to load user profile:', error)
+        }
 
         if (mounted) {
           setProfile(null)
-          await supabase.auth.signOut()
+          await supabase.auth.signOut({ scope: 'local' })
         }
       } finally {
         if (mounted) setLoading(false)
@@ -190,6 +204,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false
     }
   }, [userId, validateProfile])
+
+  // Immediately end the local session if an administrator suspends this
+  // account while the user is already signed in.
+  useEffect(() => {
+    if (!userId) return
+
+    const channel = supabase
+      .channel(`profile-status-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${userId}`,
+        },
+        (payload) => {
+          const updatedProfile = payload.new as Profile
+          if (updatedProfile.status?.toLowerCase() !== 'active') {
+            setProfile(null)
+            void supabase.auth.signOut({ scope: 'local' })
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [userId])
 
   // Sign in and verify the account before allowing access.
   const signIn = useCallback(async (
@@ -209,7 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Do not allow an account without a confirmed email to proceed,
       // even if email confirmation was accidentally disabled in project settings.
       if (!data.user.email_confirmed_at) {
-        await supabase.auth.signOut()
+        await supabase.auth.signOut({ scope: 'local' })
         throw new Error('Please verify your email address before logging in. Check your inbox for the verification link.')
       }
 
@@ -218,7 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(result)
         return result
       } catch (profileError) {
-        await supabase.auth.signOut()
+        await supabase.auth.signOut({ scope: 'local' })
         throw profileError
       }
     } finally {
