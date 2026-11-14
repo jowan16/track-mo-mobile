@@ -92,7 +92,7 @@ export default function AdminOverviewScreen() {
   return (
     <AdminShell title="Overview" subtitle="A summary of Track Mo, Pake Ko! system activity.">
       <View style={styles.toolbar}>
-        <Text style={styles.toolbarHint}>Live system summary</Text>
+        <Text style={styles.toolbarHint}>Overview summary</Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Refresh overview"
