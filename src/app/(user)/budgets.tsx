@@ -706,6 +706,13 @@ export default function BudgetsScreen() {
               const categoryAlerts = budgetAlerts.filter(
                 (alert) => alert.budget_id === budget.id,
               )
+              const activeCategoryAlert = categoryAlerts.find(
+                (alert) =>
+                  (show100Warning && alert.threshold === 100) ||
+                  (!show100Warning && show80Warning && alert.threshold === 80),
+              )
+
+              const remaining = budget.amount - categorySpent
 
               const progressColor =
                 show100Warning
@@ -745,14 +752,24 @@ export default function BudgetsScreen() {
                     </Text>
                   </View>
 
-                  <View style={styles.spendingRow}>
-                    <Text style={styles.spentAmount}>
-                      {peso(categorySpent)}
-                    </Text>
-                    <Text style={styles.spendingOf}>of</Text>
-                    <Text style={styles.limitAmount}>
-                      {peso(budget.amount)}
-                    </Text>
+                  <View style={styles.budgetMetricsRow}>
+                    <View style={styles.metricBlock}>
+                      <Text style={styles.metricLabel}>CURRENT EXPENSES</Text>
+                      <Text style={styles.spentAmount}>{peso(categorySpent)}</Text>
+                    </View>
+                    <View style={[styles.metricBlock, styles.remainingMetric]}>
+                      <Text style={styles.metricLabel}>REMAINING BUDGET</Text>
+                      <Text
+                        style={[
+                          styles.remainingAmount,
+                          remaining < 0 && styles.negativeAmount,
+                        ]}
+                      >
+                        {remaining < 0
+                          ? `-${peso(Math.abs(remaining))}`
+                          : peso(remaining)}
+                      </Text>
+                    </View>
                   </View>
 
                   <View style={styles.progressTrack}>
@@ -767,40 +784,59 @@ export default function BudgetsScreen() {
                     />
                   </View>
 
-                  {categoryAlerts.length > 0 ? (
-                    <View style={styles.alertList}>
-                      {categoryAlerts.map((alert) => {
-                        const exceeded = alert.remaining_amount < 0
-
-                        return (
-                          <View key={alert.id} style={styles.notificationCard}>
-                            <View style={styles.notificationHeadingRow}>
-                              <Text style={styles.notificationTitle}>{alert.title}</Text>
-                              <Text style={styles.notificationThreshold}>{alert.threshold}%</Text>
-                            </View>
-                            <Text style={styles.notificationMessage}>{alert.message}</Text>
-                            <Text style={styles.notificationDetails}>
-                              Spent {peso(alert.spent_amount)} of {peso(alert.budget_amount)} ({Math.round(alert.percentage)}%)
-                            </Text>
-                            <Text style={exceeded ? styles.dangerAlert : styles.warningAlert}>
-                              {exceeded
-                                ? `Exceeded by ${peso(Math.abs(alert.remaining_amount))}`
-                                : `${peso(alert.remaining_amount)} remaining`}
-                            </Text>
-                          </View>
-                        )
-                      })}
+                  {show100Warning || show80Warning ? (
+                    <View
+                      style={[
+                        styles.warningBanner,
+                        show100Warning ? styles.dangerBanner : styles.cautionBanner,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.warningIconWrap,
+                          show100Warning ? styles.dangerIconWrap : styles.cautionIconWrap,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.warningIcon,
+                            show100Warning ? styles.dangerIcon : styles.cautionIcon,
+                          ]}
+                        >
+                          !
+                        </Text>
+                      </View>
+                      <View style={styles.warningCopy}>
+                        <Text
+                          style={[
+                            styles.warningHeadline,
+                            show100Warning ? styles.dangerHeadline : styles.cautionHeadline,
+                          ]}
+                        >
+                          {show100Warning ? 'Budget limit reached' : 'Approaching budget limit'}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.warningDescription,
+                            show100Warning ? styles.dangerDescription : styles.cautionDescription,
+                          ]}
+                        >
+                          {show100Warning
+                            ? remaining < 0
+                              ? `Exceeded by ${peso(Math.abs(remaining))}`
+                              : 'You have used your full budget.'
+                            : `${Math.round(percent)}% used · ${peso(Math.max(remaining, 0))} remaining`}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.warningPercent,
+                          show100Warning ? styles.dangerHeadline : styles.cautionHeadline,
+                        ]}
+                      >
+                        {activeCategoryAlert?.threshold ?? (show100Warning ? 100 : 80)}%
+                      </Text>
                     </View>
-                  ) : show100Warning ? (
-                    <Text style={styles.dangerAlert}>
-                      {categorySpent > budget.amount
-                        ? `Budget limit reached — exceeded by ${peso(categorySpent - budget.amount)}`
-                        : 'Budget limit reached'}
-                    </Text>
-                  ) : show80Warning ? (
-                    <Text style={styles.warningAlert}>
-                      {Math.round(percent)}% used — {peso(Math.max(budget.amount - categorySpent, 0))} remaining
-                    </Text>
                   ) : (
                     <Text style={styles.normalAlert}>
                       {profile?.warn_80 || profile?.warn_100
@@ -1172,47 +1208,103 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
-  alertList: {
-    gap: 9,
+  budgetMetricsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 17,
+    marginBottom: 12,
   },
-  notificationCard: {
-    backgroundColor: (dark ? '#202d29' : '#fffaf2'),
-    borderWidth: 1,
-    borderColor: (dark ? '#5c4832' : '#f0d8b5'),
-    borderRadius: 13,
-    padding: 13,
-    gap: 5,
+  metricBlock: {
+    flex: 1,
+    minWidth: 0,
   },
-  notificationHeadingRow: {
+  remainingMetric: {
+    alignItems: 'flex-end',
+  },
+  metricLabel: {
+    color: COLORS.muted,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.55,
+    marginBottom: 5,
+  },
+  remainingAmount: {
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'right',
+  },
+  warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
+    gap: 9,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
+    marginTop: 12,
   },
-  notificationTitle: {
-    color: COLORS.ink,
-    fontSize: 12,
-    fontWeight: '800',
+  cautionBanner: {
+    backgroundColor: dark ? '#3a3020' : '#fff8e8',
+    borderColor: dark ? '#72562d' : '#f1d28b',
   },
-  notificationThreshold: {
-    color: COLORS.orange,
-    fontSize: 11,
+  dangerBanner: {
+    backgroundColor: dark ? '#402725' : '#fff0ef',
+    borderColor: dark ? '#75423e' : '#efc0bc',
+  },
+  warningIconWrap: {
+    width: 25,
+    height: 25,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cautionIconWrap: {
+    backgroundColor: dark ? '#654c27' : '#ffedc2',
+  },
+  dangerIconWrap: {
+    backgroundColor: dark ? '#693632' : '#fbd8d5',
+  },
+  warningIcon: {
+    fontSize: 15,
     fontWeight: '900',
   },
-  notificationCategory: {
-    color: COLORS.ink,
-    fontSize: 12,
-    fontWeight: '700',
+  cautionIcon: {
+    color: dark ? '#ffd27c' : '#9a6500',
   },
-  notificationMessage: {
-    color: COLORS.muted,
+  dangerIcon: {
+    color: dark ? '#ffaaa3' : '#b42318',
+  },
+  warningCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  warningHeadline: {
     fontSize: 11,
-    lineHeight: 16,
+    fontWeight: '800',
   },
-  notificationDetails: {
-    color: COLORS.muted,
+  cautionHeadline: {
+    color: dark ? '#ffd27c' : '#9a6500',
+  },
+  dangerHeadline: {
+    color: dark ? '#ffaaa3' : '#b42318',
+  },
+  warningDescription: {
     fontSize: 10,
-    marginTop: 2,
+    lineHeight: 14,
+  },
+  cautionDescription: {
+    color: dark ? '#e5c58d' : '#815d18',
+  },
+  dangerDescription: {
+    color: dark ? '#ffc0ba' : '#8f2922',
+  },
+  warningPercent: {
+    fontSize: 11,
+    fontWeight: '900',
   },
   budgetList: {
     gap: 12,
@@ -1221,8 +1313,9 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderWidth: 1,
     borderColor: COLORS.line,
-    borderRadius: 17,
-    padding: 15,
+    borderRadius: 18,
+    padding: 16,
+    gap: 2,
   },
   budgetTopRow: {
     flexDirection: 'row',
