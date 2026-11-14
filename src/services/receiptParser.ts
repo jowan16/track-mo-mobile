@@ -323,7 +323,15 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
     }
   }
 
-  let structured = readStructured(raw)
+  const structured = readStructured(raw)
+  if (!structured && !/^https?:\/\//i.test(raw)) {
+    raw.split(/\r?\n/).forEach((line) => {
+      const pair = line.match(/^\s*([^:=|]{2,40})\s*[:=|]\s*(.*?)\s*$/)
+      if (!pair) return
+      const key = pair[1].toLowerCase().replace(/[^a-z0-9]/g, '')
+      if (key) entries.push([key, pair[2]])
+    })
+  }
   if (!structured && /^https?:\/\//i.test(raw)) {
     try {
       const url = new URL(raw)
@@ -370,7 +378,7 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
 
   const fallbackMerchant = /^https?:\/\//i.test(raw) ? '' : fallback.merchant_name
   const merchant_name =
-    firstText(['merchantname', 'merchant', 'businessname', 'storename', 'sellername', 'seller', 'vendor', 'companyname', 'establishment']) ||
+    firstText(['merchantname', 'merchant', 'businessname', 'storename', 'store', 'sellername', 'seller', 'vendor', 'companyname', 'establishment']) ||
     fallbackMerchant
 
   const total =
