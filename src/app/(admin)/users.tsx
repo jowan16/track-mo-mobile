@@ -26,33 +26,55 @@ type Account = {
   last_seen_at: string | null
 }
 type PendingAction = { kind: 'suspend' | 'reactivate'; target: Account } | null
+type ActivitySession = {
+  session_id: string
+  user_id: string
+  last_seen_at: string
+  token_expires_at: string | null
+}
 
 const ONLINE_WINDOW_MS = 90_000
 
-function isAccountOnline(lastSeenAt: string | null, now: number) {
-  if (!lastSeenAt) return false
-  const timestamp = new Date(lastSeenAt).getTime()
-  const age = now - timestamp
-  return Number.isFinite(timestamp) && age >= 0 && age <= ONLINE_WINDOW_MS
+function isAccountOnline(account: Account, sessions: ActivitySession[], now: number) {
+  if (account.status !== 'active') return false
+  return sessions.some((session) => {
+    if (session.user_id !== account.id) return false
+    const lastSeen = new Date(session.last_seen_at).getTime()
+    const expiresAt = session.token_expires_at ? new Date(session.token_expires_at).getTime() : null
+    const age = now - lastSeen
+    return Number.isFinite(lastSeen) && age >= 0 && age <= ONLINE_WINDOW_MS &&
+      (expiresAt === null || (Number.isFinite(expiresAt) && expiresAt > now))
+  })
 }
 
-function formatLastActive(lastSeenAt: string | null) {
+function manilaDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date)
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+function formatLastActive(lastSeenAt: string | null, now: number) {
   if (!lastSeenAt) return 'Never active'
   const date = new Date(lastSeenAt)
-  if (Number.isNaN(date.getTime())) return 'Unavailable'
-  return date.toLocaleString('en-PH', {
-    timeZone: 'Asia/Manila',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
+  const timestamp = date.getTime()
+  if (!Number.isFinite(timestamp)) return 'Unavailable'
+  const elapsed = Math.max(0, now - timestamp)
+  if (elapsed < 60_000) return 'Just now'
+  if (elapsed < 60 * 60_000) return `${Math.floor(elapsed / 60_000)} minutes ago`
+  if (elapsed < 24 * 60 * 60_000) return `${Math.floor(elapsed / (60 * 60_000))} hours ago`
+  const yesterday = new Date(now - 24 * 60 * 60_000)
+  if (manilaDateKey(date) === manilaDateKey(yesterday)) return 'Yesterday'
+  return date.toLocaleDateString('en-PH', {
+    timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric',
   })
 }
 
 export default function AdminUsersScreen() {
   const { profile } = useAuth()
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [activitySessions, setActivitySessions] = useState<ActivitySession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
@@ -65,17 +87,25 @@ export default function AdminUsersScreen() {
   const loadAccounts = useCallback(async () => {
     setLoading(true)
     setError('')
-    const { data, error: queryError } = await supabase
-      .from('profiles')
-      .select('id, full_name, email, role, status, created_at, last_seen_at')
-      .order('created_at', { ascending: false })
+    const [profilesResult, sessionsResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, full_name, email, role, status, created_at, last_seen_at')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('user_activity_sessions')
+        .select('session_id, user_id, last_seen_at, token_expires_at'),
+    ])
 
-    if (queryError) {
-      console.error('Admin accounts error:', queryError)
+    if (profilesResult.error || sessionsResult.error) {
+      const queryError = profilesResult.error ?? sessionsResult.error
+      console.error('Admin account activity error:', queryError)
       setError(queryError.message)
       setAccounts([])
+      setActivitySessions([])
     } else {
-      setAccounts((data ?? []) as Account[])
+      setAccounts((profilesResult.data ?? []) as Account[])
+      setActivitySessions((sessionsResult.data ?? []) as ActivitySession[])
     }
     setLoading(false)
   }, [])
@@ -85,7 +115,7 @@ export default function AdminUsersScreen() {
   }, [loadAccounts])
 
 
-  // Receive heartbeat and account-status changes without repeatedly querying the database.
+  // Keep profile timestamps and each authenticated session synchronized in real time.
   useEffect(() => {
     const channel = supabase
       .channel('admin-user-activity')
@@ -100,6 +130,24 @@ export default function AdminUsersScreen() {
               ? { ...account, status: updated.status, last_seen_at: updated.last_seen_at }
               : account,
           ))
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_activity_sessions' },
+        (payload) => {
+          const updated = payload.new as ActivitySession
+          const previous = payload.old as Partial<ActivitySession>
+          const sessionId = updated?.session_id ?? previous?.session_id
+          if (!sessionId) return
+          if (payload.eventType === 'DELETE') {
+            setActivitySessions((current) => current.filter((item) => item.session_id !== sessionId))
+          } else if (updated?.session_id && updated.user_id) {
+            setActivitySessions((current) => [
+              ...current.filter((item) => item.session_id !== updated.session_id),
+              updated,
+            ])
+          }
         },
       )
       .subscribe()
@@ -230,15 +278,15 @@ export default function AdminUsersScreen() {
           <View style={styles.activityDetails}>
             <View style={styles.activityColumn}>
               <Text style={styles.activityLabel}>Activity Status</Text>
-              <View style={[styles.activityPill, account.status === 'active' && isAccountOnline(account.last_seen_at, activityClock) ? styles.onlinePill : styles.offlinePill]}>
-                <Text style={[styles.activityText, account.status === 'active' && isAccountOnline(account.last_seen_at, activityClock) ? styles.onlineText : styles.offlineText]}>
-                  {account.status === 'active' && isAccountOnline(account.last_seen_at, activityClock) ? 'Online' : 'Offline'}
+              <View style={[styles.activityPill, isAccountOnline(account, activitySessions, activityClock) ? styles.onlinePill : styles.offlinePill]}>
+                <Text style={[styles.activityText, isAccountOnline(account, activitySessions, activityClock) ? styles.onlineText : styles.offlineText]}>
+                  {isAccountOnline(account, activitySessions, activityClock) ? 'Online' : 'Offline'}
                 </Text>
               </View>
             </View>
             <View style={styles.lastActiveColumn}>
               <Text style={styles.activityLabel}>Last Active</Text>
-              <Text style={styles.lastActiveText}>{formatLastActive(account.last_seen_at)}</Text>
+              <Text style={styles.lastActiveText}>{formatLastActive(account.last_seen_at, activityClock)}</Text>
             </View>
           </View>
           <View style={styles.accountDetails}>
