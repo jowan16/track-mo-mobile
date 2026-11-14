@@ -1,6 +1,7 @@
 
 import { DarkTheme, DefaultTheme, ThemeProvider as RouterThemeProvider, Stack } from 'expo-router'
 
+import { ReducedMotionConfig } from 'react-native-reanimated'
 import { AuthProvider } from '@/context/AuthContext'
 import { ThemeProvider, useAppTheme } from '@/context/ThemeContext'
 
@@ -26,6 +27,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ThemeProvider>
+        <ReducedMotionConfig mode="always" />
         <AppContent />
       </ThemeProvider>
     </AuthProvider>
