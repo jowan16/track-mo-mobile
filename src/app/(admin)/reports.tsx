@@ -202,7 +202,7 @@ export default function AdminReportsScreen() {
 
   const exportPdf = async () => {
     if (!stats || exporting) return
-    setExporting(true)
+    setExporting('pdf')
     try {
       const inclusiveEnd = addCalendarDays(
         Number(end.slice(0, 4)),
