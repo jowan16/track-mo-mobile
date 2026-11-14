@@ -254,9 +254,7 @@ export default function AdminCategoriesScreen() {
       ) : categories.map((category) => (
         <View key={category.id} style={[styles.categoryCard, !category.is_active && styles.disabledCard]}>
           <View style={[styles.iconBox, { backgroundColor: category.bg || '#EEF0FB' }]}>
-            <Text style={[styles.iconGlyph, { color: category.color || adminColors.primary }]}>
-              {ICON_GLYPHS[category.icon] || '◉'}
-            </Text>
+            <CategoryIcon icon={category.icon} color={category.color || adminColors.primary} size={40} />
           </View>
           <View style={styles.categoryInfo}>
             <Text style={styles.categoryName}>{category.name}</Text>
