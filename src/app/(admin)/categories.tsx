@@ -197,6 +197,10 @@ export default function AdminCategoriesScreen() {
   }
 
   const softDeleteCategory = (category: Category) => {
+    if (category.is_active && categories.filter((item) => item.id !== category.id && item.is_active && item.show_in_picker).length === 0) {
+      Alert.alert('Keep one category available', 'At least one active category must remain available to users.')
+      return
+    }
     Alert.alert('Remove category?', '“' + category.name + '” will be hidden from category selection. Existing expenses and budgets will be preserved.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => { void (async () => {
@@ -210,6 +214,10 @@ export default function AdminCategoriesScreen() {
   }
 
   const askToggle = async (category: Category) => {
+    if (category.is_active && categories.filter((item) => item.id !== category.id && item.is_active && item.show_in_picker).length === 0) {
+      Alert.alert('Keep one category available', 'At least one active category must remain available to users.')
+      return
+    }
     if (!category.is_active) {
       await toggleCategory(category)
       return
@@ -238,6 +246,7 @@ export default function AdminCategoriesScreen() {
       await writeAudit(`${category.is_active ? 'Disabled' : 'Enabled'} category "${category.name}"`)
       setToggleTarget(null)
       await loadCategories()
+      Alert.alert(category.is_active ? 'Category disabled' : 'Category enabled', category.is_active ? 'The category is now hidden from user selection. Existing records are preserved.' : 'The category is available to users again.')
     }
     setSaving(false)
   }
