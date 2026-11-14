@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/context/AuthContext'
+import { CategoryIcon } from '@/components/CategoryIcon'
 import { supabase } from '@/services/supabase'
 
 type Category = {
@@ -245,14 +246,7 @@ export default function CategoryDashboardScreen() {
                           { backgroundColor: category.bg || '#E6F4F1' },
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.categorySymbol,
-                            { color: category.color || '#0F766E' },
-                          ]}
-                        >
-                          {symbol}
-                        </Text>
+                        <CategoryIcon icon={category.icon} color={category.color || '#0F766E'} size={38} />
                       </View>
                       <View
                         style={[
