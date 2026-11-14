@@ -1,8 +1,8 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 
 import { useCallback, useEffect, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
@@ -278,7 +278,7 @@ export default function ArchiveScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <StaticLoader size="large" color={C.brand} />
+          <ActivityIndicator size="large" color={C.brand} />
           <Text style={styles.muted}>Loading archive...</Text>
         </View>
       ) : (
