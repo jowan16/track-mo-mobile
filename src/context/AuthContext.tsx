@@ -355,8 +355,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign out the current user.
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut()
+    // Remove only this authenticated session from presence before revoking it.
+    // Other devices/browsers remain Online if they still have a live session.
+    const { error: presenceError } = await supabase.rpc('end_last_active_session')
+    if (presenceError) {
+      console.warn('Unable to record session logout:', presenceError.message)
+    }
 
+    const { error } = await supabase.auth.signOut()
     if (error) throw error
 
     setProfile(null)
