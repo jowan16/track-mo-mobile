@@ -48,10 +48,7 @@ export function TabButton({
   ...props
 }: TabTriggerSlotProps) {
   return (
-    <Pressable
-      {...props}
-      style={styles.tabButtonView}
-    >
+    <Pressable {...props}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
         style={styles.tabButtonView}
