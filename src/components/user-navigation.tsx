@@ -143,7 +143,7 @@ export function UserDrawerProvider({
       <Modal
         visible={visible}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={closeDrawer}
         statusBarTranslucent
       >
