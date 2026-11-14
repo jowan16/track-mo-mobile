@@ -1,7 +1,7 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -104,7 +104,7 @@ export default function ForgotPasswordScreen() {
             disabled={loading}
           >
             {loading ? (
-              <StaticLoader color="#FFFFFF" />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.buttonText}>Send reset link</Text>
             )}
