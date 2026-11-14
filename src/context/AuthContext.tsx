@@ -206,6 +206,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error
 
+      // Do not allow an account without a confirmed email to proceed,
+      // even if email confirmation was accidentally disabled in project settings.
+      if (!data.user.email_confirmed_at) {
+        await supabase.auth.signOut()
+        throw new Error('Please verify your email address before logging in. Check your inbox for the verification link.')
+      }
+
       try {
         const result = await validateProfile(data.user.id)
         setProfile(result)
