@@ -50,9 +50,7 @@ export function TabButton({
   return (
     <Pressable
       {...props}
-      style={({ pressed }) => [
-        pressed && styles.pressed,
-      ]}
+      style={styles.tabButtonView}
     >
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
@@ -118,9 +116,6 @@ const styles = StyleSheet.create({
   },
   brandText: {
     marginRight: 'auto',
-  },
-  pressed: {
-    opacity: 0.7,
   },
   tabButtonView: {
     paddingVertical: Spacing.one,
