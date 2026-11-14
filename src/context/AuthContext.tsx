@@ -6,6 +6,7 @@ import {
     useContext,
     useEffect,
     useState,
+    useRef,
     type ReactNode,
 } from 'react'
 
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const signingInRef = useRef(false)
 
   const userId = session?.user.id
 
@@ -166,6 +168,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true
 
+    if (signingInRef.current) return
+
     if (!userId) {
       setProfile(null)
       setLoading(false)
@@ -240,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
   ): Promise<Profile> => {
+    signingInRef.current = true
     setLoading(true)
 
     try {
@@ -266,6 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw profileError
       }
     } finally {
+      signingInRef.current = false
       setLoading(false)
     }
   }, [validateProfile])
