@@ -285,9 +285,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(result)
       return result
     } catch (error) {
-      console.error('Unable to refresh profile:', error)
+      const message = error instanceof Error ? error.message : ''
+      if (!message.toLowerCase().includes('suspended')) {
+        console.error('Unable to refresh profile:', error)
+      }
       setProfile(null)
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'local' })
       return null
     }
   }, [userId, validateProfile])
