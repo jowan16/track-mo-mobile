@@ -338,6 +338,12 @@ export default function UserDashboard() {
 
   useEffect(() => {
     let mounted = true
+    const channel = supabase
+      .channel('user-dashboard-categories')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        void loadDashboard()
+      })
+      .subscribe()
 
     const initialize = async () => {
       setLoading(true)
@@ -351,6 +357,7 @@ export default function UserDashboard() {
 
     return () => {
       mounted = false
+      void supabase.removeChannel(channel)
     }
   }, [loadDashboard])
 
