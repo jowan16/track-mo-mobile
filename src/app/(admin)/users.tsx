@@ -23,8 +23,32 @@ type Account = {
   role: Role
   status: 'active' | 'suspended'
   created_at: string
+  last_seen_at: string | null
 }
 type PendingAction = { kind: 'suspend' | 'reactivate'; target: Account } | null
+
+const ONLINE_WINDOW_MS = 90_000
+
+function isAccountOnline(lastSeenAt: string | null, now: number) {
+  if (!lastSeenAt) return false
+  const timestamp = new Date(lastSeenAt).getTime()
+  const age = now - timestamp
+  return Number.isFinite(timestamp) && age >= 0 && age <= ONLINE_WINDOW_MS
+}
+
+function formatLastActive(lastSeenAt: string | null) {
+  if (!lastSeenAt) return 'Never active'
+  const date = new Date(lastSeenAt)
+  if (Number.isNaN(date.getTime())) return 'Unavailable'
+  return date.toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
 
 export default function AdminUsersScreen() {
   const { profile } = useAuth()
@@ -36,13 +60,14 @@ export default function AdminUsersScreen() {
   const [pending, setPending] = useState<PendingAction>(null)
   const [working, setWorking] = useState(false)
   const [blocked, setBlocked] = useState('')
+  const [activityClock, setActivityClock] = useState(Date.now())
 
   const loadAccounts = useCallback(async () => {
     setLoading(true)
     setError('')
     const { data, error: queryError } = await supabase
       .from('profiles')
-      .select('id, full_name, email, role, status, created_at')
+      .select('id, full_name, email, role, status, created_at, last_seen_at')
       .order('created_at', { ascending: false })
 
     if (queryError) {
@@ -58,6 +83,37 @@ export default function AdminUsersScreen() {
   useEffect(() => {
     void loadAccounts()
   }, [loadAccounts])
+
+
+  // Receive heartbeat and account-status changes without repeatedly querying the database.
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-user-activity')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles' },
+        (payload) => {
+          const updated = payload.new as Account
+          if (!updated?.id) return
+          setAccounts((current) => current.map((account) =>
+            account.id === updated.id
+              ? { ...account, status: updated.status, last_seen_at: updated.last_seen_at }
+              : account,
+          ))
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // This local clock only refreshes the Online/Offline label as heartbeats age.
+  useEffect(() => {
+    const interval = setInterval(() => setActivityClock(Date.now()), 15_000)
+    return () => clearInterval(interval)
+  }, [])
 
   const filtered = useMemo(() => accounts.filter((account) => {
     const matchesRole = account.role === tab
@@ -167,8 +223,22 @@ export default function AdminUsersScreen() {
             </View>
             <View style={[styles.statusPill, account.status === 'active' ? styles.activePill : styles.suspendedPill]}>
               <Text style={[styles.statusText, account.status === 'active' ? styles.activeText : styles.suspendedText]}>
-                {account.status}
+                {`Account: ${account.status}`}
               </Text>
+            </View>
+          </View>
+          <View style={styles.activityDetails}>
+            <View style={styles.activityColumn}>
+              <Text style={styles.activityLabel}>Activity Status</Text>
+              <View style={[styles.activityPill, isAccountOnline(account.last_seen_at, activityClock) ? styles.onlinePill : styles.offlinePill]}>
+                <Text style={[styles.activityText, isAccountOnline(account.last_seen_at, activityClock) ? styles.onlineText : styles.offlineText]}>
+                  {isAccountOnline(account.last_seen_at, activityClock) ? 'Online' : 'Offline'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.lastActiveColumn}>
+              <Text style={styles.activityLabel}>Last Active</Text>
+              <Text style={styles.lastActiveText}>{formatLastActive(account.last_seen_at)}</Text>
             </View>
           </View>
           <View style={styles.accountDetails}>
@@ -242,7 +312,18 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 9, fontWeight: '900', textTransform: 'capitalize' },
   activeText: { color: '#166534' },
   suspendedText: { color: '#B42318' },
-  accountDetails: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#EEF0F5', paddingTop: 9 },
+  activityDetails: { flexDirection: 'row', alignItems: 'center', gap: 16, borderTopWidth: 1, borderTopColor: '#EEF0F5', paddingTop: 10 },
+  activityColumn: { gap: 5, minWidth: 90 },
+  lastActiveColumn: { flex: 1, gap: 5 },
+  activityLabel: { color: adminColors.muted, fontSize: 9, fontWeight: '700' },
+  activityPill: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
+  onlinePill: { backgroundColor: '#DCFCE7' },
+  offlinePill: { backgroundColor: '#E2E8F0' },
+  activityText: { fontSize: 9, fontWeight: '900' },
+  onlineText: { color: '#166534' },
+  offlineText: { color: '#475569' },
+  lastActiveText: { color: adminColors.text, fontSize: 10, fontWeight: '700' },
+  accountDetails: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 1 },
   detailText: { color: adminColors.muted, fontSize: 10 },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   dangerAction: { backgroundColor: '#FEE2E2', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 8 },
