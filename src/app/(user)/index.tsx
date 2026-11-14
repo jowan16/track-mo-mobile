@@ -1,4 +1,3 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 
 import { LinearGradient } from 'expo-linear-gradient'
@@ -6,6 +5,7 @@ import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Modal,
+  ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
@@ -565,7 +565,7 @@ export default function UserDashboard() {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <StaticLoader size="large" color={COLORS.brand} />
+        <ActivityIndicator size="large" color={COLORS.brand} />
         <Text style={styles.loadingText}>Preparing your dashboard...</Text>
       </SafeAreaView>
     )
@@ -1263,7 +1263,7 @@ export default function UserDashboard() {
       <Modal
         visible={categoryModalVisible}
         transparent
-        animationType="none"
+        animationType="slide"
         onRequestClose={() => setCategoryModalVisible(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(10, 25, 20, 0.48)', justifyContent: 'flex-end' }}>
@@ -1323,7 +1323,7 @@ export default function UserDashboard() {
               </Pressable>
             </View>
             <Pressable onPress={handleSaveCategories} disabled={savingCategories} style={{ backgroundColor: COLORS.brand, borderRadius: 13, paddingVertical: 14, alignItems: 'center', opacity: savingCategories ? 0.65 : 1 }}>
-              {savingCategories ? <StaticLoader color="#ffffff" /> : <Text style={{ color: (dark ? '#1b2a26' : '#ffffff'), fontSize: 14, fontWeight: '800' }}>Save categories</Text>}
+              {savingCategories ? <ActivityIndicator color="#ffffff" /> : <Text style={{ color: (dark ? '#1b2a26' : '#ffffff'), fontSize: 14, fontWeight: '800' }}>Save categories</Text>}
             </Pressable>
           </View>
         </View>
