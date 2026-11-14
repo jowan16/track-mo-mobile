@@ -661,7 +661,7 @@ export default {
               if (
                 thresholdEnabled &&
                 profile.email_alerts &&
-                recipientEmail &&
+                recipientEmail
               ) {
                 const { data: state, error: stateError } = await supabase
                   .from("budget_alert_threshold_state")
