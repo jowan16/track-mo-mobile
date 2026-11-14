@@ -269,11 +269,19 @@ export default function BudgetsScreen() {
       setBudgets(activeBudgets)
       setExpenses(trackedExpenses)
       setBudgetAlerts(
-        ((alertsResult.data ?? []) as BudgetAlertNotification[]).filter(
-          (alert) =>
-            (alert.threshold === 80 && !!profile.warn_80) ||
-            (alert.threshold === 100 && !!profile.warn_100),
-        ),
+        ((alertsResult.data ?? []) as BudgetAlertNotification[])
+          .map((alert) => ({
+            ...alert,
+            budget_amount: Number(alert.budget_amount),
+            spent_amount: Number(alert.spent_amount),
+            remaining_amount: Number(alert.remaining_amount),
+            percentage: Number(alert.percentage),
+          }))
+          .filter(
+            (alert) =>
+              (alert.threshold === 80 && !!profile.warn_80) ||
+              (alert.threshold === 100 && !!profile.warn_100),
+          ),
       )
     } catch (error) {
       console.error('Budgets loading error:', error)
