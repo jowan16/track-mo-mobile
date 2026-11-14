@@ -1,6 +1,6 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   Pressable,
@@ -184,7 +184,7 @@ export default function AdminUsersScreen() {
       {blocked ? <Text style={styles.error}>{blocked}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {loading ? (
-        <StaticLoader color={adminColors.primary} style={{ margin: 30 }} />
+        <ActivityIndicator color={adminColors.primary} style={{ margin: 30 }} />
       ) : filtered.length === 0 ? (
         <View style={styles.emptyCard}><Text style={styles.emptyText}>No accounts found.</Text></View>
       ) : filtered.map((account) => (
@@ -230,7 +230,7 @@ export default function AdminUsersScreen() {
         </View>
       ))}
 
-      <Modal transparent visible={!!pending} animationType="none" onRequestClose={() => { if (!working) setPending(null) }}>
+      <Modal transparent visible={!!pending} animationType="fade" onRequestClose={() => { if (!working) setPending(null) }}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>
@@ -255,7 +255,7 @@ export default function AdminUsersScreen() {
         </View>
       </Modal>
 
-      <Modal transparent visible={addAdminOpen} animationType="none" onRequestClose={() => { if (!working) setAddAdminOpen(false) }}>
+      <Modal transparent visible={addAdminOpen} animationType="fade" onRequestClose={() => { if (!working) setAddAdminOpen(false) }}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Add admin</Text>
