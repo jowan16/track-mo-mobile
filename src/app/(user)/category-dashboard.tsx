@@ -1,8 +1,8 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -183,7 +183,7 @@ export default function CategoryDashboardScreen() {
 
         {loading ? (
           <View style={styles.loading}>
-            <StaticLoader size="large" color="#0F766E" />
+            <ActivityIndicator size="large" color="#0F766E" />
             <Text style={styles.loadingText}>Loading categories...</Text>
           </View>
         ) : loadError ? (
@@ -294,7 +294,7 @@ export default function CategoryDashboardScreen() {
             disabled={saving || loading || categories.length === 0 || !!loadError}
           >
             {saving ? (
-              <StaticLoader color="#FFFFFF" />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.continueButtonText}>Continue to dashboard</Text>
             )}
