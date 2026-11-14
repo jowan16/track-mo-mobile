@@ -85,6 +85,8 @@ export default function AdminUsersScreen() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<Role>('user')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all')
+  const [page, setPage] = useState(0)
   const [pending, setPending] = useState<PendingAction>(null)
   const [working, setWorking] = useState(false)
   const [blocked, setBlocked] = useState('')
@@ -180,8 +182,17 @@ export default function AdminUsersScreen() {
   const filtered = useMemo(() => accounts.filter((account) => {
     const matchesRole = account.role === tab
     const haystack = `${account.full_name ?? ''} ${account.email ?? ''}`.toLowerCase()
-    return matchesRole && haystack.includes(search.trim().toLowerCase())
-  }), [accounts, tab, search])
+    const matchesStatus = statusFilter === 'all' || account.status === statusFilter
+    return matchesRole && matchesStatus && haystack.includes(search.trim().toLowerCase())
+  }), [accounts, tab, statusFilter, search])
+
+  const pageSize = 8
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const visibleAccounts = filtered.slice(page * pageSize, (page + 1) * pageSize)
+
+  useEffect(() => {
+    if (page >= pageCount) setPage(Math.max(0, pageCount - 1))
+  }, [page, pageCount])
 
   const writeAudit = async (action: string) => {
     if (!profile) return
@@ -288,7 +299,7 @@ export default function AdminUsersScreen() {
           {(['user', 'admin'] as Role[]).map((value) => {
             const selected = tab === value
             return (
-              <Pressable key={value} onPress={() => setTab(value)}
+              <Pressable key={value} onPress={() => { setTab(value); setPage(0) }}
                 style={({ pressed }) => [styles.tab, selected && styles.tabActive, pressed && styles.controlPressed]}
                 accessibilityRole="button" accessibilityState={{ selected }}>
                 <Text style={[styles.tabText, selected && styles.tabTextActive]}>{value === 'user' ? 'Users' : 'Admins'}</Text>
@@ -303,16 +314,30 @@ export default function AdminUsersScreen() {
         </View>
         <View style={styles.searchWrap}>
           <Text style={styles.searchIcon}>⌕</Text>
-          <TextInput value={search} onChangeText={setSearch}
+          <TextInput value={search} onChangeText={(value) => { setSearch(value); setPage(0) }}
             placeholder="Search by name or email" placeholderTextColor="#94A3B8"
             style={styles.search} autoCapitalize="none" returnKeyType="search"
             accessibilityLabel="Search accounts by name or email" />
           {search.length > 0 ? (
-            <Pressable onPress={() => setSearch('')} style={styles.clearSearch}
+            <Pressable onPress={() => { setSearch(''); setPage(0) }} style={styles.clearSearch}
               accessibilityRole="button" accessibilityLabel="Clear search">
               <Text style={styles.clearSearchText}>×</Text>
             </Pressable>
           ) : null}
+        </View>
+        <View style={styles.filterRow}>
+          <Text style={styles.filterLabel}>ACCOUNT STATUS</Text>
+          <View style={styles.filterOptions}>
+            {(['all', 'active', 'suspended'] as const).map((value) => (
+              <Pressable key={value} onPress={() => { setStatusFilter(value); setPage(0) }}
+                style={({ pressed }) => [styles.filterChip, statusFilter === value && styles.filterChipActive, pressed && styles.controlPressed]}
+                accessibilityRole="button" accessibilityState={{ selected: statusFilter === value }}>
+                <Text style={[styles.filterChipText, statusFilter === value && styles.filterChipTextActive]}>
+                  {value === 'all' ? 'All' : value === 'active' ? 'Active' : 'Suspended'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </View>
       {blocked ? <Text style={styles.error}>{blocked}</Text> : null}
@@ -332,13 +357,13 @@ export default function AdminUsersScreen() {
           <ActivityIndicator color={adminColors.primary} />
           <Text style={styles.loadingText}>Loading accounts…</Text>
         </View>
-      ) : filtered.length === 0 ? (
+      ) : visibleAccounts.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>⌕</Text>
           <Text style={styles.emptyTitle}>No accounts found</Text>
           <Text style={styles.emptyText}>Try another name or email search.</Text>
         </View>
-      ) : filtered.map((account) => {
+      ) : visibleAccounts.map((account) => {
         const online = isAccountOnline(account, activitySessions, activityClock)
         return (
           <View key={account.id} style={styles.accountCard}>
@@ -398,6 +423,25 @@ export default function AdminUsersScreen() {
           </View>
         )
       })}
+      {!loading && filtered.length > 0 ? (
+        <View style={styles.pagination}>
+          <Text style={styles.paginationInfo}>Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length}</Text>
+          <View style={styles.paginationActions}>
+            <Pressable onPress={() => setPage((current) => Math.max(0, current - 1))}
+              disabled={page === 0} style={[styles.pageButton, page === 0 && styles.pageButtonDisabled]}
+              accessibilityRole="button" accessibilityLabel="Previous page">
+              <Text style={[styles.pageButtonText, page === 0 && styles.pageButtonTextDisabled]}>‹</Text>
+            </Pressable>
+            <Text style={styles.pageNumber}>{page + 1} / {pageCount}</Text>
+            <Pressable onPress={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
+              disabled={page >= pageCount - 1} style={[styles.pageButton, page >= pageCount - 1 && styles.pageButtonDisabled]}
+              accessibilityRole="button" accessibilityLabel="Next page">
+              <Text style={[styles.pageButtonText, page >= pageCount - 1 && styles.pageButtonTextDisabled]}>›</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       <Modal transparent visible={!!pending} animationType="fade" onRequestClose={() => { if (!working) setPending(null) }}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
