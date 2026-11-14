@@ -368,9 +368,10 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
     return parsed
   }
 
+  const fallbackMerchant = /^https?:\/\//i.test(raw) ? '' : fallback.merchant_name
   const merchant_name =
     firstText(['merchantname', 'merchant', 'businessname', 'storename', 'sellername', 'seller', 'vendor', 'companyname', 'establishment']) ||
-    fallback.merchant_name
+    fallbackMerchant
 
   const total =
     firstMoney(['grandtotal', 'totalamount', 'totaldue', 'amountdue', 'nettotal', 'payableamount', 'transactionamount', 'total', 'amount']) ??
