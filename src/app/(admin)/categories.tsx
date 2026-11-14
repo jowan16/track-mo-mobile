@@ -1,6 +1,6 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   Pressable,
@@ -201,7 +201,7 @@ export default function AdminCategoriesScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {loading ? (
-        <ActivityIndicator color={adminColors.primary} style={{ margin: 28 }} />
+        <StaticLoader color={adminColors.primary} style={{ margin: 28 }} />
       ) : categories.length === 0 ? (
         <Text style={styles.empty}>No categories found.</Text>
       ) : categories.map((category) => (
