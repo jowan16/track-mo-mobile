@@ -107,6 +107,10 @@ export default function CategoryDashboardScreen() {
     }
   }, [])
 
+  useEffect(() => {
+    setSelectedIds((current) => new Set([...current].filter((id) => categories.some((category) => category.id === id))))
+  }, [categories])
+
   const selectedCount = useMemo(() => selectedIds.size, [selectedIds])
 
   const toggleCategory = (id: number) => {
