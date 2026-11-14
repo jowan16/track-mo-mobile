@@ -282,3 +282,144 @@ export const parseReceiptText = (text: string): ParsedReceipt => {
 
   return { merchant_name, receipt_date, subtotal: null, tax: null, total, items, suggestedCategory, payment_method }
 }
+
+
+/**
+ * Read structured receipt data embedded directly in a QR code.
+ * Supports JSON objects, URL query parameters, and plain-text QR payloads.
+ * A URL is never fetched; only values encoded inside the QR itself are read.
+ */
+export const parseReceiptQR = (payload: string): ParsedReceipt => {
+  const raw = String(payload ?? '').trim()
+  const fallback = parseReceiptText(raw)
+  const entries: Array<[string, unknown]> = []
+
+  const collect = (value: unknown, prefix = '') => {
+    if (value === null || value === undefined) return
+    if (Array.isArray(value)) {
+      if (prefix && ['items', 'lineitems', 'products', 'purchaseditems'].includes(prefix)) {
+        entries.push([prefix, value])
+      } else {
+        value.forEach((item, index) => collect(item, prefix ? prefix + '.' + index : String(index)))
+      }
+      return
+    }
+    if (typeof value === 'object') {
+      Object.entries(value as Record<string, unknown>).forEach(([key, child]) => {
+        const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+        collect(child, normalized || prefix)
+      })
+      return
+    }
+    entries.push([prefix.toLowerCase().replace(/[^a-z0-9]/g, ''), value])
+  }
+
+  const readStructured = (value: string) => {
+    try {
+      collect(JSON.parse(value))
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  let structured = readStructured(raw)
+  if (!structured && /^https?:\/\//i.test(raw)) {
+    try {
+      const url = new URL(raw)
+      url.searchParams.forEach((value, key) => {
+        const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (/^(data|payload|receipt|details|transaction)$/i.test(normalized)) {
+          if (readStructured(value)) return
+        }
+        entries.push([normalized, value])
+      })
+    } catch {
+      // Keep plain-text parsing as a fallback for malformed URLs.
+    }
+  }
+
+  const valuesFor = (keys: string[]) => entries
+    .filter(([key, value]) => keys.includes(key) && value !== '')
+    .map(([, value]) => value)
+
+  const firstText = (keys: string[]) => {
+    const value = valuesFor(keys).find((item) => typeof item === 'string' || typeof item === 'number')
+    return value === undefined ? '' : String(value).trim()
+  }
+
+  const firstMoney = (keys: string[]) => {
+    for (const value of valuesFor(keys)) {
+      const normalized = String(value).replace(/,/g, '').match(/-?\d+(?:\.\d{1,2})?/)
+      if (!normalized) continue
+      const amount = Number(normalized[0])
+      if (Number.isFinite(amount) && amount > 0 && amount <= 9999999.99) return amount
+    }
+    return null
+  }
+
+  const normalizeDate = (value: string) => {
+    if (!value) return ''
+    const direct = value.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/)
+    if (direct) return toIsoDate(direct[1], direct[2], direct[3])
+    const numeric = value.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](20\d{2}|\d{2})\b/)
+    if (numeric) return toIsoDate(numeric[3], numeric[1], numeric[2])
+    const parsed = dateFromText(value)
+    return parsed
+  }
+
+  const merchant_name =
+    firstText(['merchantname', 'merchant', 'businessname', 'storename', 'sellername', 'seller', 'vendor', 'companyname', 'establishment']) ||
+    fallback.merchant_name
+
+  const total =
+    firstMoney(['grandtotal', 'totalamount', 'totaldue', 'amountdue', 'nettotal', 'payableamount', 'transactionamount', 'total', 'amount']) ??
+    fallback.total
+
+  const receipt_date = normalizeDate(
+    firstText(['receiptdate', 'transactiondate', 'issuedate', 'invoicedate', 'date', 'datetime', 'timestamp']),
+  ) || fallback.receipt_date
+
+  const itemPayload = valuesFor(['items', 'lineitems', 'products', 'purchaseditems']).find(Array.isArray)
+  const items: ParsedReceiptItem[] = Array.isArray(itemPayload)
+    ? itemPayload.flatMap((item): ParsedReceiptItem[] => {
+        if (!item || typeof item !== 'object') return []
+        const record = item as Record<string, unknown>
+        const name = String(record.name ?? record.item_name ?? record.description ?? record.product ?? '').trim()
+        if (!name) return []
+        const quantity = Number(record.quantity ?? record.qty ?? 1)
+        const unit = Number(record.unit_price ?? record.unitPrice ?? record.price ?? NaN)
+        const line = Number(record.line_total ?? record.lineTotal ?? record.amount ?? NaN)
+        return [{
+          item_name: name.slice(0, 200),
+          quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+          unit_price: Number.isFinite(unit) && unit > 0 ? unit : null,
+          line_total: Number.isFinite(line) && line > 0 ? line : null,
+        }]
+      })
+    : fallback.items
+
+  const payment_method =
+    firstText(['paymentmethod', 'paymenttype', 'tendertype']).toLowerCase().includes('cash') ? 'Cash'
+    : /gcash|maya|paymaya|e.?wallet/i.test(firstText(['paymentmethod', 'paymenttype', 'tendertype'])) ? 'E-wallet'
+    : /visa|master|debit|credit|card/i.test(firstText(['paymentmethod', 'paymenttype', 'tendertype'])) ? 'Card'
+    : /bank|transfer/i.test(firstText(['paymentmethod', 'paymenttype', 'tendertype'])) ? 'Bank transfer'
+    : fallback.payment_method
+
+  const categorySource = parseReceiptText([
+    merchant_name,
+    ...items.map((item) => item.item_name),
+    raw,
+  ].join('\n'))
+
+  return {
+    merchant_name,
+    receipt_date,
+    subtotal: firstMoney(['subtotal', 'netamount']) ?? fallback.subtotal,
+    tax: firstMoney(['tax', 'vat', 'taxamount', 'vatamount']) ?? fallback.tax,
+    total,
+    items: items.length ? items : fallback.items,
+    suggestedCategory: categorySource.suggestedCategory,
+    payment_method,
+  }
+}
