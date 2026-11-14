@@ -796,7 +796,7 @@ export default function BudgetsScreen() {
       <Modal
         visible={formVisible}
         transparent
-        animationType="slide"
+        animationType="none"
         onRequestClose={closeForm}
       >
         <KeyboardAvoidingView
