@@ -1,7 +1,7 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 import React, { useEffect, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Linking,
   Pressable,
@@ -128,7 +128,7 @@ export default function LessonDetailScreen() {
         </Pressable>
 
         {loading ? (
-          <StaticLoader size="large" color={C.brand} style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={C.brand} style={{ marginTop: 40 }} />
         ) : error ? (
           <View style={styles.card}>
             <Text style={styles.error}>Unable to load lesson: {error}</Text>
