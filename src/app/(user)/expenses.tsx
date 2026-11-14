@@ -1376,9 +1376,7 @@ export default function ExpensesScreen() {
                             disabled={saving}
                           >
                             <View style={[styles.choiceIcon, { backgroundColor: category.bg || '#e6f4f1' }]}>
-                              <Text style={{ color: category.color || COLORS.brand, fontWeight: '800', fontSize: 17 }}>
-                                {categorySymbol(category.icon)}
-                              </Text>
+                              <CategoryIcon icon={category.icon} color={category.color || COLORS.brand} size={26} />
                             </View>
                             <Text style={[styles.categoryChoiceText, active && styles.categoryChoiceTextActive]}>{category.name}</Text>
                             {active ? <Text style={styles.selectedCheck}>✓</Text> : null}
