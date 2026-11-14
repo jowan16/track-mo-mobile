@@ -14,6 +14,7 @@ export type ParsedReceipt = {
   items: ParsedReceiptItem[]
   suggestedCategory: string
   payment_method: string
+  bank_name?: string
 }
 
 const cleanLine = (value: string) =>
@@ -408,6 +409,62 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
       })
     : fallback.items
 
+  const normalizeBankName = (value: string) => {
+    const normalized = value.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const banks: Array<{ name: string; aliases: string[] }> = [
+      { name: 'BDO Unibank', aliases: ['bdo', 'bdounibank', 'bdounibankinc'] },
+      { name: 'BPI', aliases: ['bpi', 'bankofthephilippineislands'] },
+      { name: 'Metrobank', aliases: ['metrobank', 'metropolitanbankandtrustcompany'] },
+      { name: 'Land Bank of the Philippines', aliases: ['landbank', 'landbankofthephilippines', 'lbp'] },
+      { name: 'PNB', aliases: ['pnb', 'philippinenationalbank'] },
+      { name: 'UnionBank', aliases: ['unionbank', 'unionbankofthephilippines'] },
+      { name: 'RCBC', aliases: ['rcbc', 'rizalcommercialbankingcorporation'] },
+      { name: 'Security Bank', aliases: ['securitybank', 'securitybankcorporation'] },
+      { name: 'China Bank', aliases: ['chinabank', 'chinabankingcorporation', 'cbc'] },
+      { name: 'EastWest Bank', aliases: ['eastwest', 'eastwestbank', 'eastwestbankcorporation'] },
+      { name: 'GoTyme Bank', aliases: ['gotyme', 'gotymebank'] },
+      { name: 'PSBank', aliases: ['psbank', 'philippinesavingsbank'] },
+      { name: 'Asia United Bank', aliases: ['aub', 'asiaunitedbank'] },
+      { name: 'Bank of Commerce', aliases: ['bankofcommerce', 'bankofcom'] },
+      { name: 'DBP', aliases: ['dbp', 'developmentbankofthephilippines'] },
+      { name: 'Maybank', aliases: ['maybank', 'maybankphilippines'] },
+      { name: 'HSBC', aliases: ['hsbc', 'hongkongandshanghaibankingcorporation'] },
+      { name: 'Citi', aliases: ['citi', 'citibank'] },
+    ]
+    return banks.find((bank) => bank.aliases.includes(normalized))?.name ?? value.trim()
+  }
+
+  const explicitBank = firstText([
+    'bankname', 'bank', 'issuerbank', 'issuername', 'issuingbank',
+    'financialinstitution', 'institutionname', 'participantname',
+    'bankinstitution', 'senderbank', 'sourcebank',
+  ])
+  const bank_name = explicitBank
+    ? normalizeBankName(explicitBank)
+    : (() => {
+        const bankPatterns: Array<{ name: string; pattern: RegExp }> = [
+          { name: 'BDO Unibank', pattern: /\\bBDO(?:\\s+UNIBANK)?\\b/i },
+          { name: 'BPI', pattern: /\\bBPI\\b|BANK OF THE PHILIPPINE ISLANDS/i },
+          { name: 'Metrobank', pattern: /\\bMETROBANK\\b|METROPOLITAN BANK AND TRUST/i },
+          { name: 'Land Bank of the Philippines', pattern: /\\bLANDBANK\\b|LAND BANK OF THE PHILIPPINES/i },
+          { name: 'PNB', pattern: /\\bPNB\\b|PHILIPPINE NATIONAL BANK/i },
+          { name: 'UnionBank', pattern: /\\bUNIONBANK\\b|UNION BANK OF THE PHILIPPINES/i },
+          { name: 'RCBC', pattern: /\\bRCBC\\b|RIZAL COMMERCIAL BANKING/i },
+          { name: 'Security Bank', pattern: /\\bSECURITY BANK\\b/i },
+          { name: 'China Bank', pattern: /\\bCHINA BANK\\b|CHINA BANKING CORPORATION/i },
+          { name: 'EastWest Bank', pattern: /\\bEASTWEST(?: BANK)?\\b/i },
+          { name: 'GoTyme Bank', pattern: /\\bGOTYME(?: BANK)?\\b/i },
+          { name: 'PSBank', pattern: /\\bPSBANK\\b|PHILIPPINE SAVINGS BANK/i },
+          { name: 'Asia United Bank', pattern: /\\bAUB\\b|ASIA UNITED BANK/i },
+          { name: 'Bank of Commerce', pattern: /\\bBANK OF COMMERCE\\b/i },
+          { name: 'DBP', pattern: /\\bDBP\\b|DEVELOPMENT BANK OF THE PHILIPPINES/i },
+          { name: 'Maybank', pattern: /\\bMAYBANK\\b/i },
+          { name: 'HSBC', pattern: /\\bHSBC\\b/i },
+          { name: 'Citi', pattern: /\\bCITIBANK\\b|\\bCITI\\b/i },
+        ]
+        return bankPatterns.find(({ pattern }) => pattern.test(raw))?.name ?? ''
+      })()
+
   const payment_method =
     firstText(['paymentmethod', 'paymenttype', 'tendertype']).toLowerCase().includes('cash') ? 'Cash'
     : /gcash|maya|paymaya|e.?wallet/i.test(firstText(['paymentmethod', 'paymenttype', 'tendertype'])) ? 'E-wallet'
@@ -430,5 +487,6 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
     items: items.length ? items : fallback.items,
     suggestedCategory: categorySource.suggestedCategory,
     payment_method,
+    bank_name,
   }
 }
