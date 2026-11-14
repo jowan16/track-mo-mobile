@@ -291,8 +291,12 @@ export default function SettingsScreen() {
                 placeholder="Leave blank to keep current password"
                 placeholderTextColor={C.muted}
                 secureTextEntry={!showPassword}
+                keyboardType="default"
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                importantForAutofill="yes"
                 style={styles.passwordInput}
               />
               <Pressable
@@ -313,8 +317,12 @@ export default function SettingsScreen() {
                 placeholder="Re-enter your new password"
                 placeholderTextColor={C.muted}
                 secureTextEntry={!showConfirmPassword}
+                keyboardType="default"
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                importantForAutofill="yes"
                 style={styles.passwordInput}
               />
               <Pressable
