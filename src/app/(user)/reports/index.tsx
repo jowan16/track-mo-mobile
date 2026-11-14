@@ -1,7 +1,7 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -345,7 +345,7 @@ export default function ReportsScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color={C.brand} style={styles.loader} />
+          <StaticLoader size="large" color={C.brand} style={styles.loader} />
         ) : error ? (
           <View style={styles.card}>
             <Text style={styles.error}>{error}</Text>
