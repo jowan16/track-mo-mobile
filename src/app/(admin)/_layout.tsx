@@ -1,5 +1,6 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { Redirect, Stack } from 'expo-router'
-import { ActivityIndicator, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 
 import { useAuth } from '@/context/AuthContext'
 
@@ -9,7 +10,7 @@ export default function AdminLayout() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <StaticLoader size="large" color="#4F46E5" />
       </View>
     )
   }
