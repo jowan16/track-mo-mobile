@@ -1,6 +1,6 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -105,7 +105,7 @@ export default function AdminOverviewScreen() {
         <Text style={styles.sectionTitle}>Recent registered accounts</Text>
         <Text style={styles.sectionHint}>The five most recently registered accounts.</Text>
         {loading ? (
-          <ActivityIndicator color={adminColors.primary} style={{ margin: 22 }} />
+          <StaticLoader color={adminColors.primary} style={{ margin: 22 }} />
         ) : accounts.length === 0 ? (
           <Text style={styles.empty}>No registered accounts available.</Text>
         ) : accounts.map((account) => (
