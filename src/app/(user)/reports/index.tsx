@@ -510,13 +510,13 @@ export default function ReportsScreen() {
               <View style={styles.exportRow}>
                 <Pressable
                   style={styles.exportButton}
-                  onPress={() => router.push({ pathname: '/(user)/reports/export' as any, params: { format: 'csv' } })}
+                  onPress={() => router.push({ pathname: '/(user)/reports/export' as any, params: { format: 'csv', mode, year: String(year), month: String(month), weekStart: dateKey(weekStart) } })}
                 >
                   <Text style={styles.exportButtonText}>Export CSV</Text>
                 </Pressable>
                 <Pressable
                   style={styles.exportButton}
-                  onPress={() => router.push({ pathname: '/(user)/reports/export' as any, params: { format: 'pdf' } })}
+                  onPress={() => router.push({ pathname: '/(user)/reports/export' as any, params: { format: 'pdf', mode, year: String(year), month: String(month), weekStart: dateKey(weekStart) } })}
                 >
                   <Text style={styles.exportButtonText}>Export PDF</Text>
                 </Pressable>
