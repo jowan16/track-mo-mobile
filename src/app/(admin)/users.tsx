@@ -156,13 +156,14 @@ export default function AdminUsersScreen() {
 
   return (
     <AdminShell title="Users" subtitle="Manage registered user and administrator accounts.">
-      <View style={styles.topActions}>
-        <Pressable style={styles.primaryButton} onPress={() => { setAdminError(''); setAddAdminOpen(true) }}>
-          <Text style={styles.primaryButtonText}>+ Add admin</Text>
-        </Pressable>
-        <Pressable style={styles.refreshButton} onPress={loadAccounts} disabled={loading}>
-          <Text style={styles.refreshText}>↻ Refresh</Text>
-        </Pressable>
+      <View style={styles.tabs}>
+        {(['user', 'admin'] as Role[]).map((value) => (
+          <Pressable key={value} onPress={() => setTab(value)} style={[styles.tab, tab === value && styles.tabActive]}>
+            <Text style={[styles.tabText, tab === value && styles.tabTextActive]}>
+              {value === 'user' ? 'Users' : 'Admins'} ({accounts.filter((a) => a.role === value).length})
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
       <TextInput
@@ -174,14 +175,10 @@ export default function AdminUsersScreen() {
         autoCapitalize="none"
       />
 
-      <View style={styles.tabs}>
-        {(['user', 'admin'] as Role[]).map((value) => (
-          <Pressable key={value} onPress={() => setTab(value)} style={[styles.tab, tab === value && styles.tabActive]}>
-            <Text style={[styles.tabText, tab === value && styles.tabTextActive]}>
-              {value === 'user' ? 'Users' : 'Admins'} ({accounts.filter((a) => a.role === value).length})
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.topActions}>
+        <Pressable style={styles.primaryButton} onPress={() => { setAdminError(''); setAddAdminOpen(true) }}>
+          <Text style={styles.primaryButtonText}>+ Add admin</Text>
+        </Pressable>
       </View>
 
       {blocked ? <Text style={styles.error}>{blocked}</Text> : null}
@@ -289,13 +286,11 @@ export default function AdminUsersScreen() {
 }
 
 const styles = StyleSheet.create({
-  topActions: { flexDirection: 'row', gap: 9, justifyContent: 'flex-end' },
+  topActions: { flexDirection: 'row', justifyContent: 'flex-start', marginTop: 2, marginBottom: 4 },
   primaryButton: { backgroundColor: adminColors.primary, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 11 },
   primaryButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
-  refreshButton: { borderWidth: 1, borderColor: adminColors.border, borderRadius: 9, paddingHorizontal: 13, justifyContent: 'center', backgroundColor: '#FFFFFF' },
-  refreshText: { color: adminColors.text, fontSize: 11, fontWeight: '800' },
   search: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, color: adminColors.text, fontSize: 12 },
-  tabs: { flexDirection: 'row', backgroundColor: '#E9EBF4', borderRadius: 10, padding: 4, gap: 4 },
+  tabs: { flexDirection: 'row', backgroundColor: '#E9EBF4', borderRadius: 10, padding: 4, gap: 4, marginBottom: 2 },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 8 },
   tabActive: { backgroundColor: '#FFFFFF' },
   tabText: { color: adminColors.muted, fontSize: 11, fontWeight: '700' },
