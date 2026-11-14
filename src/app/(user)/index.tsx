@@ -2,7 +2,7 @@ import { useAppTheme } from '@/context/ThemeContext'
 
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import {
   Modal,
   ActivityIndicator,
@@ -205,6 +205,7 @@ export default function UserDashboard() {
   const styles = makeStyles(dark, COLORS)
 
   const { profile, signOut } = useAuth()
+  const realtimeInstanceId = useId().replace(/:/g, '')
 
   const [data, setData] = useState<DashboardData>({
     categories: [],
@@ -339,18 +340,28 @@ export default function UserDashboard() {
 
   useEffect(() => {
     let mounted = true
-    const channel = supabase
-      .channel('user-dashboard-categories')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
-        void loadDashboard()
-      })
-      .subscribe()
+
+    // Give each mounted dashboard its own channel topic. This prevents a
+    // previously subscribed channel (for example after a fast refresh or
+    // screen remount) from being reused when registering postgres_changes.
+    const channel = supabase.channel(
+      `user-dashboard-categories:${profile?.id ?? 'guest'}:${realtimeInstanceId}`,
+    )
+
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'categories' },
+      () => {
+        if (mounted) void loadDashboard()
+      },
+    )
+
+    // Register all event handlers before subscribing.
+    channel.subscribe()
 
     const initialize = async () => {
       setLoading(true)
-
       await loadDashboard()
-
       if (mounted) setLoading(false)
     }
 
@@ -360,7 +371,7 @@ export default function UserDashboard() {
       mounted = false
       void supabase.removeChannel(channel)
     }
-  }, [loadDashboard])
+  }, [loadDashboard, profile?.id, realtimeInstanceId])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
