@@ -62,7 +62,7 @@ export default function ScanReceiptScreen() {
 
     try {
       const draft = parseReceiptQR(result.data)
-      if (!draft.merchant_name && draft.total === null && !draft.receipt_date && draft.items.length === 0) {
+      if (!draft.merchant_name && !draft.bank_name && draft.total === null && !draft.receipt_date && draft.items.length === 0) {
         Alert.alert(
           'No receipt details found',
           'This QR code does not contain readable merchant or transaction details. Try scanning the printed receipt or enter the expense manually.',
