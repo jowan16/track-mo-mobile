@@ -110,8 +110,11 @@ export default function ReportsScreen() {
     const weeklyEnd = new Date(weekStart)
     weeklyEnd.setDate(weeklyEnd.getDate() + 7)
 
+    const previousWeekStart = new Date(weekStart)
+    previousWeekStart.setDate(previousWeekStart.getDate() - 7)
+
     const from = mode === 'weekly'
-      ? dateKey(weekStart)
+      ? dateKey(previousWeekStart)
       : mode === 'monthly'
         ? dateKey(new Date(year, month - 2, 1))
         : `${year - 1}-01-01`
