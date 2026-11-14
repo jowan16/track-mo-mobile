@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { UserPageHeader } from '@/components/user-navigation'
+import { CategoryIcon } from '@/components/CategoryIcon'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 
@@ -21,6 +22,8 @@ type Category = {
   id: number
   name: string
   icon: string
+  color: string
+  bg: string
 }
 
 type Expense = {
@@ -120,7 +123,7 @@ export default function ArchiveScreen() {
         await Promise.all([
           supabase
             .from('categories')
-            .select('id, name, icon')
+            .select('id, name, icon, color, bg')
             .order('sort_order'),
 
           supabase
@@ -310,12 +313,10 @@ export default function ArchiveScreen() {
                   <View key={item.id} style={styles.item}>
                     <View style={styles.itemTop}>
                       <View style={styles.itemInfo}>
-                        <Text style={styles.itemTitle}>
-                          {category?.icon
-                            ? `${category.icon} `
-                            : ''}
-                          {category?.name ?? 'Unknown category'}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <CategoryIcon icon={category?.icon ?? 'coins'} color={category?.color ?? C.brand} size={28} backgroundColor={category?.bg ?? '#E6F4F1'} />
+                          <Text style={styles.itemTitle}>{category?.name ?? 'Unknown category'}</Text>
+                        </View>
 
                         <Text style={styles.muted}>
                           {dateLabel(item.spent_on)} · {item.payment_method}
@@ -365,12 +366,10 @@ export default function ArchiveScreen() {
                 <View key={item.id} style={styles.item}>
                   <View style={styles.itemTop}>
                     <View style={styles.itemInfo}>
-                      <Text style={styles.itemTitle}>
-                        {category?.icon
-                          ? `${category.icon} `
-                          : ''}
-                        {category?.name ?? 'Unknown category'}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <CategoryIcon icon={category?.icon ?? 'coins'} color={category?.color ?? C.brand} size={28} backgroundColor={category?.bg ?? '#E6F4F1'} />
+                        <Text style={styles.itemTitle}>{category?.name ?? 'Unknown category'}</Text>
+                      </View>
 
                       <Text style={styles.muted}>
                         {monthLabel(item.month, item.year)}
