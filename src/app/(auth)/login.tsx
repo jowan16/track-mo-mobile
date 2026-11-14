@@ -1,7 +1,7 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -283,7 +283,7 @@ export default function LoginScreen() {
             disabled={loading}
           >
             {loading ? (
-              <StaticLoader color="#FFFFFF" />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.loginButtonText}>Log in  ›</Text>
             )}
