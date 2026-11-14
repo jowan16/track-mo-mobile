@@ -186,11 +186,7 @@ export function UserDrawerProvider({
               {menuItems.map((item) => (
                 <Pressable
                   key={item.label}
-                  style={({ pressed }) => [
-                    styles.menuItem,
-                    isMenuItemActive(item.path) && styles.activeMenuItem,
-                    pressed && styles.menuItemPressed,
-                  ]}
+                  style={[styles.menuItem, isMenuItemActive(item.path) && styles.activeMenuItem]}
                   onPress={() =>
                     handleMenuPress(item.label, item.path, item.available)
                   }
@@ -228,10 +224,7 @@ export function UserDrawerProvider({
               </Text>
 
               <Pressable
-                style={({ pressed }) => [
-                  styles.logoutButton,
-                  pressed && styles.logoutPressed,
-                ]}
+                style={styles.logoutButton}
                 onPress={handleSignOut}
                 accessibilityRole="button"
               >
@@ -271,10 +264,8 @@ function makeStyles(dark: boolean) {
     border: dark ? '#34423c' : '#e8eeeb',
     subtle: dark ? '#26332e' : '#f1f5f3',
     active: dark ? '#173d37' : '#e6f4f1',
-    pressed: dark ? '#26332e' : '#f1f5f3',
     brand: '#0f766e',
     dangerBg: dark ? '#3a2423' : '#fff1f0',
-    dangerPressed: dark ? '#4a2b29' : '#ffe2df',
     danger: '#ef7770',
   }
   return StyleSheet.create({
@@ -356,9 +347,6 @@ function makeStyles(dark: boolean) {
   activeMenuItem: {
     backgroundColor: palette.active,
   },
-  menuItemPressed: {
-    backgroundColor: palette.subtle,
-  },
   menuIcon: {
     width: 30,
     color: palette.muted,
@@ -400,9 +388,6 @@ function makeStyles(dark: boolean) {
     alignItems: 'center',
     paddingHorizontal: 13,
     gap: 10,
-  },
-  logoutPressed: {
-    backgroundColor: palette.dangerPressed,
   },
   logoutIcon: {
     color: palette.danger,
