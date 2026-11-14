@@ -12,7 +12,7 @@ import { router } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { UserMenuButton } from '@/components/user-navigation'
 import { recognizeReceipt, uploadReceipt } from '@/services/receiptStorage'
-import { parseReceiptQR } from '@/services/receiptParser'
+import { parseReceiptQR, parseReceiptText } from '@/services/receiptParser'
 
 const LIGHT_COLORS = {
   canvas: '#f6f7f5', white: '#ffffff', ink: '#14201c', muted: '#68756f',
