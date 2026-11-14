@@ -1,8 +1,8 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { router, useLocalSearchParams } from 'expo-router'
 import * as ExpoLinking from 'expo-linking'
 import { useEffect, useRef, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Keyboard,
   KeyboardAvoidingView,
@@ -170,7 +170,7 @@ export default function ResetPasswordScreen() {
   if (verifying) {
     return (
       <View style={styles.loadingContainer}>
-        <StaticLoader size="large" color="#5EEAD4" />
+        <ActivityIndicator size="large" color="#5EEAD4" />
         <Text style={styles.loadingText}>Verifying reset link...</Text>
       </View>
     )
@@ -309,7 +309,7 @@ export default function ResetPasswordScreen() {
             disabled={saving}
           >
             {saving ? (
-              <StaticLoader color="#FFFFFF" />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.buttonText}>Update Password</Text>
             )}
