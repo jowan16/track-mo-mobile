@@ -62,8 +62,14 @@ function formatLastActive(lastSeenAt: string | null, now: number) {
   if (!Number.isFinite(timestamp)) return 'Unavailable'
   const elapsed = Math.max(0, now - timestamp)
   if (elapsed < 60_000) return 'Just now'
-  if (elapsed < 60 * 60_000) return `${Math.floor(elapsed / 60_000)} minutes ago`
-  if (elapsed < 24 * 60 * 60_000) return `${Math.floor(elapsed / (60 * 60_000))} hours ago`
+  if (elapsed < 60 * 60_000) {
+    const minutes = Math.floor(elapsed / 60_000)
+    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
+  }
+  if (elapsed < 24 * 60 * 60_000) {
+    const hours = Math.floor(elapsed / (60 * 60_000))
+    return hours === 1 ? '1 hour ago' : `${hours} hours ago`
+  }
   const yesterday = new Date(now - 24 * 60 * 60_000)
   if (manilaDateKey(date) === manilaDateKey(yesterday)) return 'Yesterday'
   return date.toLocaleDateString('en-PH', {
