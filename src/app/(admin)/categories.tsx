@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   previewHex: { color: adminColors.muted, fontSize: 10, marginTop: 3 },
   colorPalette: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, paddingVertical: 5 },
   colorSwatch: { width: 28, height: 28, borderRadius: 15, borderWidth: 1, borderColor: '#00000018' },
-  colorSwatchActive: { borderWidth: 3, borderColor: adminColors.text, transform: [{ scale: 1 }] },
+  colorSwatchActive: { borderWidth: 3, borderColor: adminColors.text },
   iconPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 11, backgroundColor: '#F6F7FB' },
   iconChoice: { width: 62, minHeight: 58, paddingVertical: 3, alignItems: 'center', justifyContent: 'center', gap: 4 },
   iconChoiceText: { color: '#64748B', fontSize: 9, fontWeight: '600', textAlign: 'center', maxWidth: '100%' },
