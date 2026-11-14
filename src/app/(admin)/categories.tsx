@@ -47,6 +47,7 @@ export default function AdminCategoriesScreen() {
   const [trackedCount, setTrackedCount] = useState(0)
   const [iconSearch, setIconSearch] = useState('')
   const [uploadingIcon, setUploadingIcon] = useState(false)
+  const previewColor = draft?.color && /^#[0-9a-fA-F]{6}$/.test(draft.color) ? draft.color : '#0F766E'
 
   const loadCategories = useCallback(async () => {
     setLoading(true)
@@ -297,7 +298,7 @@ export default function AdminCategoriesScreen() {
 
               <Text style={styles.fieldLabel}>Color palette</Text>
               <View style={styles.colorPreviewRow}>
-                <View style={[styles.colorPreview, { backgroundColor: draft?.color || '#0F766E' }]} />
+                <View style={[styles.colorPreview, { backgroundColor: previewColor }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.previewTitle}>Live preview</Text>
                   <Text style={styles.previewHex}>{draft?.color?.toUpperCase() || '#0F766E'}</Text>
@@ -321,7 +322,7 @@ export default function AdminCategoriesScreen() {
 
               <Text style={styles.fieldLabel}>Icon library</Text>
               <View style={styles.iconPreviewRow}>
-                <CategoryIcon icon={draft?.icon ?? 'coins'} color={draft?.color || adminColors.primary} size={48} backgroundColor={draft?.color ? draft.color + '22' : '#EEF0FB'} />
+                <CategoryIcon icon={draft?.icon ?? 'coins'} color={previewColor} size={48} backgroundColor={previewColor + '22'} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.previewTitle}>Selected icon preview</Text>
                   <Text style={styles.previewHex}>{draft?.icon?.startsWith('custom:') ? 'Custom uploaded image' : CATEGORY_ICON_OPTIONS.find((item) => item.key === draft?.icon)?.name || 'Icon'}</Text>
