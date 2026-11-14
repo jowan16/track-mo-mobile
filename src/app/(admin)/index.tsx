@@ -1,4 +1,5 @@
 import { StaticLoader } from '@/components/StaticLoader'
+import { StaticLoader } from '@/components/StaticLoader'
 import { useCallback, useEffect, useState } from 'react'
 import {
   Pressable,
