@@ -1,5 +1,6 @@
 import { useAppTheme } from '@/context/ThemeContext'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { CameraView, useCameraPermissions } from 'expo-camera'
 import {
   ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet,
   Text, View,
@@ -11,7 +12,7 @@ import { router } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { UserMenuButton } from '@/components/user-navigation'
 import { recognizeReceipt, uploadReceipt } from '@/services/receiptStorage'
-import { parseReceiptText } from '@/services/receiptParser'
+import { parseReceiptQR } from '@/services/receiptParser'
 
 const LIGHT_COLORS = {
   canvas: '#f6f7f5', white: '#ffffff', ink: '#14201c', muted: '#68756f',
@@ -33,6 +34,55 @@ export default function ScanReceiptScreen() {
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null)
   const [processing, setProcessing] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [qrScanning, setQrScanning] = useState(false)
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions()
+  const qrHandled = useRef(false)
+
+  const startQrScanning = async () => {
+    try {
+      const permission = cameraPermission?.granted
+        ? cameraPermission
+        : await requestCameraPermission()
+      if (!permission?.granted) {
+        Alert.alert('Permission required', 'Allow camera access to scan a receipt QR code.')
+        return
+      }
+      qrHandled.current = false
+      setErrorMessage('')
+      setQrScanning(true)
+    } catch {
+      Alert.alert('Camera unavailable', 'Unable to open the camera. Please try the receipt photo scanner instead.')
+    }
+  }
+
+  const handleQrScanned = (result: { data: string }) => {
+    if (qrHandled.current || !result.data?.trim()) return
+    qrHandled.current = true
+    setQrScanning(false)
+
+    try {
+      const draft = parseReceiptQR(result.data)
+      if (!draft.merchant_name && draft.total === null && !draft.receipt_date && draft.items.length === 0) {
+        Alert.alert(
+          'No receipt details found',
+          'This QR code does not contain readable merchant or transaction details. Try scanning the printed receipt or enter the expense manually.',
+        )
+        return
+      }
+
+      router.push({
+        pathname: '/(user)/expenses',
+        params: {
+          receiptDraft: JSON.stringify(draft),
+          receiptSource: 'qr',
+          receiptModel: 'qr-code',
+          receiptRawText: result.data,
+        },
+      })
+    } catch {
+      Alert.alert('Unable to read QR code', 'This QR code could not be interpreted as receipt information. Please try again.')
+    }
+  }
 
   const chooseImage = async (source: 'camera' | 'gallery') => {
     try {
@@ -164,9 +214,42 @@ export default function ScanReceiptScreen() {
           >
             <Text style={styles.secondaryText}>▧  Upload from Gallery</Text>
           </Pressable>
+          <Pressable
+            style={[styles.qrButton, processing && styles.disabled]}
+            onPress={() => void startQrScanning()}
+            disabled={processing}
+          >
+            <Text style={styles.qrButtonText}>▦  Scan QR Receipt</Text>
+          </Pressable>
 
-          <Text style={styles.hint}>JPG or PNG · Maximum 10 MB</Text>
+          <Text style={styles.hint}>JPG or PNG · Maximum 10 MB · QR receipt codes supported</Text>
         </View>
+
+        {qrScanning ? (
+          <View style={styles.qrCard}>
+            <View style={styles.qrHeader}>
+              <View style={styles.qrHeaderText}>
+                <Text style={styles.previewTitle}>Scan Receipt QR Code</Text>
+                <Text style={styles.qrDescription}>Position the QR code inside the camera frame.</Text>
+              </View>
+              <Pressable
+                style={styles.qrCloseButton}
+                onPress={() => setQrScanning(false)}
+              >
+                <Text style={styles.qrCloseText}>×</Text>
+              </Pressable>
+            </View>
+            <View style={styles.qrCameraFrame}>
+              <CameraView
+                style={styles.qrCamera}
+                facing="back"
+                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                onBarcodeScanned={handleQrScanned}
+              />
+            </View>
+            <Text style={styles.qrFooter}>The expense review form opens automatically when receipt data is detected.</Text>
+          </View>
+        ) : null}
 
         {image ? (
           <View style={styles.previewCard}>
@@ -231,6 +314,17 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   primaryText: { color: COLORS.white, fontSize: 13, fontWeight: '800' },
   secondaryButton: { minHeight: 49, borderRadius: 11, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15, marginTop: 10 },
   secondaryText: { color: COLORS.ink, fontSize: 13, fontWeight: '700' },
+  qrButton: { minHeight: 49, borderRadius: 11, borderWidth: 1, borderColor: COLORS.brand, backgroundColor: COLORS.brandLight, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15, marginTop: 10 },
+  qrButtonText: { color: COLORS.brand, fontSize: 13, fontWeight: '800' },
+  qrCard: { backgroundColor: COLORS.white, borderRadius: 17, padding: 15, borderWidth: 1, borderColor: COLORS.line },
+  qrHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  qrHeaderText: { flex: 1 },
+  qrDescription: { color: COLORS.muted, fontSize: 11, marginTop: 4 },
+  qrCloseButton: { width: 34, height: 34, borderRadius: 10, backgroundColor: COLORS.brandLight, alignItems: 'center', justifyContent: 'center' },
+  qrCloseText: { color: COLORS.brand, fontSize: 24, lineHeight: 27 },
+  qrCameraFrame: { width: '100%', height: 320, overflow: 'hidden', borderRadius: 12, backgroundColor: '#000000' },
+  qrCamera: { flex: 1 },
+  qrFooter: { color: COLORS.muted, fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: 10 },
   disabled: { opacity: 0.55 },
   hint: { color: COLORS.muted, fontSize: 10, textAlign: 'center', marginTop: 12 },
   previewCard: { backgroundColor: COLORS.white, borderRadius: 17, padding: 16, borderWidth: 1, borderColor: COLORS.line },
