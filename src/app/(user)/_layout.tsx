@@ -1,7 +1,6 @@
-import { StaticLoader } from '@/components/StaticLoader'
 
 import { Redirect, Stack } from 'expo-router'
-import { StyleSheet, View } from 'react-native'
+import { ActivityIndicator, StyleSheet, View } from 'react-native'
 
 import { UserDrawerProvider } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
@@ -12,7 +11,7 @@ export default function UserLayout() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <StaticLoader size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     )
   }
