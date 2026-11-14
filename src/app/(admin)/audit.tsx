@@ -4,7 +4,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native'
 
@@ -25,39 +24,44 @@ export default function AdminAuditScreen() {
   const [logs, setLogs] = useState<AuditRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [page, setPage] = useState(1)
 
   const loadLogs = useCallback(async () => {
     setLoading(true)
     setError('')
-    const { data, error: queryError } = await supabase
-      .from('audit_log')
-      .select('id, actor_id, actor_name, action, created_at')
-      .order('created_at', { ascending: false })
-      .limit(200)
-    if (queryError) {
-      setError(queryError.message)
-      setLogs([])
-    } else {
+    try {
+      const { data, error: queryError } = await supabase
+        .from('audit_log')
+        .select('id, actor_id, actor_name, action, created_at')
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+
+      if (queryError) throw queryError
+
       setLogs((data ?? []) as AuditRow[])
+      setPage(1)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load audit records. Please try again.')
+    } finally {
+      setLoading(false)
     }
-    setPage(1)
-    setLoading(false)
   }, [])
 
   useEffect(() => { void loadLogs() }, [loadLogs])
 
-  const filtered = useMemo(() => logs.filter((log) => {
-    const text = `${log.actor_name ?? ''} ${log.action}`.toLowerCase()
-    const matchesSearch = text.includes(search.trim().toLowerCase())
-    const matchesFilter =
-      filter === 'all' ||
-      (filter === 'users' && /user|admin|password|account/i.test(log.action)) ||
-      (filter === 'categories' && /categor/i.test(log.action))
-    return matchesSearch && matchesFilter
-  }), [logs, search, filter])
+  const filtered = useMemo(() => logs.filter((log) =>
+    filter === 'all' ||
+    (filter === 'users' && /user|admin|password|account/i.test(log.action)) ||
+    (filter === 'categories' && /categor/i.test(log.action))
+  ), [logs, filter])
+
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -72,18 +76,10 @@ export default function AdminAuditScreen() {
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Activities today</Text>
           <Text style={styles.summaryValue}>
-            {logs.filter((log) => new Date(log.created_at).toDateString() === new Date().toDateString()).length}
+            {logs.filter((log) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(log.created_at)) === today).length}
           </Text>
         </View>
       </View>
-
-      <TextInput
-        value={search}
-        onChangeText={(value) => { setSearch(value); setPage(1) }}
-        placeholder="Search actions or admins"
-        placeholderTextColor="#94A3B8"
-        style={styles.search}
-      />
 
       <View style={styles.filters}>
         {([
@@ -108,6 +104,7 @@ export default function AdminAuditScreen() {
             <Text style={styles.action}>{log.action}</Text>
             <Text style={styles.time}>
               {new Date(log.created_at).toLocaleString('en-PH', {
+                timeZone: 'Asia/Manila',
                 month: 'short', day: 'numeric', year: 'numeric',
                 hour: '2-digit', minute: '2-digit',
               })}
@@ -137,7 +134,6 @@ const styles = StyleSheet.create({
   summaryCard: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 12, padding: 12 },
   summaryLabel: { color: adminColors.muted, fontSize: 10 },
   summaryValue: { color: adminColors.text, fontSize: 24, fontWeight: '900', marginTop: 8 },
-  search: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, color: adminColors.text, fontSize: 12 },
   filters: { flexDirection: 'row', gap: 6 },
   filterButton: { flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: 'center', backgroundColor: '#E9EBF4' },
   filterActive: { backgroundColor: adminColors.primary },
