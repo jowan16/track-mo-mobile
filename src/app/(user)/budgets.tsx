@@ -252,6 +252,12 @@ export default function BudgetsScreen() {
 
   useEffect(() => {
     let mounted = true
+    const channel = supabase
+      .channel('user-budgets-categories')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        void loadBudgets()
+      })
+      .subscribe()
 
     const initialize = async () => {
       setLoading(true)
@@ -264,6 +270,7 @@ export default function BudgetsScreen() {
 
     return () => {
       mounted = false
+      void supabase.removeChannel(channel)
     }
   }, [loadBudgets])
 
