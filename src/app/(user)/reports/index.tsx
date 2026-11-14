@@ -158,11 +158,20 @@ export default function ReportsScreen() {
 
   useEffect(() => {
     let active = true
+    const channel = supabase
+      .channel('user-reports-categories')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        void loadReport()
+      })
+      .subscribe()
     setLoading(true)
     loadReport().finally(() => {
       if (active) setLoading(false)
     })
-    return () => { active = false }
+    return () => {
+      active = false
+      void supabase.removeChannel(channel)
+    }
   }, [loadReport])
 
   const refresh = async () => {
