@@ -1,3 +1,4 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 
 
@@ -5,7 +6,6 @@ import { useAppTheme } from '@/context/ThemeContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import {
-    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Modal,
@@ -837,7 +837,7 @@ export default function ExpensesScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.brand} />
+        <StaticLoader size="large" color={COLORS.brand} />
         <Text style={styles.loadingText}>Loading your expenses...</Text>
       </SafeAreaView>
     )
