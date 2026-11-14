@@ -77,7 +77,7 @@ export default function ReportExportScreen() {
   const { profile } = useAuth()
   const params = useLocalSearchParams<{ format?: string; mode?: string; year?: string; month?: string; weekStart?: string }>()
   const initialFormat = params.format === 'pdf' ? 'pdf' : 'csv'
-  const [format, setFormat] = useState<'csv' | 'pdf'>(initialFormat)
+  const format = initialFormat
   const reportMode = params.mode === 'weekly' || params.mode === 'yearly' ? params.mode : 'monthly'
   const currentDate = new Date()
   const reportYear = Number(params.year) || currentDate.getFullYear()
@@ -327,52 +327,13 @@ export default function ReportExportScreen() {
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeading}>
-            <Text style={styles.sectionTitle}>1. File format</Text>
-            <Text style={styles.sectionHint}>Choose an export file type</Text>
-          </View>
-          <View style={styles.formatGrid}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: format === 'csv' }}
-              onPress={() => setFormat('csv')}
-              style={[styles.formatCard, format === 'csv' && styles.formatCardSelected]}
-            >
-              <View style={[styles.formatIcon, styles.csvIcon]}>
-                <Text style={styles.formatIconText}>CSV</Text>
-              </View>
-              <Text style={[styles.formatName, format === 'csv' && styles.selectedText]}>CSV Spreadsheet</Text>
-              <Text style={styles.formatDescription}>For spreadsheets and data analysis</Text>
-              <View style={[styles.selectionMark, format === 'csv' && styles.selectionMarkActive]}>
-                {format === 'csv' ? <Text style={styles.checkMark}>✓</Text> : null}
-              </View>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: format === 'pdf' }}
-              onPress={() => setFormat('pdf')}
-              style={[styles.formatCard, format === 'pdf' && styles.formatCardSelected]}
-            >
-              <View style={[styles.formatIcon, styles.pdfIcon]}>
-                <Text style={[styles.formatIconText, styles.pdfText]}>PDF</Text>
-              </View>
-              <Text style={[styles.formatName, format === 'pdf' && styles.selectedText]}>PDF Document</Text>
-              <Text style={styles.formatDescription}>For printing and sharing</Text>
-              <View style={[styles.selectionMark, format === 'pdf' && styles.selectionMarkActive]}>
-                {format === 'pdf' ? <Text style={styles.checkMark}>✓</Text> : null}
-              </View>
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeading}>
-            <Text style={styles.sectionTitle}>2. Report content</Text>
+            <Text style={styles.sectionTitle}>1. Report content</Text>
             <Text style={styles.sectionHint}>Select the information to include</Text>
           </View>
           {([
             { value: 'detailed', title: 'Detailed report', description: 'Every expense with date, category, note and payment method' },
             { value: 'category', title: 'Category summary', description: 'Spending totals grouped by category with percentage share' },
-            { value: 'monthly', title: reportMode === 'yearly' ? 'Monthly breakdown' : 'Period summary', description: reportMode === 'yearly' ? 'Expense totals grouped by month' : 'One summary of total expenses for this month' },
+            { value: 'monthly', title: reportMode === 'yearly' ? 'Monthly breakdown' : reportMode === 'weekly' ? 'Weekly breakdown' : 'Period summary', description: reportMode === 'yearly' ? 'Expense totals grouped by month' : reportMode === 'weekly' ? 'Daily totals for the selected week' : 'One summary of total expenses for this month' },
           ] as { value: ExportKind; title: string; description: string }[]).map((item) => (
             <Pressable
               key={item.value}
@@ -394,7 +355,7 @@ export default function ReportExportScreen() {
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeading}>
-            <Text style={styles.sectionTitle}>3. Archived expenses</Text>
+            <Text style={styles.sectionTitle}>2. Archived expenses</Text>
             <Text style={styles.sectionHint}>Choose whether archived transactions are included</Text>
           </View>
           <View style={styles.archiveOptions}>
