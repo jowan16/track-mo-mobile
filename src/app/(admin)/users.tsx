@@ -230,9 +230,9 @@ export default function AdminUsersScreen() {
           <View style={styles.activityDetails}>
             <View style={styles.activityColumn}>
               <Text style={styles.activityLabel}>Activity Status</Text>
-              <View style={[styles.activityPill, isAccountOnline(account.last_seen_at, activityClock) ? styles.onlinePill : styles.offlinePill]}>
-                <Text style={[styles.activityText, isAccountOnline(account.last_seen_at, activityClock) ? styles.onlineText : styles.offlineText]}>
-                  {isAccountOnline(account.last_seen_at, activityClock) ? 'Online' : 'Offline'}
+              <View style={[styles.activityPill, account.status === 'active' && isAccountOnline(account.last_seen_at, activityClock) ? styles.onlinePill : styles.offlinePill]}>
+                <Text style={[styles.activityText, account.status === 'active' && isAccountOnline(account.last_seen_at, activityClock) ? styles.onlineText : styles.offlineText]}>
+                  {account.status === 'active' && isAccountOnline(account.last_seen_at, activityClock) ? 'Online' : 'Offline'}
                 </Text>
               </View>
             </View>
