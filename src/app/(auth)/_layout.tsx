@@ -11,12 +11,11 @@ export default function AuthLayout() {
   const isLogin = pathname.endsWith('/login')
   const isForgotPassword = pathname.endsWith('/forgot-password')
   const isRegister = pathname.endsWith('/register')
+  const isVerifyEmail = pathname.endsWith('/verify-email')
 
   // Keep public authentication screens accessible regardless of whether a
   // previous Supabase session is still being restored or is already active.
-  // Login, registration, forgot-password, and password recovery must not be
-  // blocked by the authenticated-user redirect.
-  if (isResetPassword || isLogin || isForgotPassword || isRegister) {
+  if (isResetPassword || isLogin || isForgotPassword || isRegister || isVerifyEmail) {
     return <Stack screenOptions={{ headerShown: false, animation: "none" }} />
   }
 
