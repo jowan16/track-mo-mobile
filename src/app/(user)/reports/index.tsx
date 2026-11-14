@@ -16,7 +16,7 @@ import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 
-type Mode = 'monthly' | 'yearly'
+type Mode = 'weekly' | 'monthly' | 'yearly'
 
 type Category = {
   id: number
@@ -90,6 +90,11 @@ export default function ReportsScreen() {
   const [mode, setMode] = useState<Mode>('monthly')
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
+  const [weekStart, setWeekStart] = useState(() => {
+    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    date.setDate(date.getDate() - ((date.getDay() + 6) % 7))
+    return date
+  })
   const [categories, setCategories] = useState<Category[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
@@ -102,13 +107,20 @@ export default function ReportsScreen() {
 
     setError('')
 
-    const from = mode === 'monthly'
-      ? dateKey(new Date(year, month - 2, 1))
-      : `${year - 1}-01-01`
+    const weeklyEnd = new Date(weekStart)
+    weeklyEnd.setDate(weeklyEnd.getDate() + 7)
 
-    const to = mode === 'monthly'
-      ? dateKey(new Date(year, month, 1))
-      : `${year + 1}-01-01`
+    const from = mode === 'weekly'
+      ? dateKey(weekStart)
+      : mode === 'monthly'
+        ? dateKey(new Date(year, month - 2, 1))
+        : `${year - 1}-01-01`
+
+    const to = mode === 'weekly'
+      ? dateKey(weeklyEnd)
+      : mode === 'monthly'
+        ? dateKey(new Date(year, month, 1))
+        : `${year + 1}-01-01`
 
     try {
       const [categoryResult, trackedResult, expenseResult, budgetResult] =
@@ -154,7 +166,7 @@ export default function ReportsScreen() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to load reports.')
     }
-  }, [profile?.id, mode, year, month])
+  }, [profile?.id, mode, year, month, weekStart])
 
   useEffect(() => {
     let active = true
@@ -195,22 +207,32 @@ export default function ReportsScreen() {
   const currentExpenses = useMemo(
     () => expenses.filter((item) => {
       const d = new Date(`${item.spent_on}T00:00:00`)
+      if (mode === 'weekly') {
+        const end = new Date(weekStart)
+        end.setDate(end.getDate() + 7)
+        return d >= weekStart && d < end
+      }
       return mode === 'monthly'
         ? d.getFullYear() === year && d.getMonth() + 1 === month
         : d.getFullYear() === year
     }),
-    [expenses, mode, year, month],
+    [expenses, mode, year, month, weekStart],
   )
 
   const previousExpenses = useMemo(
     () => expenses.filter((item) => {
       const d = new Date(`${item.spent_on}T00:00:00`)
+      if (mode === 'weekly') {
+        const previousStart = new Date(weekStart)
+        previousStart.setDate(previousStart.getDate() - 7)
+        return d >= previousStart && d < weekStart
+      }
       return mode === 'monthly'
         ? new Date(year, month - 2, 1).getFullYear() === d.getFullYear()
           && new Date(year, month - 2, 1).getMonth() + 1 === d.getMonth() + 1
         : d.getFullYear() === year - 1
     }),
-    [expenses, mode, year, month],
+    [expenses, mode, year, month, weekStart],
   )
 
   const total = currentExpenses.reduce((sum, item) => sum + item.amount, 0)
@@ -237,6 +259,20 @@ export default function ReportsScreen() {
   const maxCategory = Math.max(...categoryTotals.map((item) => item.total), 1)
 
   const chartData = useMemo(() => {
+    if (mode === 'weekly') {
+      return Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(weekStart)
+        date.setDate(date.getDate() + index)
+        const amount = currentExpenses
+          .filter((item) => item.spent_on === dateKey(date))
+          .reduce((sum, item) => sum + item.amount, 0)
+        return {
+          label: date.toLocaleDateString('en-PH', { weekday: 'short' }),
+          amount,
+        }
+      })
+    }
+
     if (mode === 'monthly') {
       const days = new Date(year, month, 0).getDate()
       return Array.from({ length: days }, (_, index) => {
@@ -254,14 +290,20 @@ export default function ReportsScreen() {
         .reduce((sum, item) => sum + item.amount, 0)
       return { label: monthLabel(year, index + 1), amount }
     })
-  }, [currentExpenses, mode, year, month])
+  }, [currentExpenses, mode, year, month, weekStart])
 
   const chartMax = Math.max(...chartData.map((item) => item.amount), 1)
-  const periodName = mode === 'monthly'
-    ? new Date(year, month - 1, 1).toLocaleDateString('en-PH', {
-        month: 'long', year: 'numeric',
-      })
-    : String(year)
+  const periodName = mode === 'weekly'
+    ? (() => {
+        const end = new Date(weekStart)
+        end.setDate(end.getDate() + 6)
+        return `${weekStart.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}`
+      })()
+    : mode === 'monthly'
+      ? new Date(year, month - 1, 1).toLocaleDateString('en-PH', {
+          month: 'long', year: 'numeric',
+        })
+      : String(year)
 
   const insights = useMemo(() => {
     const result: string[] = []
@@ -272,7 +314,7 @@ export default function ReportsScreen() {
 
     if (change !== null) {
       result.push(
-        `Your spending ${change > 0 ? 'increased' : change < 0 ? 'decreased' : 'stayed the same'} by ${Math.abs(change).toFixed(1)}% compared with the previous ${mode === 'monthly' ? 'month' : 'year'}.`,
+        `Your spending ${change > 0 ? 'increased' : change < 0 ? 'decreased' : 'stayed the same'} by ${Math.abs(change).toFixed(1)}% compared with the previous ${mode === 'weekly' ? 'week' : mode === 'monthly' ? 'month' : 'year'}.`,
       )
     }
 
@@ -305,14 +347,14 @@ export default function ReportsScreen() {
         showsVerticalScrollIndicator={false}
       >
                 <View style={styles.toggle}>
-          {(['monthly', 'yearly'] as Mode[]).map((item) => (
+          {(['weekly', 'monthly', 'yearly'] as Mode[]).map((item) => (
             <Pressable
               key={item}
               onPress={() => setMode(item)}
               style={[styles.toggleButton, mode === item && styles.toggleActive]}
             >
               <Text style={[styles.toggleText, mode === item && styles.toggleTextActive]}>
-                {item === 'monthly' ? 'Monthly' : 'Yearly'}
+                {item === 'weekly' ? 'Weekly' : item === 'monthly' ? 'Monthly' : 'Yearly'}
               </Text>
             </Pressable>
           ))}
@@ -322,7 +364,13 @@ export default function ReportsScreen() {
           <Pressable
             style={styles.periodButton}
             onPress={() => {
-              if (mode === 'monthly') {
+              if (mode === 'weekly') {
+                setWeekStart((value) => {
+                  const next = new Date(value)
+                  next.setDate(next.getDate() - 7)
+                  return next
+                })
+              } else if (mode === 'monthly') {
                 if (month === 1) {
                   setMonth(12)
                   setYear((value) => value - 1)
@@ -340,7 +388,13 @@ export default function ReportsScreen() {
           <Pressable
             style={styles.periodButton}
             onPress={() => {
-              if (mode === 'monthly') {
+              if (mode === 'weekly') {
+                setWeekStart((value) => {
+                  const next = new Date(value)
+                  next.setDate(next.getDate() + 7)
+                  return next
+                })
+              } else if (mode === 'monthly') {
                 if (month === 12) {
                   setMonth(1)
                   setYear((value) => value + 1)
@@ -373,7 +427,7 @@ export default function ReportsScreen() {
 
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Vs. previous {mode === 'monthly' ? 'month' : 'year'}</Text>
+                <Text style={styles.statLabel}>Vs. previous {mode === 'weekly' ? 'week' : mode === 'monthly' ? 'month' : 'year'}</Text>
                 <Text style={[
                   styles.statValue,
                   change !== null && change > 0 ? styles.negative : styles.positive,
@@ -398,7 +452,7 @@ export default function ReportsScreen() {
 
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Spending over the {mode === 'monthly' ? 'month' : 'year'}</Text>
-              <Text style={styles.muted}>Daily spending totals</Text>
+              <Text style={styles.muted}>{mode === 'yearly' ? 'Monthly spending totals' : 'Daily spending totals'}</Text>
               <View style={styles.chart}>
                 {chartData.map((item, index) => (
                   <View key={`${item.label}-${index}`} style={styles.barColumn}>
