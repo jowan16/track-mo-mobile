@@ -24,7 +24,7 @@ type Account = {
   status: 'active' | 'suspended'
   created_at: string
 }
-type PendingAction = { kind: 'suspend' | 'reactivate' | 'reset'; target: Account } | null
+type PendingAction = { kind: 'suspend' | 'reactivate'; target: Account } | null
 
 export default function AdminUsersScreen() {
   const { profile } = useAuth()
@@ -36,9 +36,6 @@ export default function AdminUsersScreen() {
   const [pending, setPending] = useState<PendingAction>(null)
   const [working, setWorking] = useState(false)
   const [blocked, setBlocked] = useState('')
-  const [addAdminOpen, setAddAdminOpen] = useState(false)
-  const [adminEmail, setAdminEmail] = useState('')
-  const [adminError, setAdminError] = useState('')
 
   const loadAccounts = useCallback(async () => {
     setLoading(true)
@@ -78,7 +75,7 @@ export default function AdminUsersScreen() {
     if (auditError) console.warn('Unable to write audit entry:', auditError.message)
   }
 
-  const askAction = (kind: 'suspend' | 'reactivate' | 'reset', target: Account) => {
+  const askAction = (kind: 'suspend' | 'reactivate', target: Account) => {
     setBlocked('')
     if (kind === 'suspend') {
       if (target.id === profile?.id) {
@@ -99,69 +96,31 @@ export default function AdminUsersScreen() {
     setWorking(true)
     try {
       const targetName = pending.target.full_name || pending.target.email || 'account'
+      const status = pending.kind === 'suspend' ? 'suspended' : 'active'
+      const { error: statusError } = await supabase.rpc('admin_set_account_status', {
+        p_target_user_id: pending.target.id,
+        p_status: status,
+      })
+      if (statusError) throw statusError
+      await writeAudit(`${pending.kind === 'suspend' ? 'Suspended' : 'Reactivated'} ${pending.target.role} ${targetName}`)
 
-      if (pending.kind === 'reset') {
-        if (!pending.target.email) throw new Error('This account has no email address.')
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-          pending.target.email,
-          { redirectTo: 'trackmomobile://reset-password' },
-        )
-        if (resetError) throw resetError
-        await writeAudit(`Sent password reset to ${targetName}`)
-        Alert.alert('Reset link sent', `A password reset email was sent to ${pending.target.email}.`)
-      } else {
-        const status = pending.kind === 'suspend' ? 'suspended' : 'active'
-        const { error: statusError } = await supabase.rpc('admin_set_account_status', {
-          p_target_user_id: pending.target.id,
-          p_status: status,
-        })
-        if (statusError) throw statusError
-        await writeAudit(`${pending.kind === 'suspend' ? 'Suspended' : 'Reactivated'} ${pending.target.role} ${targetName}`)
+      // Reflect the confirmed database update immediately in the admin list.
+      setAccounts((current) =>
+        current.map((account) =>
+          account.id === pending.target.id ? { ...account, status } : account,
+        ),
+      )
 
-        // Reflect the confirmed database update immediately in the admin list.
-        setAccounts((current) =>
-          current.map((account) =>
-            account.id === pending.target.id ? { ...account, status } : account,
-          ),
-        )
-
-        Alert.alert(
-          pending.kind === 'suspend' ? 'Account suspended' : 'Account reactivated',
-          pending.kind === 'suspend'
-            ? 'The account has been suspended. The user can no longer access the application.'
-            : 'The account has been reactivated. The user can log in again using their existing credentials.',
-        )
-        await loadAccounts()
-      }
+      Alert.alert(
+        pending.kind === 'suspend' ? 'Account suspended' : 'Account reactivated',
+        pending.kind === 'suspend'
+          ? 'The account has been suspended. The user can no longer access the application.'
+          : 'The account has been reactivated. The user can log in again using their existing credentials.',
+      )
+      await loadAccounts()
       setPending(null)
     } catch (err) {
       Alert.alert('Action failed', err instanceof Error ? err.message : 'Please try again.')
-    } finally {
-      setWorking(false)
-    }
-  }
-
-  const addAdmin = async () => {
-    const normalized = adminEmail.trim()
-    if (!/^\S+@\S+\.\S+$/.test(normalized)) {
-      setAdminError('Enter a valid email address.')
-      return
-    }
-    setWorking(true)
-    setAdminError('')
-    try {
-      const { error: roleError } = await supabase.rpc('admin_set_role', {
-        p_email: normalized,
-        p_role: 'admin',
-      })
-      if (roleError) throw roleError
-      await writeAudit(`Promoted ${normalized} to admin`)
-      setAddAdminOpen(false)
-      setAdminEmail('')
-      Alert.alert('Admin added', 'The existing account is now an administrator.')
-      await loadAccounts()
-    } catch (err) {
-      setAdminError(err instanceof Error ? err.message : 'Unable to add admin.')
     } finally {
       setWorking(false)
     }
@@ -187,12 +146,6 @@ export default function AdminUsersScreen() {
         style={styles.search}
         autoCapitalize="none"
       />
-
-      <View style={styles.topActions}>
-        <Pressable style={styles.primaryButton} onPress={() => { setAdminError(''); setAddAdminOpen(true) }}>
-          <Text style={styles.primaryButtonText}>+ Add admin</Text>
-        </Pressable>
-      </View>
 
       {blocked ? <Text style={styles.error}>{blocked}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -225,11 +178,6 @@ export default function AdminUsersScreen() {
             </Text>
           </View>
           <View style={styles.actions}>
-            {account.role === 'user' ? (
-              <Pressable style={styles.secondaryAction} onPress={() => askAction('reset', account)}>
-                <Text style={styles.secondaryActionText}>Send reset link</Text>
-              </Pressable>
-            ) : null}
             {account.status === 'active' ? (
               <Pressable style={styles.dangerAction} onPress={() => askAction('suspend', account)}>
                 <Text style={styles.dangerActionText}>Suspend</Text>
@@ -247,14 +195,12 @@ export default function AdminUsersScreen() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>
-              {pending?.kind === 'suspend' ? 'Suspend this account?' : pending?.kind === 'reactivate' ? 'Reactivate this account?' : 'Reset password?'}
+              {pending?.kind === 'suspend' ? 'Suspend this account?' : 'Reactivate this account?'}
             </Text>
             <Text style={styles.modalMessage}>
-              {pending?.kind === 'reset'
-                ? `Send a password reset link to ${pending.target.email}?`
-                : pending?.kind === 'suspend'
-                  ? `${pending.target.full_name || pending.target.email} will not be able to log in until reactivated.`
-                  : `${pending?.target.full_name || pending?.target.email} will be able to log in again.`}
+              {pending?.kind === 'suspend'
+                ? `${pending.target.full_name || pending.target.email} will not be able to log in until reactivated.`
+                : `${pending?.target.full_name || pending?.target.email} will be able to log in again.`}
             </Text>
             <View style={styles.modalActions}>
               <Pressable style={styles.cancelButton} onPress={() => setPending(null)} disabled={working}>
@@ -268,38 +214,11 @@ export default function AdminUsersScreen() {
         </View>
       </Modal>
 
-      <Modal transparent visible={addAdminOpen} animationType="fade" onRequestClose={() => { if (!working) setAddAdminOpen(false) }}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Add admin</Text>
-            <Text style={styles.modalMessage}>The person must already have a Track Mo account. Enter their registered email address.</Text>
-            <TextInput
-              value={adminEmail}
-              onChangeText={setAdminEmail}
-              placeholder="Email address"
-              placeholderTextColor="#94A3B8"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.search}
-            />
-            {adminError ? <Text style={styles.error}>{adminError}</Text> : null}
-            <View style={styles.modalActions}>
-              <Pressable style={styles.cancelButton} onPress={() => setAddAdminOpen(false)} disabled={working}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.primaryButton} onPress={addAdmin} disabled={working}>
-                <Text style={styles.primaryButtonText}>{working ? 'Saving…' : 'Make admin'}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </AdminShell>
   )
 }
 
 const styles = StyleSheet.create({
-  topActions: { flexDirection: 'row', justifyContent: 'flex-start', marginTop: 2, marginBottom: 4 },
   primaryButton: { backgroundColor: adminColors.primary, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 11 },
   primaryButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
   search: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, color: adminColors.text, fontSize: 12 },
@@ -326,8 +245,6 @@ const styles = StyleSheet.create({
   accountDetails: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#EEF0F5', paddingTop: 9 },
   detailText: { color: adminColors.muted, fontSize: 10 },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
-  secondaryAction: { borderWidth: 1, borderColor: adminColors.border, paddingHorizontal: 11, paddingVertical: 9, borderRadius: 8 },
-  secondaryActionText: { color: adminColors.text, fontSize: 10, fontWeight: '800' },
   dangerAction: { backgroundColor: '#FEE2E2', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 8 },
   dangerActionText: { color: adminColors.danger, fontSize: 10, fontWeight: '900' },
   successAction: { backgroundColor: '#DCFCE7', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 8 },
