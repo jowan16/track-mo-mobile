@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
+import { CategoryIcon } from '@/components/CategoryIcon'
 import { supabase } from '@/services/supabase'
 
 type Category = {
@@ -667,14 +668,7 @@ export default function BudgetsScreen() {
                           },
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.categorySymbol,
-                            { color: category?.color ?? COLORS.brand },
-                          ]}
-                        >
-                          {categorySymbol(category?.icon ?? '')}
-                        </Text>
+                        <CategoryIcon icon={category?.icon ?? ''} color={category?.color ?? COLORS.brand} size={28} />
                       </View>
 
                       <View style={styles.categoryText}>
@@ -865,15 +859,7 @@ export default function BudgetsScreen() {
                           { backgroundColor: category.bg || '#e6f4f1' },
                         ]}
                       >
-                        <Text
-                          style={{
-                            color: category.color || COLORS.brand,
-                            fontSize: 18,
-                            fontWeight: '800',
-                          }}
-                        >
-                          {categorySymbol(category.icon)}
-                        </Text>
+                        <CategoryIcon icon={category.icon} color={category.color || COLORS.brand} size={26} />
                       </View>
 
                       <Text
