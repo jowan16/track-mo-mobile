@@ -117,7 +117,20 @@ export default function AdminUsersScreen() {
         })
         if (statusError) throw statusError
         await writeAudit(`${pending.kind === 'suspend' ? 'Suspended' : 'Reactivated'} ${pending.target.role} ${targetName}`)
-        Alert.alert('Account updated', pending.kind === 'suspend' ? 'The account has been suspended.' : 'The account has been reactivated.')
+
+        // Reflect the confirmed database update immediately in the admin list.
+        setAccounts((current) =>
+          current.map((account) =>
+            account.id === pending.target.id ? { ...account, status } : account,
+          ),
+        )
+
+        Alert.alert(
+          pending.kind === 'suspend' ? 'Account suspended' : 'Account reactivated',
+          pending.kind === 'suspend'
+            ? 'The account has been suspended. The user can no longer access the application.'
+            : 'The account has been reactivated. The user can log in again using their existing credentials.',
+        )
         await loadAccounts()
       }
       setPending(null)
