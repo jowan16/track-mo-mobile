@@ -1,6 +1,7 @@
 import { useAppTheme } from '@/context/ThemeContext'
 import React, { useState } from 'react'
 import {
+  PanResponder,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -113,6 +114,7 @@ export default function Financial2048Screen() {
   const [best, setBest] = useState(0)
   const [won, setWon] = useState(false)
   const [keepPlaying, setKeepPlaying] = useState(false)
+  const [scrollEnabled, setScrollEnabled] = useState(true)
 
   const reset = () => {
     setBoard(newGame())
@@ -135,6 +137,24 @@ export default function Financial2048Screen() {
 
   const gameOver = !hasMoves(board)
 
+  const swipeResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gesture) =>
+      Math.abs(gesture.dx) > 8 || Math.abs(gesture.dy) > 8,
+    onPanResponderGrant: () => setScrollEnabled(false),
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderRelease: (_, gesture) => {
+      setScrollEnabled(true)
+      const horizontal = Math.abs(gesture.dx)
+      const vertical = Math.abs(gesture.dy)
+      const threshold = 24
+      if (Math.max(horizontal, vertical) < threshold) return
+      if (horizontal > vertical) move(gesture.dx > 0 ? 'right' : 'left')
+      else move(gesture.dy > 0 ? 'down' : 'up')
+    },
+    onPanResponderTerminate: () => setScrollEnabled(true),
+  })
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
@@ -145,7 +165,7 @@ export default function Financial2048Screen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} scrollEnabled={scrollEnabled}>
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>PLAY & LEARN</Text>
           <Text style={styles.heroTitle}>Merge tiles. Reach 2048.</Text>
@@ -166,7 +186,7 @@ export default function Financial2048Screen() {
           </Pressable>
         </View>
 
-        <View style={styles.board}>
+        <View style={styles.board} {...swipeResponder.panHandlers}>
           {board.map((row, r) => (
             <View key={r} style={styles.boardRow}>
               {row.map((value, c) => {
@@ -203,15 +223,7 @@ export default function Financial2048Screen() {
           ) : null}
         </View>
 
-        <Text style={styles.controlTitle}>Choose a direction</Text>
-        <View style={styles.controls}>
-          <View style={styles.controlSpacer} />
-          <Pressable onPress={() => move('up')} style={styles.directionButton}><Text style={styles.directionText}>↑</Text></Pressable>
-          <View style={styles.controlSpacer} />
-          <Pressable onPress={() => move('left')} style={styles.directionButton}><Text style={styles.directionText}>←</Text></Pressable>
-          <Pressable onPress={() => move('down')} style={styles.directionButton}><Text style={styles.directionText}>↓</Text></Pressable>
-          <Pressable onPress={() => move('right')} style={styles.directionButton}><Text style={styles.directionText}>→</Text></Pressable>
-        </View>
+        <Text style={styles.swipeHint}>Swipe the board up, down, left, or right to move the tiles.</Text>
 
         <View style={styles.tipCard}>
           <Text style={styles.tipTitle}>Money mindset tip</Text>
@@ -263,7 +275,7 @@ function makeStyles(C: ReturnType<typeof getC>, dark: boolean) {
     scoreValue: { color: C.ink, fontSize: 20, fontWeight: '900', marginTop: 3 },
     newGameButton: { backgroundColor: C.brand, borderRadius: 12, paddingHorizontal: 12, justifyContent: 'center' },
     newGameText: { color: '#ffffff', fontSize: 12, fontWeight: '900' },
-    board: { backgroundColor: darkBoard(C), padding: 8, borderRadius: 14, gap: 8, position: 'relative', aspectRatio: 1 },
+    board: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: darkBoard(C), padding: 8, borderRadius: 14, gap: 8, position: 'relative', aspectRatio: 1 },
     boardRow: { flex: 1, flexDirection: 'row', gap: 8 },
     tile: { flex: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
     tileText: { fontWeight: '900' },
@@ -274,11 +286,7 @@ function makeStyles(C: ReturnType<typeof getC>, dark: boolean) {
     primaryButtonText: { color: '#ffffff', fontWeight: '900', fontSize: 13 },
     secondaryButton: { borderWidth: 1, borderColor: '#dce8e1', borderRadius: 11, paddingVertical: 11, paddingHorizontal: 18, alignItems: 'center', marginTop: 9, width: '100%' },
     secondaryButtonText: { color: '#ffffff', fontWeight: '800', fontSize: 13 },
-    controlTitle: { color: C.ink, fontSize: 14, fontWeight: '900', textAlign: 'center', marginTop: 20, marginBottom: 9 },
-    controls: { flexDirection: 'row', justifyContent: 'center', gap: 9, flexWrap: 'wrap' },
-    controlSpacer: { width: 8 },
-    directionButton: { width: 58, height: 48, borderRadius: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
-    directionText: { color: C.brand, fontSize: 25, fontWeight: '900' },
+    swipeHint: { color: C.muted, fontSize: 12, lineHeight: 18, fontWeight: '700', textAlign: 'center', marginTop: 12 },
     tipCard: { backgroundColor: C.soft, borderRadius: 13, padding: 15, marginTop: 20 },
     tipTitle: { color: C.ink, fontSize: 13, fontWeight: '900' },
     tipText: { color: C.muted, fontSize: 12, lineHeight: 19, marginTop: 5 },
