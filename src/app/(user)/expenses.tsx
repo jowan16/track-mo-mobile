@@ -726,7 +726,9 @@ export default function ExpensesScreen() {
         if (receiptContext && !editing) {
           return await supabase.rpc('save_receipt_expense', {
             p_storage_path: receiptContext.path,
-            p_merchant_name: receiptContext.source === 'image' ? receiptContext.draft.merchant_name.trim() : null,
+            p_merchant_name: receiptContext.source === 'image' || receiptContext.draft.receipt_type !== 'payment'
+              ? receiptContext.draft.merchant_name.trim() || null
+              : null,
             p_receipt_date: form.spent_on,
             p_subtotal: receiptContext.draft.subtotal,
             p_tax: receiptContext.draft.tax,
@@ -748,7 +750,9 @@ export default function ExpensesScreen() {
               model: receiptContext.model,
               raw_text: receiptContext.rawText,
               qr_payload: receiptContext.source === 'qr' ? receiptContext.rawText : null,
-              bank_name: receiptContext.source === 'qr' ? (receiptContext.draft.bank_name?.trim() || null) : null,
+              bank_name: receiptContext.source === 'qr' && receiptContext.draft.receipt_type === 'payment'
+                ? (receiptContext.draft.bank_name?.trim() || null)
+                : null,
               confirmed_at: new Date().toISOString(),
             },
           })
@@ -1245,7 +1249,7 @@ export default function ExpensesScreen() {
             >
               {receiptContext ? (
                 <>
-                  {receiptContext.source === 'qr' ? (
+                  {receiptContext.source === 'qr' && receiptContext.draft.receipt_type === 'payment' ? (
                     <>
                       <Text style={styles.fieldLabel}>Bank</Text>
                       <TextInput
@@ -1260,7 +1264,7 @@ export default function ExpensesScreen() {
                         editable={!saving}
                       />
                       <Text style={styles.fieldHint}>
-                        The bank is detected only when its name is included in the QR data. Please verify it before saving.
+                        This QR was identified as a payment confirmation. Verify the detected bank before saving.
                       </Text>
                     </>
                   ) : (
