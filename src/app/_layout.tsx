@@ -1,7 +1,8 @@
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DarkTheme, DefaultTheme, ThemeProvider as RouterThemeProvider, Stack, router } from 'expo-router'
 import * as Linking from 'expo-linking'
+import { View } from 'react-native'
 
 import { AuthProvider } from '@/context/AuthContext'
 import { ThemeProvider, useAppTheme } from '@/context/ThemeContext'
@@ -11,11 +12,14 @@ import { supabase } from '@/services/supabase'
 function AppContent() {
   const { resolvedTheme } = useAppTheme()
   const handledAuthUrls = useRef(new Set<string>())
+  const [initialUrlChecked, setInitialUrlChecked] = useState(false)
+  const [handlingAuthCallback, setHandlingAuthCallback] = useState(false)
 
   useEffect(() => {
     const handleAuthCallback = async (url: string) => {
       if (!url.toLowerCase().startsWith('trackmomobile://') || handledAuthUrls.current.has(url)) return
       handledAuthUrls.current.add(url)
+      setHandlingAuthCallback(true)
 
       try {
         const parsedUrl = new URL(url)
@@ -95,6 +99,8 @@ function AppContent() {
               ? 'invalid'
               : 'verification'
         router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } } as never)
+      } finally {
+        setHandlingAuthCallback(false)
       }
     }
 
@@ -103,15 +109,23 @@ function AppContent() {
     })
 
     void Linking.getInitialURL()
-      .then((url) => {
-        if (url) void handleAuthCallback(url)
+      .then(async (url) => {
+        if (url) await handleAuthCallback(url)
       })
       .catch((error) => {
         console.error('Unable to read the app launch URL:', error)
       })
+      .finally(() => {
+        setInitialUrlChecked(true)
+      })
 
     return () => subscription.remove()
   }, [])
+
+  // Avoid rendering the index/login route while an incoming verification link is being resolved.
+  if (!initialUrlChecked || handlingAuthCallback) {
+    return <View style={{ flex: 1, backgroundColor: '#0A211C' }} />
+  }
 
   return (
     <RouterThemeProvider
