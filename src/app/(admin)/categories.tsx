@@ -174,13 +174,13 @@ export default function AdminCategoriesScreen() {
       Alert.alert('Keep one category available', 'At least one active category must remain available to users.')
       return
     }
-    Alert.alert('Remove category?', '“' + category.name + '” will be hidden from category selection. Existing expenses and budgets will be preserved.', [
+    Alert.alert('Delete category?', '“' + category.name + '” will be hidden from category selection. Existing expenses and budgets will be preserved.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => { void (async () => {
         setSaving(true)
         const { error: deleteError } = await supabase.from('categories').update({ is_active: false }).eq('id', category.id).is('user_id', null)
-        if (deleteError) Alert.alert('Unable to remove category', deleteError.message)
-        else { await writeAudit('Removed category "' + category.name + '" (soft delete)'); await loadCategories(); Alert.alert('Category removed', 'The category is hidden. Historical records remain unchanged.') }
+        if (deleteError) Alert.alert('Unable to delete category', deleteError.message)
+        else { await writeAudit('Removed category "' + category.name + '" (soft delete)'); await loadCategories(); Alert.alert('Category deleted', 'The category is hidden. Historical records remain unchanged.') }
         setSaving(false)
       })() } },
     ])
@@ -213,7 +213,7 @@ export default function AdminCategoriesScreen() {
             <Text style={styles.editText}>Edit</Text>
           </Pressable>
           <Pressable style={styles.removeButton} onPress={() => softDeleteCategory(category)} disabled={saving}>
-            <Text style={styles.removeText}>Remove</Text>
+            <Text style={styles.removeText}>Delete</Text>
           </Pressable>
         </View>
       ))}
