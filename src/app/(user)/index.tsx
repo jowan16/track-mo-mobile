@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/context/AuthContext'
+import { CategoryIcon } from '@/components/CategoryIcon'
 import { supabase } from '@/services/supabase'
 import { UserPageHeader } from '@/components/user-navigation'
 
@@ -849,9 +850,7 @@ export default function UserDashboard() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ color: item.category.color || COLORS.brand, fontSize: 27, fontWeight: '800' }}>
-                    {getCategorySymbol(item.category.icon)}
-                  </Text>
+                  <CategoryIcon icon={item.category.icon} color={item.category.color || COLORS.brand} size={38} />
                 </View>
                 <Text
                   numberOfLines={1}
@@ -1009,14 +1008,7 @@ export default function UserDashboard() {
                         { backgroundColor: item.category.bg || '#e6f4f1' },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.categorySymbol,
-                          { color: item.category.color || COLORS.brand },
-                        ]}
-                      >
-                        {getCategorySymbol(item.category.icon)}
-                      </Text>
+                      <CategoryIcon icon={item.category.icon} color={item.category.color || COLORS.brand} size={28} />
                     </View>
 
                     <View style={styles.categoryContent}>
@@ -1158,14 +1150,7 @@ export default function UserDashboard() {
                         },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.categorySymbol,
-                          { color: category?.color || COLORS.brand },
-                        ]}
-                      >
-                        {getCategorySymbol(category?.icon ?? 'coins')}
-                      </Text>
+                      <CategoryIcon icon={category?.icon ?? 'coins'} color={category?.color || COLORS.brand} size={28} />
                     </View>
 
                     <View style={styles.transactionContent}>
@@ -1305,7 +1290,7 @@ export default function UserDashboard() {
                     style={{ flexDirection: 'row', alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? COLORS.brand : '#cbd3cf', backgroundColor: isSelected ? '#e6f4f1' : (dark ? '#1b2a26' : '#ffffff'), opacity: savingCategories ? 0.65 : 1 }}
                   >
                     <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: category.bg || '#e6f4f1', alignItems: 'center', justifyContent: 'center', marginRight: 11 }}>
-                      <Text style={{ color: category.color || COLORS.brand, fontSize: 22, fontWeight: '800' }}>{getCategorySymbol(category.icon)}</Text>
+                      <CategoryIcon icon={category.icon} color={category.color || COLORS.brand} size={28} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: COLORS.ink, fontSize: 14, fontWeight: '800' }}>{category.name}</Text>
