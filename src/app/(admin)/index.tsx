@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useFocusEffect } from 'expo-router'
 import {
   ActivityIndicator,
   Pressable,
@@ -75,9 +76,11 @@ export default function AdminOverviewScreen() {
     }
   }, [])
 
-  useEffect(() => {
-    void loadData()
-  }, [loadData])
+  useFocusEffect(
+    useCallback(() => {
+      void loadData()
+    }, [loadData]),
+  )
 
   const cards = [
     { label: 'Registered users', value: stats?.total_users },
@@ -88,6 +91,23 @@ export default function AdminOverviewScreen() {
 
   return (
     <AdminShell title="Overview" subtitle="A summary of Track Mo, Pake Ko! system activity.">
+      <View style={styles.toolbar}>
+        <Text style={styles.toolbarHint}>Live system summary</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Refresh overview"
+          disabled={loading}
+          onPress={() => void loadData()}
+          style={({ pressed }) => [
+            styles.refreshButton,
+            (pressed || loading) && styles.refreshButtonPressed,
+          ]}
+        >
+          {loading
+            ? <ActivityIndicator size="small" color={adminColors.primary} />
+            : <Text style={styles.refreshText}>↻ Refresh</Text>}
+        </Pressable>
+      </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.grid}>
@@ -124,6 +144,7 @@ export default function AdminOverviewScreen() {
             </View>
             <Text style={styles.accountDate}>
               {new Date(account.created_at).toLocaleDateString('en-PH', {
+                timeZone: 'Asia/Manila',
                 month: 'short', day: 'numeric', year: 'numeric',
               })}
             </Text>
@@ -147,6 +168,11 @@ export default function AdminOverviewScreen() {
 }
 
 const styles = StyleSheet.create({
+  toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  toolbarHint: { color: adminColors.muted, fontSize: 11, fontWeight: '600' },
+  refreshButton: { minHeight: 34, paddingHorizontal: 12, borderRadius: 9, borderWidth: 1, borderColor: adminColors.border, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  refreshButtonPressed: { opacity: 0.55 },
+  refreshText: { color: adminColors.primary, fontSize: 11, fontWeight: '800' },
   error: { color: adminColors.danger, backgroundColor: '#FEECEC', padding: 12, borderRadius: 9, fontSize: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statCard: { flexGrow: 1, flexBasis: '45%', minWidth: 130, minHeight: 104, backgroundColor: '#FFFFFF', borderRadius: 13, borderWidth: 1, borderColor: adminColors.border, padding: 14 },
