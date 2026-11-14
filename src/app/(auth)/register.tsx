@@ -164,22 +164,6 @@ export default function RegisterScreen() {
               <Text style={styles.emailNoticeLabel}>VERIFICATION EMAIL SENT TO</Text>
               <Text style={styles.emailNoticeAddress}>{successEmail}</Text>
             </View>
-            <View style={styles.instructionRow}>
-              <Text style={styles.instructionNumber}>1</Text>
-              <Text style={styles.instructionText}>Open your email inbox.</Text>
-            </View>
-            <View style={styles.instructionRow}>
-              <Text style={styles.instructionNumber}>2</Text>
-              <Text style={styles.instructionText}>Find the Track Mo verification email.</Text>
-            </View>
-            <View style={styles.instructionRow}>
-              <Text style={styles.instructionNumber}>3</Text>
-              <Text style={styles.instructionText}>Tap the link to confirm your email.</Text>
-            </View>
-            <Text style={styles.successHint}>
-              Can't find the email? Check your spam or junk folder, or request a new link below.
-            </Text>
-
             {resendFeedback ? (
               <View
                 style={[
@@ -217,10 +201,12 @@ export default function RegisterScreen() {
             </Pressable>
 
             <Pressable
-              style={styles.button}
+              style={styles.backToLoginButton}
               onPress={() => router.replace('/(auth)/login')}
+              accessibilityRole="button"
+              hitSlop={4}
             >
-              <Text style={styles.buttonText}>Back to login</Text>
+              <Text style={styles.backToLoginButtonText}>Back to Login</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -431,14 +417,6 @@ const styles = StyleSheet.create({
   },
   emailNoticeLabel: { color: '#166534', fontSize: 10, fontWeight: '800', letterSpacing: 0.7, textAlign: 'center' },
   emailNoticeAddress: { color: '#14532D', fontSize: 14, fontWeight: '800', textAlign: 'center', marginTop: 7 },
-  instructionRow: { width: '100%', flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingHorizontal: 2 },
-  instructionNumber: {
-    width: 23, height: 23, borderRadius: 12, overflow: 'hidden',
-    backgroundColor: '#E6F4EF', color: '#0F766E', textAlign: 'center',
-    textAlignVertical: 'center', fontSize: 12, fontWeight: '800', marginRight: 10,
-  },
-  instructionText: { flex: 1, color: '#40534A', fontSize: 13, lineHeight: 19 },
-  successHint: { color: '#64748B', fontSize: 12, lineHeight: 19, textAlign: 'center', marginTop: 17 },
   feedbackBanner: { width: '100%', borderRadius: 11, padding: 12, marginTop: 16, borderWidth: 1 },
   feedbackSuccess: { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' },
   feedbackError: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
@@ -451,6 +429,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center', marginTop: 18, paddingHorizontal: 12, paddingVertical: 12,
   },
   resendButtonText: { color: '#0F766E', fontSize: 14, fontWeight: '800', textAlign: 'center' },
+  backToLoginButton: {
+    width: '100%', minHeight: 50, borderRadius: 12,
+    backgroundColor: '#0F8A72', alignItems: 'center', justifyContent: 'center',
+    marginTop: 12, paddingHorizontal: 18, paddingVertical: 13,
+    shadowColor: '#064E3B', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16, shadowRadius: 6, elevation: 3,
+  },
+  backToLoginButtonText: {
+    color: '#FFFFFF', fontSize: 15, fontWeight: '800',
+    letterSpacing: 0.2, textAlign: 'center',
+  },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 22 },
   brand: { alignItems: 'center', marginBottom: 22 },
   brandName: { color: '#FFFFFF', fontSize: 23, fontWeight: '800' },
