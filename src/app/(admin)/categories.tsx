@@ -392,7 +392,7 @@ export default function AdminCategoriesScreen() {
           <View style={styles.confirmCard}>
             <Text style={styles.modalTitle}>Disable {toggleTarget?.name}?</Text>
             <Text style={styles.modalMessage}>
-              {trackedCount.toLocaleString()} users track this category. Disabling hides it from new users only. Existing records stay.
+              {trackedCount.toLocaleString()} users track this category. Disabling hides it from category selection and active dashboard categories. Existing expenses and budgets are preserved.
             </Text>
             <View style={styles.modalActions}>
               <Pressable style={styles.cancelButton} onPress={() => setToggleTarget(null)} disabled={saving}>
