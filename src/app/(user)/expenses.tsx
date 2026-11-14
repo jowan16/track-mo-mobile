@@ -1189,7 +1189,7 @@ export default function ExpensesScreen() {
 
       <Modal
         visible={formVisible}
-        animationType="slide"
+        animationType="none"
         transparent
         onRequestClose={closeForm}
       >
