@@ -1,7 +1,7 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 import React, { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -131,7 +131,7 @@ export default function LearnHubScreen() {
         <Text style={styles.sectionTitle}>Learn the Basics</Text>
 
         {loading ? (
-          <ActivityIndicator size="large" color={C.brand} style={{ margin: 28 }} />
+          <StaticLoader size="large" color={C.brand} style={{ margin: 28 }} />
         ) : error ? (
           <View style={styles.card}>
             <Text style={styles.error}>Unable to load lessons: {error}</Text>
