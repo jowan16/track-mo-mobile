@@ -616,50 +616,6 @@ export default function BudgetsScreen() {
           </View>
         ) : null}
 
-        {/* IN-APP BUDGET ALERTS */}
-
-        {budgetAlerts.length > 0 ? (
-          <View>
-            <View style={styles.listHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>Budget Alerts</Text>
-                <Text style={styles.sectionSubtitle}>
-                  Warnings triggered by your category budgets this month
-                </Text>
-              </View>
-              <Text style={styles.budgetCount}>{budgetAlerts.length} alerts</Text>
-            </View>
-
-            <View style={styles.alertList}>
-              {budgetAlerts.slice(0, 5).map((alert) => {
-                const alertCategory = categoryMap.get(alert.category_id)
-                const exceeded = alert.remaining_amount < 0
-
-                return (
-                  <View key={alert.id} style={styles.notificationCard}>
-                    <View style={styles.notificationHeadingRow}>
-                      <Text style={styles.notificationTitle}>{alert.title}</Text>
-                      <Text style={styles.notificationThreshold}>{alert.threshold}%</Text>
-                    </View>
-                    <Text style={styles.notificationCategory}>
-                      {alertCategory?.name ?? 'Category'}
-                    </Text>
-                    <Text style={styles.notificationMessage}>{alert.message}</Text>
-                    <Text style={styles.notificationDetails}>
-                      Spent {peso(alert.spent_amount)} of {peso(alert.budget_amount)} ({Math.round(alert.percentage)}%)
-                    </Text>
-                    <Text style={exceeded ? styles.dangerAlert : styles.warningAlert}>
-                      {exceeded
-                        ? `Exceeded by ${peso(Math.abs(alert.remaining_amount))}`
-                        : `${peso(alert.remaining_amount)} remaining`}
-                    </Text>
-                  </View>
-                )
-              })}
-            </View>
-          </View>
-        ) : null}
-
         {/* SUMMARY */}
 
         <Text style={styles.sectionTitle}>Monthly Overview</Text>
@@ -747,6 +703,10 @@ export default function BudgetsScreen() {
               const show100Warning = percent >= 100 && !!profile?.warn_100
               const show80Warning = percent >= 80 && !!profile?.warn_80
 
+              const categoryAlerts = budgetAlerts.filter(
+                (alert) => alert.budget_id === budget.id,
+              )
+
               const progressColor =
                 show100Warning
                   ? COLORS.danger
@@ -807,7 +767,31 @@ export default function BudgetsScreen() {
                     />
                   </View>
 
-                  {show100Warning ? (
+                  {categoryAlerts.length > 0 ? (
+                    <View style={styles.alertList}>
+                      {categoryAlerts.map((alert) => {
+                        const exceeded = alert.remaining_amount < 0
+
+                        return (
+                          <View key={alert.id} style={styles.notificationCard}>
+                            <View style={styles.notificationHeadingRow}>
+                              <Text style={styles.notificationTitle}>{alert.title}</Text>
+                              <Text style={styles.notificationThreshold}>{alert.threshold}%</Text>
+                            </View>
+                            <Text style={styles.notificationMessage}>{alert.message}</Text>
+                            <Text style={styles.notificationDetails}>
+                              Spent {peso(alert.spent_amount)} of {peso(alert.budget_amount)} ({Math.round(alert.percentage)}%)
+                            </Text>
+                            <Text style={exceeded ? styles.dangerAlert : styles.warningAlert}>
+                              {exceeded
+                                ? `Exceeded by ${peso(Math.abs(alert.remaining_amount))}`
+                                : `${peso(alert.remaining_amount)} remaining`}
+                            </Text>
+                          </View>
+                        )
+                      })}
+                    </View>
+                  ) : show100Warning ? (
                     <Text style={styles.dangerAlert}>
                       {categorySpent > budget.amount
                         ? `Budget limit reached — exceeded by ${peso(categorySpent - budget.amount)}`
