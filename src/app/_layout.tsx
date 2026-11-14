@@ -40,12 +40,10 @@ function AppContent() {
           ].join(' ').toLowerCase()
           const errorType = /expired|otp_expired/.test(errorValue)
             ? 'expired'
-            : /already|used|token_not_found/.test(errorValue)
+            : /already|used|token_not_found|one-time token not found|token not found/.test(errorValue)
               ? 'already-used'
-              : /token_not_found|already|used|one-time token not found|token not found/.test(errorValue)
-                ? 'already-used'
-                : /token|invalid|missing/.test(errorValue)
-                  ? 'invalid'
+              : /token|invalid|missing/.test(errorValue)
+                ? 'invalid'
                 : 'verification'
           router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } })
           return
