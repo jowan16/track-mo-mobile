@@ -44,6 +44,7 @@ export default function AdminCategoriesScreen() {
   const [saving, setSaving] = useState(false)
   const [iconSearch, setIconSearch] = useState('')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
+  const [selectedIconGroup, setSelectedIconGroup] = useState('Financial')
   const previewColor = draft?.color && /^#[0-9a-fA-F]{6}$/.test(draft.color) ? draft.color : '#0F766E'
 
   const loadCategories = useCallback(async () => {
@@ -90,6 +91,7 @@ export default function AdminCategoriesScreen() {
     setShowError('')
     setIconSearch('')
     setIconPickerOpen(false)
+    setSelectedIconGroup('Financial')
     setDraft({ ...emptyDraft })
   }
 
@@ -99,6 +101,7 @@ export default function AdminCategoriesScreen() {
     setShowError('')
     setIconSearch('')
     setIconPickerOpen(false)
+    setSelectedIconGroup('Financial')
     setDraft({
       id: category.id,
       name: category.name,
@@ -277,35 +280,56 @@ export default function AdminCategoriesScreen() {
               </Pressable>
               {iconPickerOpen ? (
                 <View style={styles.iconPickerPanel}>
-                  <TextInput value={iconSearch} onChangeText={setIconSearch} placeholder="Search icons by name or category" placeholderTextColor="#94A3B8" style={styles.input} autoCapitalize="none" />
-                  <View style={styles.iconLibrary}>
+                  <TextInput value={iconSearch} onChangeText={setIconSearch} placeholder="Search icons in this category" placeholderTextColor="#94A3B8" style={styles.input} autoCapitalize="none" />
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    nestedScrollEnabled
+                    directionalLockEnabled
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={styles.iconCategoryNav}
+                  >
                     {Array.from(new Set(CATEGORY_ICON_OPTIONS.map((item) => item.group))).map((group) => {
-                      const groupItems = CATEGORY_ICON_OPTIONS.filter((item) => item.group === group && (item.name + ' ' + item.group + ' ' + item.key).toLowerCase().includes(iconSearch.trim().toLowerCase()))
-                      if (groupItems.length === 0) return null
+                      const active = selectedIconGroup === group
                       return (
-                        <View key={group} style={styles.iconGroup}>
-                          <Text style={styles.iconGroupTitle}>{group}</Text>
-                          <View style={styles.iconChoices}>
-                            {groupItems.map((item) => (
-                              <Pressable
-                                key={item.key}
-                                onPress={() => {
-                                  setDraft((current) => current ? { ...current, icon: item.key } : current)
-                                  setIconPickerOpen(false)
-                                  setIconSearch('')
-                                }}
-                                style={styles.iconChoice}
-                                accessibilityRole="button"
-                                accessibilityLabel={item.name + ', ' + item.group}
-                              >
-                                <CategoryIcon icon={item.key} color={draft?.icon === item.key ? adminColors.primary : '#475569'} size={29} />
-                                <Text style={[styles.iconChoiceText, draft?.icon === item.key && styles.iconChoiceLabelActive]} numberOfLines={1}>{item.name}</Text>
-                              </Pressable>
-                            ))}
-                          </View>
-                        </View>
+                        <Pressable
+                          key={group}
+                          onPress={() => {
+                            setSelectedIconGroup(group)
+                            setIconSearch('')
+                          }}
+                          style={[styles.iconCategoryTab, active && styles.iconCategoryTabActive]}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
+                        >
+                          <Text style={[styles.iconCategoryTabText, active && styles.iconCategoryTabTextActive]}>{group}</Text>
+                        </Pressable>
                       )
                     })}
+                  </ScrollView>
+                  <View style={styles.iconLibrary}>
+                    <Text style={styles.iconGroupTitle}>{selectedIconGroup}</Text>
+                    <View style={styles.iconChoices}>
+                      {CATEGORY_ICON_OPTIONS.filter((item) => item.group === selectedIconGroup && (item.name + ' ' + item.key).toLowerCase().includes(iconSearch.trim().toLowerCase())).map((item) => (
+                        <Pressable
+                          key={item.key}
+                          onPress={() => {
+                            setDraft((current) => current ? { ...current, icon: item.key } : current)
+                            setIconPickerOpen(false)
+                            setIconSearch('')
+                          }}
+                          style={styles.iconChoice}
+                          accessibilityRole="button"
+                          accessibilityLabel={item.name + ', ' + item.group}
+                        >
+                          <CategoryIcon icon={item.key} color={draft?.icon === item.key ? adminColors.primary : '#475569'} size={29} />
+                          <Text style={[styles.iconChoiceText, draft?.icon === item.key && styles.iconChoiceLabelActive]} numberOfLines={1}>{item.name}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    {CATEGORY_ICON_OPTIONS.filter((item) => item.group === selectedIconGroup && (item.name + ' ' + item.key).toLowerCase().includes(iconSearch.trim().toLowerCase())).length === 0 ? (
+                      <Text style={styles.iconEmpty}>No icons found in this category.</Text>
+                    ) : null}
                   </View>
                 </View>
               ) : null}
@@ -365,11 +389,16 @@ const styles = StyleSheet.create({
   fieldError: { color: adminColors.danger, fontSize: 10 },
   iconPickerTrigger: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 7, paddingHorizontal: 2, minHeight: 58 },
   iconPickerAction: { color: adminColors.primary, fontSize: 11, fontWeight: '900' },
-  iconPickerPanel: { gap: 12, paddingTop: 4, paddingBottom: 5 },
-  iconLibrary: { gap: 16 },
-  iconGroup: { gap: 9 },
+  iconPickerPanel: { gap: 10, paddingTop: 4, paddingBottom: 5 },
+  iconCategoryNav: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 3, paddingRight: 10 },
+  iconCategoryTab: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 18, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF' },
+  iconCategoryTabActive: { backgroundColor: adminColors.primary, borderColor: adminColors.primary },
+  iconCategoryTabText: { color: '#64748B', fontSize: 10, fontWeight: '700' },
+  iconCategoryTabTextActive: { color: '#FFFFFF', fontWeight: '900' },
+  iconLibrary: { gap: 9, minHeight: 82 },
   iconGroupTitle: { color: adminColors.muted, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6 },
   iconChoices: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 15, rowGap: 12 },
+  iconEmpty: { color: adminColors.muted, fontSize: 10, paddingVertical: 12 },
   colorPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 11, backgroundColor: '#F6F7FB' },
   colorPreview: { width: 42, height: 42, borderRadius: 12, borderWidth: 1, borderColor: '#00000018' },
   previewTitle: { color: adminColors.text, fontSize: 11, fontWeight: '900' },
