@@ -205,7 +205,7 @@ export default function AdminCategoriesScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => { void (async () => {
         setSaving(true)
-        const { error: deleteError } = await supabase.from('categories').update({ is_active: false, show_in_picker: false }).eq('id', category.id).is('user_id', null)
+        const { error: deleteError } = await supabase.from('categories').update({ is_active: false }).eq('id', category.id).is('user_id', null)
         if (deleteError) Alert.alert('Unable to remove category', deleteError.message)
         else { await writeAudit('Removed category "' + category.name + '" (soft delete)'); await loadCategories(); Alert.alert('Category removed', 'The category is hidden. Historical records remain unchanged.') }
         setSaving(false)
