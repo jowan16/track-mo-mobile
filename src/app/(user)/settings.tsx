@@ -1,6 +1,6 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import React, { useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -235,7 +235,7 @@ export default function SettingsScreen() {
   if (!profile) {
     return (
       <SafeAreaView style={[styles.screen, styles.center]}>
-        <ActivityIndicator size="large" color={C.brand} />
+        <StaticLoader size="large" color={C.brand} />
       </SafeAreaView>
     )
   }
@@ -301,7 +301,7 @@ export default function SettingsScreen() {
                     disabled={savingProfile}
                   >
                     {savingProfile
-                      ? <ActivityIndicator color="#fff" />
+                      ? <StaticLoader color="#fff" />
                       : <Text style={styles.primaryButtonText}>Save Changes</Text>}
                   </Pressable>
                 </View>
@@ -360,7 +360,7 @@ export default function SettingsScreen() {
               disabled={savingPassword || !password || !confirmPassword}
             >
               {savingPassword
-                ? <ActivityIndicator color="#fff" />
+                ? <StaticLoader color="#fff" />
                 : <Text style={styles.primaryButtonText}>Update Password</Text>}
             </Pressable>
           </Section>
@@ -463,7 +463,7 @@ export default function SettingsScreen() {
                     disabled={savingTime}
                   >
                     {savingTime
-                      ? <ActivityIndicator color="#fff" />
+                      ? <StaticLoader color="#fff" />
                       : <Text style={styles.primaryButtonText}>Save Time</Text>}
                   </Pressable>
                 </View>
