@@ -12,6 +12,10 @@ interface ExpenseRecord {
 
 interface ProfileRecord {
   id: string;
+  email?: string;
+  full_name?: string;
+  currency?: string;
+  status?: string;
   email_alerts?: boolean;
   warn_80?: boolean;
   warn_100?: boolean;
@@ -28,7 +32,7 @@ interface BudgetRecord {
 }
 
 interface DatabaseWebhookPayload {
-  type: "INSERT" | "UPDATE";
+  type: "INSERT" | "UPDATE" | "DELETE";
   table: string;
   schema: string;
   record: ExpenseRecord | ProfileRecord | BudgetRecord;
@@ -107,18 +111,26 @@ function createEmailContent(
     ? `Budget Limit Reached - ${categoryName}`
     : `Budget Warning - ${categoryName} is at 80%`;
 
-  const percentage = Math.round((spent / budget) * 100);
+  const percentage = Math.round((spent / budget) * 1000) / 10;
+  const remaining = budget - spent;
 
   const formattedSpent = formatMoney(spent, currency);
   const formattedBudget = formatMoney(budget, currency);
+  const formattedRemaining = formatMoney(Math.abs(remaining), currency);
 
   const heading = isLimitReached
     ? "Budget Limit Reached!"
     : "Budget Warning!";
 
   const message = isLimitReached
-    ? `You have reached or exceeded your budget limit for ${categoryName}.`
-    : `You have already used 80% or more of your budget for ${categoryName}.`;
+    ? remaining < 0
+      ? `You have exceeded your ${categoryName} budget by ${formattedRemaining}.`
+      : `You have reached your ${categoryName} budget limit.`
+    : `Your ${categoryName} budget has reached 80% or more of its allocated limit.`;
+
+  const remainingLabel = remaining < 0
+    ? `Exceeded by ${formattedRemaining}`
+    : formattedRemaining;
 
   const html = `
     <!DOCTYPE html>
@@ -175,6 +187,11 @@ function createEmailContent(
             </p>
 
             <p>
+              <strong>Remaining Balance:</strong>
+              ${remainingLabel}
+            </p>
+
+            <p>
               <strong>Budget Used:</strong>
               ${percentage}%
             </p>
@@ -209,7 +226,8 @@ function createEmailContent(
     "",
     `Category: ${categoryName}`,
     `Amount Spent: ${formattedSpent}`,
-    `Monthly Budget: ${formattedBudget}`,
+    `Allocated Budget: ${formattedBudget}`,
+    `Remaining Balance: ${remainingLabel}`,
     `Budget Used: ${percentage}%`,
     "",
     isLimitReached
@@ -224,6 +242,163 @@ function createEmailContent(
     html,
     text,
   };
+}
+
+
+async function deliverBudgetAlertEmail(
+  supabase: any,
+  params: {
+    userId: string;
+    budgetId: string;
+    threshold: number;
+    alertCycle: number;
+    recipientEmail: string;
+    name: string;
+    categoryName: string;
+    spent: number;
+    budget: number;
+    currency: string;
+  },
+): Promise<boolean> {
+  const {
+    userId, budgetId, threshold, alertCycle, recipientEmail,
+    name, categoryName, spent, budget, currency,
+  } = params;
+
+  const { data: existing, error: existingError } = await supabase
+    .from("email_notification_logs")
+    .select("id, delivery_status, attempt_count")
+    .eq("user_id", userId)
+    .eq("budget_id", budgetId)
+    .eq("threshold", threshold)
+    .eq("alert_cycle", alertCycle)
+    .eq("notification_type", "budget_alert")
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+
+  let logId: string;
+
+  if (existing) {
+    if (existing.delivery_status !== "failed") return false;
+
+    const { data: retryRow, error: retryError } = await supabase
+      .from("email_notification_logs")
+      .update({
+        delivery_status: "pending",
+        delivery_error: null,
+        attempt_count: Number(existing.attempt_count || 1) + 1,
+        last_attempt_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id)
+      .eq("delivery_status", "failed")
+      .select("id")
+      .maybeSingle();
+
+    if (retryError) throw retryError;
+    if (!retryRow) return false;
+    logId = retryRow.id;
+  } else {
+    const { data: inserted, error: insertError } = await supabase
+      .from("email_notification_logs")
+      .insert({
+        user_id: userId,
+        notification_type: "budget_alert",
+        budget_id: budgetId,
+        threshold,
+        alert_cycle: alertCycle,
+        delivery_status: "pending",
+        attempt_count: 1,
+        last_attempt_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (insertError?.code === "23505") return false;
+    if (insertError) throw insertError;
+    logId = inserted.id;
+  }
+
+  const brevoApiKey = Deno.env.get("BREVO_API_KEY");
+  const senderEmail = Deno.env.get("BREVO_SENDER_EMAIL");
+  const senderName = Deno.env.get("BREVO_SENDER_NAME") || "Track Mo, Pake Ko!";
+
+  if (!brevoApiKey || !senderEmail) {
+    await supabase
+      .from("email_notification_logs")
+      .update({
+        delivery_status: "failed",
+        delivery_error: "Brevo environment variables are missing.",
+      })
+      .eq("id", logId);
+    console.error("Budget alert email was not sent: Brevo configuration is missing.");
+    return false;
+  }
+
+  const emailContent = createEmailContent(
+    name || "there",
+    categoryName,
+    threshold,
+    spent,
+    budget,
+    currency,
+  );
+
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": brevoApiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: senderName, email: senderEmail },
+        to: [{ email: recipientEmail, name: name || "User" }],
+        subject: emailContent.subject,
+        htmlContent: emailContent.html,
+        textContent: emailContent.text,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = (await response.text()).slice(0, 2000);
+      await supabase
+        .from("email_notification_logs")
+        .update({
+          delivery_status: "failed",
+          delivery_error: `Brevo request failed with status ${response.status}: ${errorText}`,
+        })
+        .eq("id", logId);
+      console.error("Brevo budget alert delivery failed:", response.status, errorText);
+      return false;
+    }
+
+    const deliveredAt = new Date().toISOString();
+    const { error: updateError } = await supabase
+      .from("email_notification_logs")
+      .update({
+        delivery_status: "sent",
+        delivery_error: null,
+        sent_at: deliveredAt,
+        delivered_at: deliveredAt,
+      })
+      .eq("id", logId);
+
+    if (updateError) throw updateError;
+    console.info(`Budget alert email sent: ${categoryName} - ${threshold}%`);
+    return true;
+  } catch (error) {
+    await supabase
+      .from("email_notification_logs")
+      .update({
+        delivery_status: "failed",
+        delivery_error: error instanceof Error ? error.message.slice(0, 2000) : "Unknown delivery error",
+      })
+      .eq("id", logId);
+    console.error("Budget alert email delivery error:", error);
+    return false;
+  }
 }
 
 console.info("Budget Alert function started.");
@@ -245,7 +420,7 @@ export default {
         if (
           payload.schema !== "public" ||
           !["expenses", "profiles", "budgets"].includes(payload.table) ||
-          (payload.type !== "INSERT" && payload.type !== "UPDATE")
+          !["INSERT", "UPDATE", "DELETE"].includes(payload.type)
         ) {
           return Response.json({
             message: "Webhook event ignored.",
@@ -370,6 +545,7 @@ export default {
         }
 
         let emailsSent = 0;
+        let emailsFailed = 0;
         let budgetsChecked = 0;
 
         for (const item of affectedBudgets.values()) {
@@ -379,7 +555,7 @@ export default {
             await supabase
               .from("profiles")
               .select(
-                "email, full_name, currency, email_alerts, warn_80, warn_100",
+                "email, full_name, currency, status, email_alerts, warn_80, warn_100",
               )
               .eq("id", item.userId)
               .maybeSingle();
@@ -388,7 +564,7 @@ export default {
             throw profileError;
           }
 
-          if (!profile) {
+          if (!profile || String(profile.status || "").toLowerCase() !== "active") {
             continue;
           }
 
@@ -411,71 +587,22 @@ export default {
             // An archived budget is below both thresholds. This resets its
             // crossing state so restoring it can create a fresh crossing.
             if (item.budgetId && item.archived) {
-              for (const threshold of [80, 100]) {
-                const { error: stateError } = await supabase.rpc(
-                  "claim_budget_alert_crossing",
-                  {
-                    p_budget_id: item.budgetId,
-                    p_threshold: threshold,
-                    p_percentage: 0,
-                    p_force: false,
-                  },
-                );
-                if (stateError) throw stateError;
-              }
+              let recipientEmail: string | null = null;
+          if (profile.email_alerts && (profile.warn_80 || profile.warn_100)) {
+            try {
+              const { data: authUser, error: authUserError } =
+                await supabase.auth.admin.getUserById(item.userId);
+              if (authUserError) throw authUserError;
+              recipientEmail = authUser.user?.email || null;
+            } catch (emailLookupError) {
+              console.error("Unable to resolve the authenticated account email:", emailLookupError);
             }
-            continue;
           }
-
-          // Retrieve the category name only when an active budget exists.
-          const { data: category, error: categoryError } =
-            await supabase
-              .from("categories")
-              .select("name")
-              .eq("id", item.categoryId)
-              .maybeSingle();
-
-          if (categoryError) {
-            throw categoryError;
-          }
-
-          const categoryName = category?.name || "Other";
-
-          const { startDate, endDate } =
-            getMonthDetails(
-              `${item.year}-${String(item.month).padStart(2, "0")}-01`,
-            );
-
-          const { data: expenses, error: expensesError } =
-            await supabase
-              .from("expenses")
-              .select("amount")
-              .eq("user_id", item.userId)
-              .eq("category_id", item.categoryId)
-              .eq("is_archived", false)
-              .gte("spent_on", startDate)
-              .lt("spent_on", endDate);
-
-          if (expensesError) {
-            throw expensesError;
-          }
-
-          const totalSpent = (expenses || []).reduce(
-            (total, expense) =>
-              total + Number(expense.amount || 0),
-            0,
-          );
-
-          const budgetAmount = Number(budget.amount);
-
-          const percentage =
-            (totalSpent / budgetAmount) * 100;
-
-          const currency = profile.currency || "PHP";
 
           for (const threshold of [80, 100]) {
-            // The database atomically tracks whether this threshold is
-            // currently crossed and only grants one email per new crossing.
+            const thresholdEnabled =
+              threshold === 80 ? !!profile.warn_80 : !!profile.warn_100;
+
             const { data: alertCycle, error: claimError } = await supabase.rpc(
               "claim_budget_alert_crossing",
               {
@@ -487,134 +614,112 @@ export default {
             );
 
             if (claimError) throw claimError;
-            if (alertCycle === null || alertCycle === undefined) continue;
 
-            const thresholdEnabled =
-              threshold === 80 ? profile.warn_80 : profile.warn_100;
-            if (!profile.email || !profile.email_alerts || !thresholdEnabled) {
+            if (alertCycle === null || alertCycle === undefined) {
+              // A failed email for the current crossing can be retried on the
+              // next budget event without creating another in-app notification.
+              if (thresholdEnabled && profile.email_alerts && recipientEmail) {
+                const { data: state, error: stateError } = await supabase
+                  .from("budget_alert_threshold_state")
+                  .select("is_above, crossing_count")
+                  .eq("budget_id", budget.id)
+                  .eq("threshold", threshold)
+                  .maybeSingle();
+
+                if (stateError) throw stateError;
+
+                if (state?.is_above && Number(state.crossing_count) > 0) {
+                  const { data: failedLog, error: failedLogError } = await supabase
+                    .from("email_notification_logs")
+                    .select("id")
+                    .eq("user_id", item.userId)
+                    .eq("budget_id", budget.id)
+                    .eq("threshold", threshold)
+                    .eq("alert_cycle", state.crossing_count)
+                    .eq("notification_type", "budget_alert")
+                    .eq("delivery_status", "failed")
+                    .maybeSingle();
+
+                  if (failedLogError) throw failedLogError;
+
+                  if (failedLog) {
+                    const delivered = await deliverBudgetAlertEmail(supabase, {
+                      userId: item.userId,
+                      budgetId: budget.id,
+                      threshold,
+                      alertCycle: Number(state.crossing_count),
+                      recipientEmail,
+                      name: profile.full_name || "User",
+                      categoryName,
+                      spent: totalSpent,
+                      budget: budgetAmount,
+                      currency,
+                    });
+                    if (delivered) emailsSent++;
+                    else emailsFailed++;
+                  }
+                }
+              }
               continue;
             }
 
-            // Reserve this specific crossing cycle to make webhook retries safe.
-            const { error: logError } = await supabase
-              .from("email_notification_logs")
+            if (!thresholdEnabled) continue;
+
+            const remainingAmount = budgetAmount - totalSpent;
+            const roundedPercentage = Math.round(percentage * 100) / 100;
+            const title = threshold === 100
+              ? "Budget Limit Reached"
+              : "80% Budget Warning";
+            const message = threshold === 100
+              ? remainingAmount < 0
+                ? `Budget Limit Reached! You have exceeded your ${categoryName} budget by ${formatMoney(Math.abs(remainingAmount), currency)}.`
+                : `You have reached your ${categoryName} budget limit.`
+              : `Your ${categoryName} budget has reached ${roundedPercentage}% of its allocated limit.`;
+
+            const { error: notificationError } = await supabase
+              .from("budget_alert_notifications")
               .insert({
                 user_id: item.userId,
-                notification_type: "budget_alert",
                 budget_id: budget.id,
+                category_id: item.categoryId,
                 threshold,
                 alert_cycle: alertCycle,
+                budget_month: item.month,
+                budget_year: item.year,
+                budget_amount: budgetAmount,
+                spent_amount: totalSpent,
+                remaining_amount: remainingAmount,
+                percentage: roundedPercentage,
+                title,
+                message,
               });
 
-            if (logError?.code === "23505") continue;
-            if (logError) throw logError;
-
-            const brevoApiKey = Deno.env.get(
-              "BREVO_API_KEY",
-            );
-
-            const senderEmail = Deno.env.get(
-              "BREVO_SENDER_EMAIL",
-            );
-
-            const senderName =
-              Deno.env.get("BREVO_SENDER_NAME") ||
-              "Track Mo, Pake Ko!";
-
-            if (!brevoApiKey || !senderEmail) {
-              await supabase
-                .from("email_notification_logs")
-                .delete()
-                .eq("user_id", item.userId)
-                .eq("budget_id", budget.id)
-                .eq("threshold", threshold)
-                .eq("alert_cycle", alertCycle)
-                .eq("notification_type", "budget_alert");
-
-              await supabase.rpc("claim_budget_alert_crossing", {
-                p_budget_id: budget.id,
-                p_threshold: threshold,
-                p_percentage: 0,
-                p_force: false,
-              });
-
-              throw new Error(
-                "Brevo environment variables are missing.",
-              );
+            if (notificationError?.code !== "23505" && notificationError) {
+              throw notificationError;
             }
 
-            const emailContent = createEmailContent(
-              profile.full_name || "there",
-              categoryName,
+            if (!profile.email_alerts) continue;
+            if (!recipientEmail) {
+              emailsFailed++;
+              console.error("Budget alert email skipped: authenticated account email is unavailable.");
+              continue;
+            }
+
+            const delivered = await deliverBudgetAlertEmail(supabase, {
+              userId: item.userId,
+              budgetId: budget.id,
               threshold,
-              totalSpent,
-              budgetAmount,
+              alertCycle: Number(alertCycle),
+              recipientEmail,
+              name: profile.full_name || "User",
+              categoryName,
+              spent: totalSpent,
+              budget: budgetAmount,
               currency,
-            );
+            });
 
-            const brevoResponse = await fetch(
-              "https://api.brevo.com/v3/smtp/email",
-              {
-                method: "POST",
-                headers: {
-                  "accept": "application/json",
-                  "api-key": brevoApiKey,
-                  "content-type": "application/json",
-                },
-                body: JSON.stringify({
-                  sender: {
-                    name: senderName,
-                    email: senderEmail,
-                  },
-                  to: [
-                    {
-                      email: profile.email,
-                      name: profile.full_name || "User",
-                    },
-                  ],
-                  subject: emailContent.subject,
-                  htmlContent: emailContent.html,
-                  textContent: emailContent.text,
-                }),
-              },
-            );
-
-            if (!brevoResponse.ok) {
-              const errorText = await brevoResponse.text();
-
-              // Remove the reservation so a future expense update
-              // can retry sending the notification.
-              await supabase
-                .from("email_notification_logs")
-                .delete()
-                .eq("user_id", item.userId)
-                .eq("budget_id", budget.id)
-                .eq("threshold", threshold)
-                .eq("alert_cycle", alertCycle)
-                .eq("notification_type", "budget_alert");
-
-              await supabase.rpc("claim_budget_alert_crossing", {
-                p_budget_id: budget.id,
-                p_threshold: threshold,
-                p_percentage: 0,
-                p_force: false,
-              });
-
-              console.error(
-                "Brevo email error:",
-                errorText,
-              );
-
-              throw new Error(
-                `Brevo request failed with status ${brevoResponse.status}.`,
-              );
-            }
-
-            emailsSent++;
-
-            console.info(
-              `Budget alert sent: ${categoryName} - ${threshold}%`,
-            );
+            if (delivered) emailsSent++;
+            else emailsFailed++;
           }
         }
 
@@ -623,6 +728,7 @@ export default {
           message: "Budget alert processing completed.",
           budgetsChecked,
           emailsSent,
+          emailsFailed,
         });
       } catch (error) {
         console.error("Budget Alert error:", error);
