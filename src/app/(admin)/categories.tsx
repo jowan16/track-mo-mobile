@@ -14,7 +14,6 @@ import {
 
 import { AdminShell, adminColors } from '@/components/admin/AdminShell'
 import { CategoryIcon, CATEGORY_ICON_OPTIONS } from '@/components/CategoryIcon'
-import * as ImagePicker from 'expo-image-picker'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 
@@ -43,10 +42,7 @@ export default function AdminCategoriesScreen() {
   const [colorError, setColorError] = useState('')
   const [showError, setShowError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [toggleTarget, setToggleTarget] = useState<Category | null>(null)
-  const [trackedCount, setTrackedCount] = useState(0)
   const [iconSearch, setIconSearch] = useState('')
-  const [uploadingIcon, setUploadingIcon] = useState(false)
   const previewColor = draft?.color && /^#[0-9a-fA-F]{6}$/.test(draft.color) ? draft.color : '#0F766E'
 
   const loadCategories = useCallback(async () => {
@@ -56,7 +52,7 @@ export default function AdminCategoriesScreen() {
       .from('categories')
       .select('id, slug, name, icon, color, bg, is_active, show_in_picker, sort_order')
       .is('user_id', null)
-      .order('sort_order')
+      .order('sort_order', { ascending: false })
     if (queryError) {
       setError(queryError.message)
       setCategories([])
@@ -172,29 +168,6 @@ export default function AdminCategoriesScreen() {
     }
   }
 
-  const uploadCustomIcon = async () => {
-    if (!draft || uploadingIcon) return
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) { Alert.alert('Permission required', 'Allow photo library access to upload a category icon.'); return }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 })
-    if (result.canceled || !result.assets?.[0]) return
-    const asset = result.assets[0]
-    const extension = (asset.fileName?.split('.').pop() || asset.uri.split('.').pop()?.split('?')[0] || 'png').toLowerCase()
-    const mimeType = asset.mimeType || (extension === 'svg' ? 'image/svg+xml' : extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : extension === 'webp' ? 'image/webp' : 'image/png')
-    const safeExtension = mimeType === 'image/svg+xml' ? 'svg' : mimeType === 'image/jpeg' ? 'jpg' : mimeType === 'image/webp' ? 'webp' : 'png'
-    if (!['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(mimeType)) { Alert.alert('Unsupported icon', 'Choose an SVG, PNG, JPG, or WebP image.'); return }
-    if (asset.fileSize && asset.fileSize > 2 * 1024 * 1024) { Alert.alert('File too large', 'Category icons must be 2 MB or smaller.'); return }
-    setUploadingIcon(true)
-    try {
-      const bytes = await (await fetch(asset.uri)).arrayBuffer()
-      const filePath = 'defaults/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + safeExtension
-      const { error: uploadError } = await supabase.storage.from('category-icons').upload(filePath, bytes, { contentType: mimeType, upsert: true })
-      if (uploadError) throw uploadError
-      const { data } = supabase.storage.from('category-icons').getPublicUrl(filePath)
-      setDraft((current) => current ? { ...current, icon: 'custom:' + data.publicUrl } : current)
-    } catch (error) { Alert.alert('Icon upload failed', error instanceof Error ? error.message : 'Please try again.') }
-    finally { setUploadingIcon(false) }
-  }
 
   const softDeleteCategory = (category: Category) => {
     if (category.is_active && categories.filter((item) => item.id !== category.id && item.is_active && item.show_in_picker).length === 0) {
@@ -213,43 +186,6 @@ export default function AdminCategoriesScreen() {
     ])
   }
 
-  const askToggle = async (category: Category) => {
-    if (category.is_active && categories.filter((item) => item.id !== category.id && item.is_active && item.show_in_picker).length === 0) {
-      Alert.alert('Keep one category available', 'At least one active category must remain available to users.')
-      return
-    }
-    if (!category.is_active) {
-      await toggleCategory(category)
-      return
-    }
-    const { count, error: countError } = await supabase
-      .from('user_categories')
-      .select('*', { count: 'exact', head: true })
-      .eq('category_id', category.id)
-    if (countError) {
-      Alert.alert('Unable to check category usage', countError.message)
-      return
-    }
-    setTrackedCount(count ?? 0)
-    setToggleTarget(category)
-  }
-
-  const toggleCategory = async (category: Category) => {
-    setSaving(true)
-    const { error: updateError } = await supabase
-      .from('categories')
-      .update({ is_active: !category.is_active })
-      .eq('id', category.id)
-    if (updateError) {
-      Alert.alert('Update failed', updateError.message)
-    } else {
-      await writeAudit(`${category.is_active ? 'Disabled' : 'Enabled'} category "${category.name}"`)
-      setToggleTarget(null)
-      await loadCategories()
-      Alert.alert(category.is_active ? 'Category disabled' : 'Category enabled', category.is_active ? 'The category is now hidden from user selection. Existing records are preserved.' : 'The category is available to users again.')
-    }
-    setSaving(false)
-  }
 
   return (
     <AdminShell title="Default categories" subtitle="Manage the category options users can select after their first login.">
@@ -278,15 +214,6 @@ export default function AdminCategoriesScreen() {
           </Pressable>
           <Pressable style={styles.removeButton} onPress={() => softDeleteCategory(category)} disabled={saving}>
             <Text style={styles.removeText}>Remove</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.toggleButton, category.is_active ? styles.disableButton : styles.enableButton]}
-            onPress={() => void askToggle(category)}
-            disabled={saving}
-          >
-            <Text style={[styles.toggleText, { color: category.is_active ? adminColors.danger : adminColors.success }]}>
-              {category.is_active ? 'Disable' : 'Enable'}
-            </Text>
           </Pressable>
         </View>
       ))}
@@ -357,10 +284,6 @@ export default function AdminCategoriesScreen() {
                   )
                 })}
               </View>
-              <Pressable style={styles.uploadButton} onPress={() => void uploadCustomIcon()} disabled={uploadingIcon}>
-                <Text style={styles.uploadButtonText}>{uploadingIcon ? 'Uploading icon…' : 'Upload custom SVG / PNG / JPG / WebP'}</Text>
-              </Pressable>
-
               <View style={styles.switchRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.fieldLabel}>Show in first-login picker</Text>
@@ -387,24 +310,7 @@ export default function AdminCategoriesScreen() {
         </View>
       </Modal>
 
-      <Modal transparent visible={!!toggleTarget} animationType="fade" onRequestClose={() => { if (!saving) setToggleTarget(null) }}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.confirmCard}>
-            <Text style={styles.modalTitle}>Disable {toggleTarget?.name}?</Text>
-            <Text style={styles.modalMessage}>
-              {trackedCount.toLocaleString()} users track this category. Disabling hides it from category selection and active dashboard categories. Existing expenses and budgets are preserved.
-            </Text>
-            <View style={styles.modalActions}>
-              <Pressable style={styles.cancelButton} onPress={() => setToggleTarget(null)} disabled={saving}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[styles.newButton, { backgroundColor: adminColors.danger }]} onPress={() => toggleTarget && void toggleCategory(toggleTarget)} disabled={saving}>
-                <Text style={styles.newButtonText}>{saving ? 'Please wait…' : 'Disable'}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+
     </AdminShell>
   )
 }
@@ -425,16 +331,10 @@ const styles = StyleSheet.create({
   editText: { color: adminColors.primary, fontSize: 10, fontWeight: '900' },
   removeButton: { paddingHorizontal: 7, paddingVertical: 8 },
   removeText: { color: adminColors.danger, fontSize: 10, fontWeight: '900' },
-  toggleButton: { paddingHorizontal: 9, paddingVertical: 8, borderRadius: 8 },
-  disableButton: { backgroundColor: '#FEECEC' },
-  enableButton: { backgroundColor: '#DCFCE7' },
-  toggleText: { fontSize: 10, fontWeight: '900' },
   modalBackdrop: { flex: 1, backgroundColor: '#0F172A88', justifyContent: 'center', padding: 17 },
   modalScroll: { flexGrow: 1, justifyContent: 'center' },
   modalCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, gap: 9 },
-  confirmCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 19, gap: 12 },
   modalTitle: { color: adminColors.text, fontSize: 17, fontWeight: '900', marginBottom: 4 },
-  modalMessage: { color: adminColors.muted, fontSize: 12, lineHeight: 19 },
   fieldLabel: { color: adminColors.text, fontSize: 11, fontWeight: '800', marginTop: 4 },
   input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 10, color: adminColors.text, fontSize: 12 },
   fieldError: { color: adminColors.danger, fontSize: 10 },
@@ -450,8 +350,6 @@ const styles = StyleSheet.create({
   colorSwatch: { width: 28, height: 28, borderRadius: 15, borderWidth: 1, borderColor: '#00000018' },
   colorSwatchActive: { borderWidth: 3, borderColor: adminColors.text, transform: [{ scale: 1.12 }] },
   iconPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 11, backgroundColor: '#F6F7FB' },
-  uploadButton: { borderWidth: 1, borderColor: adminColors.border, borderStyle: 'dashed', borderRadius: 10, padding: 12, alignItems: 'center' },
-  uploadButtonText: { color: adminColors.primary, fontSize: 11, fontWeight: '900' },
   iconChoice: { width: 39, height: 39, borderRadius: 9, borderWidth: 1, borderColor: adminColors.border, alignItems: 'center', justifyContent: 'center' },
   iconChoiceActive: { borderWidth: 2, borderColor: adminColors.primary, backgroundColor: '#EEF0FF' },
   iconChoiceText: { fontSize: 20, fontWeight: '900' },
