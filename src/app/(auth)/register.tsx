@@ -15,7 +15,7 @@ import {
 import { supabase } from '@/services/supabase'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const AUTH_REDIRECT_URL = 'trackmomobile://login'
+const AUTH_REDIRECT_URL = 'trackmomobile://verify-email'
 
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('')
