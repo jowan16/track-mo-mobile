@@ -94,8 +94,15 @@ export default function CategoryDashboardScreen() {
     }
 
     void loadCategories()
+    const channel = supabase
+      .channel('user-category-onboarding-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        void loadCategories()
+      })
+      .subscribe()
 
     return () => {
+      void supabase.removeChannel(channel)
       mounted = false
     }
   }, [])
