@@ -14,27 +14,51 @@ function AppContent() {
 
   useEffect(() => {
     const handleAuthCallback = async (url: string) => {
-      if (!url.startsWith('trackmomobile://') || handledAuthUrls.current.has(url)) return
+      if (!url.toLowerCase().startsWith('trackmomobile://') || handledAuthUrls.current.has(url)) return
       handledAuthUrls.current.add(url)
 
-      const { queryParams } = Linking.parse(url)
-      const callbackError = queryParams?.error_description ?? queryParams?.error
-
-      if (callbackError) {
-        console.error('Email verification callback failed:', callbackError)
-        router.replace('/(auth)/login?verification=error')
-        return
-      }
-
-      const code = queryParams?.code
-      if (typeof code !== 'string' || !code) return
-
       try {
-        // Complete Supabase's PKCE exchange before returning to the login screen.
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) throw error
+        const parsedUrl = new URL(url)
+        const params = new URLSearchParams(parsedUrl.search)
+        // Some email providers preserve callback parameters in the URL fragment.
+        const fragment = new URLSearchParams(parsedUrl.hash.replace(/^#/, ''))
+        fragment.forEach((value, key) => {
+          if (!params.has(key)) params.set(key, value)
+        })
 
-        // Email confirmation should not automatically sign the user in.
+        const callbackError =
+          params.get('error_description') ??
+          params.get('error') ??
+          params.get('error_code')
+
+        if (callbackError) {
+          console.error('Email verification callback failed:', callbackError)
+          router.replace('/(auth)/login?verification=error')
+          return
+        }
+
+        const code = params.get('code')
+        const tokenHash = params.get('token_hash')
+        const otpType = params.get('type')
+
+        if (code) {
+          // Standard Supabase PKCE confirmation callback.
+          const { error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) throw error
+        } else if (tokenHash && otpType) {
+          // Also support confirmation templates that use TokenHash links.
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: otpType as 'signup' | 'email',
+          })
+          if (error) throw error
+        } else {
+          console.warn('Track Mo received an auth deep link without a supported verification token.')
+          router.replace('/(auth)/login?verification=error')
+          return
+        }
+
+        // Verification is complete; do not keep the temporary callback session.
         const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
         if (signOutError) throw signOutError
 
