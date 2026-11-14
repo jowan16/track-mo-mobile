@@ -13,6 +13,7 @@ import * as Sharing from 'expo-sharing'
 import * as FileSystem from 'expo-file-system/legacy'
 
 import { AdminShell, adminColors } from '@/components/admin/AdminShell'
+import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 
 type Period = 'this' | 'last' | 'year'
@@ -41,12 +42,30 @@ function addCalendarDays(year: number, month: number, day: number, amount: numbe
   return dateKey(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
 }
 
+function formatReportDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(Date.UTC(year, month - 1, day, 12)))
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>\"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;',
+  })[character] || character)
+}
+
 export default function AdminReportsScreen() {
+  const { profile } = useAuth()
   const [period, setPeriod] = useState<Period>('this')
   const [stats, setStats] = useState<ReportStats | null>(null)
   const [top, setTop] = useState<TopCategory[]>([])
   const [growth, setGrowth] = useState<Growth[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [totalUsers, setTotalUsers] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
@@ -56,7 +75,6 @@ export default function AdminReportsScreen() {
   const month = today.month
   const { start, end } = useMemo(() => {
     const firstOfThisMonth = dateKey(year, month, 1)
-    const firstOfNextMonth = dateKey(year, month + 1, 1)
     const todayExclusive = addCalendarDays(year, month, today.day, 1)
 
     if (period === 'year') {
@@ -77,13 +95,14 @@ export default function AdminReportsScreen() {
     const load = async () => {
       setLoading(true)
       setError('')
-      const [s, t, g, c] = await Promise.all([
+      const [s, t, g, c, users] = await Promise.all([
         supabase.rpc('admin_period_stats', { p_start: start, p_end: end }),
         supabase.rpc('admin_top_categories', { p_start: start, p_end: end }),
         supabase.rpc('admin_user_growth'),
         supabase.from('categories').select('id, name, icon, color'),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
       ])
-      const failure = s.error || t.error || g.error || c.error
+      const failure = s.error || t.error || g.error || c.error || users.error
       if (failure) {
         if (active) setError(failure.message)
       } else if (active) {
@@ -91,6 +110,7 @@ export default function AdminReportsScreen() {
         setTop((t.data ?? []) as TopCategory[])
         setGrowth((g.data ?? []) as Growth[])
         setCategories((c.data ?? []) as Category[])
+        setTotalUsers(users.count ?? 0)
       }
       if (active) setLoading(false)
     }
@@ -136,21 +156,92 @@ export default function AdminReportsScreen() {
     if (!stats || exporting) return
     setExporting(true)
     try {
+      const inclusiveEnd = addCalendarDays(
+        Number(end.slice(0, 4)),
+        Number(end.slice(5, 7)) - 1,
+        Number(end.slice(8, 10)),
+        -1,
+      )
+      const generatedAt = new Intl.DateTimeFormat('en-PH', {
+        timeZone: 'Asia/Manila',
+        dateStyle: 'long',
+        timeStyle: 'short',
+      }).format(new Date())
+      const categoryUsageTotal = top.reduce((sum, item) => sum + Number(item.uses || 0), 0)
+      const categoryRows = top.map((item) => {
+        const name = categoryById.get(item.category_id)?.name ?? 'Category'
+        const percentage = categoryUsageTotal > 0 ? (item.uses / categoryUsageTotal) * 100 : 0
+        return `<tr><td>${escapeHtml(name)}</td><td class="number">${item.uses.toLocaleString()}</td><td class="number">${percentage.toFixed(1)}%</td></tr>`
+      }).join('')
+      const growthRows = growth.map((item) =>
+        `<tr><td>${escapeHtml(item.label)}</td><td class="number">${item.total.toLocaleString()}</td></tr>`,
+      ).join('')
+      const newUserLabel = period === 'this' ? 'New users this month' : period === 'last' ? 'New users last month' : 'New users this year'
+      const expenseLabel = period === 'this' ? 'Expenses recorded this month' : period === 'last' ? 'Expenses recorded last month' : 'Expenses recorded this year'
+      const activeLabel = 'Active users (current)'
+      const observations = [
+        totalUsers === 0 ? 'No registered user records were found.' : `The system has ${totalUsers.toLocaleString()} registered user account(s), of which ${stats.active_users.toLocaleString()} are currently active.`,
+        stats.expenses_count === 0 ? 'No expenses were recorded during the selected reporting period.' : `${stats.expenses_count.toLocaleString()} expense record(s) were recorded during the selected reporting period.`,
+        top.length === 0 ? 'There is no category usage data for the selected reporting period.' : `The most frequently used category is ${categoryById.get(top[0].category_id)?.name ?? 'Category'} with ${top[0].uses.toLocaleString()} use(s).`,
+      ]
       const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>
-        body{font-family:Arial,sans-serif;padding:28px;color:#172033}h1{color:#4F46E5}p{color:#64748B}
-        table{width:100%;border-collapse:collapse;margin:18px 0}td,th{padding:10px;border-bottom:1px solid #E2E8F0;text-align:left}
-        th{background:#F6F7FB}.muted{color:#64748B;font-size:12px}
-      </style></head><body><h1>Track Mo, Pake Ko! — System Report</h1>
-        <p>Reporting period: ${start} to ${end}</p><table><tr><th>Metric</th><th>Value</th></tr>
-        ${cards.map((card) => `<tr><td>${card.label}</td><td>${card.value}</td></tr>`).join('')}
-        </table><h2>User growth</h2><table><tr><th>Month</th><th>Total users</th></tr>
-        ${growth.map((item) => `<tr><td>${item.label}</td><td>${item.total}</td></tr>`).join('')}
-        </table><h2>Most used categories</h2><table><tr><th>Category</th><th>Uses</th></tr>
-        ${top.map((item) => `<tr><td>${categoryById.get(item.category_id)?.name ?? 'Category'}</td><td>${item.uses}</td></tr>`).join('')}
-        </table><p class="muted">Generated by Track Mo, Pake Ko! administration.</p></body></html>`
+        @page{size:A4;margin:18mm 16mm 20mm}body{font-family:Arial,sans-serif;color:#172033;font-size:11px;line-height:1.5}
+        h1{color:#4F46E5;font-size:23px;margin:0}h2{font-size:15px;margin:22px 0 8px;color:#172033}
+        .eyebrow{color:#64748B;font-size:10px;letter-spacing:2px;font-weight:bold;margin:0 0 6px}
+        .subtitle{color:#64748B;margin:4px 0 16px}.meta{background:#F6F7FB;padding:12px;border-radius:8px}
+        .meta p{margin:3px 0}.cards{width:100%;border-collapse:separate;border-spacing:7px 0;margin:14px 0}
+        .cards td{background:#F6F7FB;border:0;padding:12px;width:33%;vertical-align:top}
+        .metric{font-size:22px;font-weight:bold;color:#4F46E5}.metric-label{font-size:9px;color:#64748B}
+        table.data{width:100%;border-collapse:collapse;margin:8px 0 14px}
+        .data td,.data th{padding:8px;border-bottom:1px solid #E2E8F0;text-align:left}
+        .data th{background:#F1F5F9;color:#334155;font-size:10px}
+        .number{text-align:right!important;font-variant-numeric:tabular-nums}
+        .note{background:#F8FAFC;border-left:3px solid #4F46E5;padding:10px 12px;margin:7px 0}
+        .muted{color:#64748B;font-size:9px}.footer{border-top:1px solid #E2E8F0;margin-top:28px;padding-top:9px;color:#64748B;font-size:9px}
+        tr{page-break-inside:avoid}
+      </style></head><body>
+        <p class="eyebrow">TRACK MO, PAKE KO!</p><h1>System Report</h1>
+        <p class="subtitle">Administrative overview of system-wide usage and activity</p>
+        <div class="meta">
+          <p><strong>Reporting period:</strong> ${escapeHtml(formatReportDate(start))} – ${escapeHtml(formatReportDate(inclusiveEnd))}</p>
+          <p><strong>Filter:</strong> ${period === 'this' ? 'This Month' : period === 'last' ? 'Last Month' : 'This Year'}</p>
+          <p><strong>Date generated:</strong> ${escapeHtml(generatedAt)} (Philippine Time)</p>
+          <p><strong>Generated by:</strong> ${escapeHtml(profile?.full_name || profile?.email || 'Administrator')}</p>
+        </div>
+
+        <h2>1. System Overview</h2>
+        <table class="cards"><tr>
+          <td><div class="metric">${totalUsers.toLocaleString()}</div><div class="metric-label">Total registered users</div></td>
+          <td><div class="metric">${stats.active_users.toLocaleString()}</div><div class="metric-label">${activeLabel}</div></td>
+          <td><div class="metric">${stats.new_users.toLocaleString()}</div><div class="metric-label">${newUserLabel}</div></td>
+        </tr></table>
+        <div class="note"><strong>${stats.expenses_count.toLocaleString()}</strong> ${expenseLabel.toLowerCase()}.</div>
+
+        <h2>2. User Growth Statistics</h2>
+        <p class="muted">Total registered users by month over the last six months.</p>
+        ${growthRows ? `<table class="data"><tr><th>Month</th><th class="number">Total registered users</th></tr>${growthRows}</table>` : '<p class="muted">No user growth data available.</p>'}
+
+        <h2>3. Expense Statistics</h2>
+        <table class="data"><tr><th>Metric</th><th class="number">Count</th></tr>
+          <tr><td>${escapeHtml(expenseLabel)}</td><td class="number">${stats.expenses_count.toLocaleString()}</td></tr>
+        </table>
+        <p class="muted">Expense statistics represent non-archived system records within the selected date range. Individual transaction details are not included.</p>
+
+        <h2>4. Most Used Expense Categories</h2>
+        ${categoryRows ? `<table class="data"><tr><th>Category</th><th class="number">Usage count</th><th class="number">Share</th></tr>${categoryRows}</table>` : '<p class="muted">No category usage data for this reporting period.</p>'}
+
+        <h2>5. Summary and Observations</h2>
+        ${observations.map((item) => `<p class="note">${escapeHtml(item)}</p>`).join('')}
+
+        <div class="footer">
+          <strong>Track Mo, Pake Ko! — System Generated Report</strong><br>
+          Prepared by: ${escapeHtml(profile?.full_name || profile?.email || 'Administrator')}<br>
+          Generated: ${escapeHtml(generatedAt)} · All figures are aggregated system-wide statistics.
+        </div>
+      </body></html>`
       const file = await Print.printToFileAsync({ html })
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(file.uri, { mimeType: 'application/pdf', dialogTitle: 'Share system report' })
+        await Sharing.shareAsync(file.uri, { mimeType: 'application/pdf', dialogTitle: 'Share system report PDF' })
       } else {
         await Share.share({ message: `System report PDF created: ${file.uri}` })
       }
