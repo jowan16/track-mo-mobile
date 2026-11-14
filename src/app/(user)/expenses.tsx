@@ -2,7 +2,7 @@ import { useAppTheme } from '@/context/ThemeContext'
 
 
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import {
     ActivityIndicator,
@@ -406,15 +406,13 @@ export default function ExpensesScreen() {
     }
   }, [profile?.id])
 
-  const realtimeChannelInstance = useRef(0)
-
   useEffect(() => {
     let mounted = true
-    // Use a fresh topic for each effect setup. React may reconnect effects
-    // before the previous channel has finished being removed.
-    realtimeChannelInstance.current += 1
+    // A ref resets on a full screen remount, so it cannot guarantee a unique
+    // topic while the previous subscribed channel is still being removed.
+    const channelTopic = `user-expenses-categories:${profile?.id ?? 'guest'}:${Date.now()}:${Math.random().toString(36).slice(2)}`
     const channel = supabase
-      .channel(`user-expenses-categories:${profile?.id ?? 'guest'}:${realtimeChannelInstance.current}`)
+      .channel(channelTopic)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'categories' },
