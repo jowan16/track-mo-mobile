@@ -1,6 +1,6 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   Pressable,
@@ -184,7 +184,7 @@ export default function AdminUsersScreen() {
       {blocked ? <Text style={styles.error}>{blocked}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {loading ? (
-        <ActivityIndicator color={adminColors.primary} style={{ margin: 30 }} />
+        <StaticLoader color={adminColors.primary} style={{ margin: 30 }} />
       ) : filtered.length === 0 ? (
         <View style={styles.emptyCard}><Text style={styles.emptyText}>No accounts found.</Text></View>
       ) : filtered.map((account) => (
