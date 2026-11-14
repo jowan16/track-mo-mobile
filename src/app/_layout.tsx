@@ -33,7 +33,19 @@ function AppContent() {
 
         if (callbackError) {
           console.error('Email verification callback failed:', callbackError)
-          router.replace('/(auth)/login?verification=error')
+          const errorValue = [
+            params.get('error_code') ?? '',
+            params.get('error') ?? '',
+            params.get('error_description') ?? '',
+          ].join(' ').toLowerCase()
+          const errorType = /expired|otp_expired/.test(errorValue)
+            ? 'expired'
+            : /already|used|token_not_found/.test(errorValue)
+              ? 'already-used'
+              : /token|invalid|missing|not found/.test(errorValue)
+                ? 'invalid'
+                : 'verification'
+          router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } })
           return
         }
 
@@ -54,7 +66,7 @@ function AppContent() {
           if (error) throw error
         } else {
           console.warn('Track Mo received an auth deep link without a supported verification token.')
-          router.replace('/(auth)/login?verification=error')
+          router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType: 'verification' } })
           return
         }
 
@@ -62,7 +74,7 @@ function AppContent() {
         const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
         if (signOutError) throw signOutError
 
-        router.replace('/(auth)/login?verification=success')
+        router.replace('/(auth)/verify-email?status=success')
       } catch (error) {
         console.error('Unable to complete email verification:', error)
         router.replace('/(auth)/login?verification=error')
