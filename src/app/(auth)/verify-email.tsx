@@ -14,7 +14,7 @@ import {
 
 import { supabase } from '@/services/supabase'
 
-const AUTH_REDIRECT_URL = 'trackmomobile://login'
+const AUTH_REDIRECT_URL = 'trackmomobile://verify-email'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type VerificationErrorType =
