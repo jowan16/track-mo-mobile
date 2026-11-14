@@ -1,4 +1,5 @@
 import { StaticLoader } from '@/components/StaticLoader'
+import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
