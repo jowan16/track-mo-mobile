@@ -1,4 +1,5 @@
 import { StaticLoader } from '@/components/StaticLoader'
+import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 import { useState } from 'react'
 import {
