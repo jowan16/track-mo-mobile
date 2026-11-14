@@ -98,9 +98,7 @@ export default function AdminUsersScreen() {
         .from('profiles')
         .select('id, full_name, email, role, status, created_at, last_seen_at')
         .order('created_at', { ascending: false }),
-      supabase
-        .from('user_activity_sessions')
-        .select('session_id, user_id, last_seen_at, token_expires_at'),
+      supabase.rpc('admin_get_user_activity_sessions'),
     ])
 
     if (profilesResult.error || sessionsResult.error) {
