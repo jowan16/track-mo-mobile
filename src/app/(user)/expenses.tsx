@@ -283,7 +283,7 @@ export default function ExpensesScreen() {
   const styles = makeStyles(dark, COLORS)
 
   const { profile } = useAuth()
-  const params = useLocalSearchParams<{ openForm?: string; category?: string; receiptDraft?: string; receiptPath?: string; receiptModel?: string; receiptRawText?: string }>()
+  const params = useLocalSearchParams<{ openForm?: string; category?: string; receiptDraft?: string; receiptPath?: string; receiptSource?: string; receiptModel?: string; receiptRawText?: string }>()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [availableCategories, setAvailableCategories] = useState<Category[]>([])
@@ -307,7 +307,7 @@ export default function ExpensesScreen() {
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const [budgetWarning, setBudgetWarning] = useState(false)
-  const [receiptContext, setReceiptContext] = useState<{ path: string; draft: import('@/services/receiptParser').ParsedReceipt; model: string; rawText: string; detections: unknown[] } | null>(null)
+  const [receiptContext, setReceiptContext] = useState<{ path: string | null; source: 'image' | 'qr'; draft: import('@/services/receiptParser').ParsedReceipt; model: string; rawText: string; detections: unknown[] } | null>(null)
 
   // ------------------------------------------------
   // LOAD EXPENSES, TRACKED CATEGORIES AND BUDGETS
@@ -531,7 +531,7 @@ export default function ExpensesScreen() {
   // Receipt OCR hands its parsed draft to this screen so it can reuse
   // the exact same Add Expense modal and validation as manual entry.
   useEffect(() => {
-    if (loading || !params.receiptDraft || !params.receiptPath) return
+    if (loading || !params.receiptDraft || (params.receiptSource !== 'qr' && !params.receiptPath)) return
 
     try {
       const draft = JSON.parse(params.receiptDraft) as import('@/services/receiptParser').ParsedReceipt
@@ -540,11 +540,13 @@ export default function ExpensesScreen() {
       const category = findReceiptCategory(availableCategories, draft.suggestedCategory, params.receiptRawText || '')
       // Preserve the complete OCR text in the Receipt Details field.
       // Keep each detected receipt line separate for easier reading and editing.
+      const source = params.receiptSource === 'qr' ? 'qr' : 'image'
       const note = formatReceiptDetails(params.receiptRawText || '')
 
       setEditing(null)
       setReceiptContext({
-        path: params.receiptPath,
+        path: params.receiptPath || null,
+        source,
         draft,
         model: params.receiptModel || 'unknown',
         rawText: params.receiptRawText || '',
@@ -552,7 +554,7 @@ export default function ExpensesScreen() {
       })
       setForm({
         amount: draft.total === null ? '' : String(draft.total),
-        spent_on: draft.receipt_date,
+        spent_on: draft.receipt_date || localDateString(new Date()),
         category_id: category?.id ?? null,
         payment_method: METHODS.includes(draft.payment_method) ? draft.payment_method : '',
         note,
@@ -566,9 +568,9 @@ export default function ExpensesScreen() {
         error instanceof Error ? error.message : 'The scanned receipt could not be opened.',
       )
     } finally {
-      router.setParams({ receiptDraft: undefined, receiptPath: undefined, receiptModel: undefined, receiptRawText: undefined })
+      router.setParams({ receiptDraft: undefined, receiptPath: undefined, receiptSource: undefined, receiptModel: undefined, receiptRawText: undefined })
     }
-  }, [loading, params.receiptDraft, params.receiptPath, params.receiptModel, params.receiptRawText, availableCategories])
+  }, [loading, params.receiptDraft, params.receiptPath, params.receiptSource, params.receiptModel, params.receiptRawText, availableCategories])
 
   const openEdit = (expense: Expense) => {
     setEditing(expense)
@@ -740,8 +742,10 @@ export default function ExpensesScreen() {
               line_total: item.line_total,
             })),
             p_recognition_data: {
+              source: receiptContext.source,
               model: receiptContext.model,
               raw_text: receiptContext.rawText,
+              qr_payload: receiptContext.source === 'qr' ? receiptContext.rawText : null,
               confirmed_at: new Date().toISOString(),
             },
           })
