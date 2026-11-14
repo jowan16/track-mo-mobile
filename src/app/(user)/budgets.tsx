@@ -50,6 +50,22 @@ type Expense = {
   is_archived: boolean
 }
 
+type BudgetAlertNotification = {
+  id: string
+  budget_id: string
+  category_id: number
+  threshold: 80 | 100
+  budget_month: number
+  budget_year: number
+  budget_amount: number
+  spent_amount: number
+  remaining_amount: number
+  percentage: number
+  title: string
+  message: string
+  created_at: string
+}
+
 const LIGHT_COLORS = {
   canvas: '#f6f7f5',
   ink: '#14201c',
@@ -142,6 +158,7 @@ export default function BudgetsScreen() {
   const [categories, setCategories] = useState<Category[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [budgetAlerts, setBudgetAlerts] = useState<BudgetAlertNotification[]>([])
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -170,6 +187,7 @@ export default function BudgetsScreen() {
         userCategoriesResult,
         budgetsResult,
         expensesResult,
+        alertsResult,
       ] = await Promise.all([
         supabase
           .from('categories')
@@ -198,12 +216,22 @@ export default function BudgetsScreen() {
           .gte('spent_on', from)
           .lt('spent_on', to)
           .order('spent_on', { ascending: false }),
+
+        supabase
+          .from('budget_alert_notifications')
+          .select('id, budget_id, category_id, threshold, budget_month, budget_year, budget_amount, spent_amount, remaining_amount, percentage, title, message, created_at')
+          .eq('user_id', profile.id)
+          .eq('budget_month', month)
+          .eq('budget_year', year)
+          .order('created_at', { ascending: false })
+          .limit(10),
       ])
 
       if (categoriesResult.error) throw categoriesResult.error
       if (userCategoriesResult.error) throw userCategoriesResult.error
       if (budgetsResult.error) throw budgetsResult.error
       if (expensesResult.error) throw expensesResult.error
+      if (alertsResult.error) throw alertsResult.error
 
       const selectedIds = new Set(
         (userCategoriesResult.data ?? []).map((item) =>
@@ -240,6 +268,13 @@ export default function BudgetsScreen() {
       setCategories(trackedCategories)
       setBudgets(activeBudgets)
       setExpenses(trackedExpenses)
+      setBudgetAlerts(
+        ((alertsResult.data ?? []) as BudgetAlertNotification[]).filter(
+          (alert) =>
+            (alert.threshold === 80 && !!profile.warn_80) ||
+            (alert.threshold === 100 && !!profile.warn_100),
+        ),
+      )
     } catch (error) {
       console.error('Budgets loading error:', error)
 
@@ -249,15 +284,27 @@ export default function BudgetsScreen() {
           : 'Unable to load your budgets.',
       )
     }
-  }, [profile?.id, month, year])
+  }, [profile?.id, profile?.warn_80, profile?.warn_100, month, year])
 
   useEffect(() => {
     let mounted = true
     const channel = supabase
-      .channel('user-budgets-categories')
+      .channel(`user-budgets-categories:${profile?.id ?? 'guest'}:${Date.now()}:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
         void loadBudgets()
       })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'budget_alert_notifications',
+          filter: `user_id=eq.${profile?.id ?? ''}`,
+        },
+        () => {
+          void loadBudgets()
+        },
+      )
       .subscribe()
 
     const initialize = async () => {
@@ -273,7 +320,7 @@ export default function BudgetsScreen() {
       mounted = false
       void supabase.removeChannel(channel)
     }
-  }, [loadBudgets])
+  }, [loadBudgets, profile?.id])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -561,6 +608,50 @@ export default function BudgetsScreen() {
           </View>
         ) : null}
 
+        {/* IN-APP BUDGET ALERTS */}
+
+        {budgetAlerts.length > 0 ? (
+          <View>
+            <View style={styles.listHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Budget Alerts</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Warnings triggered by your category budgets this month
+                </Text>
+              </View>
+              <Text style={styles.budgetCount}>{budgetAlerts.length} alerts</Text>
+            </View>
+
+            <View style={styles.alertList}>
+              {budgetAlerts.slice(0, 5).map((alert) => {
+                const alertCategory = categoryMap.get(alert.category_id)
+                const exceeded = alert.remaining_amount < 0
+
+                return (
+                  <View key={alert.id} style={styles.notificationCard}>
+                    <View style={styles.notificationHeadingRow}>
+                      <Text style={styles.notificationTitle}>{alert.title}</Text>
+                      <Text style={styles.notificationThreshold}>{alert.threshold}%</Text>
+                    </View>
+                    <Text style={styles.notificationCategory}>
+                      {alertCategory?.name ?? 'Category'}
+                    </Text>
+                    <Text style={styles.notificationMessage}>{alert.message}</Text>
+                    <Text style={styles.notificationDetails}>
+                      Spent {peso(alert.spent_amount)} of {peso(alert.budget_amount)} ({Math.round(alert.percentage)}%)
+                    </Text>
+                    <Text style={exceeded ? styles.dangerAlert : styles.warningAlert}>
+                      {exceeded
+                        ? `Exceeded by ${peso(Math.abs(alert.remaining_amount))}`
+                        : `${peso(alert.remaining_amount)} remaining`}
+                    </Text>
+                  </View>
+                )
+              })}
+            </View>
+          </View>
+        ) : null}
+
         {/* SUMMARY */}
 
         <Text style={styles.sectionTitle}>Monthly Overview</Text>
@@ -710,11 +801,13 @@ export default function BudgetsScreen() {
 
                   {show100Warning ? (
                     <Text style={styles.dangerAlert}>
-                      Over budget
+                      {categorySpent > budget.amount
+                        ? `Budget limit reached — exceeded by ${peso(categorySpent - budget.amount)}`
+                        : 'Budget limit reached'}
                     </Text>
                   ) : show80Warning ? (
                     <Text style={styles.warningAlert}>
-                      Alert at 80% reached
+                      {Math.round(percent)}% used — {peso(Math.max(budget.amount - categorySpent, 0))} remaining
                     </Text>
                   ) : (
                     <Text style={styles.normalAlert}>
@@ -1086,6 +1179,48 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     color: COLORS.brand,
     fontSize: 11,
     fontWeight: '800',
+  },
+  alertList: {
+    gap: 9,
+  },
+  notificationCard: {
+    backgroundColor: (dark ? '#202d29' : '#fffaf2'),
+    borderWidth: 1,
+    borderColor: (dark ? '#5c4832' : '#f0d8b5'),
+    borderRadius: 13,
+    padding: 13,
+    gap: 5,
+  },
+  notificationHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  notificationTitle: {
+    color: COLORS.ink,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  notificationThreshold: {
+    color: COLORS.orange,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  notificationCategory: {
+    color: COLORS.ink,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  notificationMessage: {
+    color: COLORS.muted,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  notificationDetails: {
+    color: COLORS.muted,
+    fontSize: 10,
+    marginTop: 2,
   },
   budgetList: {
     gap: 12,
