@@ -104,7 +104,7 @@ export default function AdminUsersScreen() {
     if (profilesResult.error || sessionsResult.error) {
       const queryError = profilesResult.error ?? sessionsResult.error
       console.error('Admin account activity error:', queryError)
-      setError(queryError.message)
+      setError(queryError?.message ?? 'Unable to load user activity information.')
       if (showLoading) {
         setAccounts([])
         setActivitySessions([])
