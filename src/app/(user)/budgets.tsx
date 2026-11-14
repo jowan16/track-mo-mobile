@@ -1,7 +1,7 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Modal,
@@ -510,7 +510,7 @@ export default function BudgetsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.brand} />
+        <StaticLoader size="large" color={COLORS.brand} />
         <Text style={styles.loadingText}>Loading your budgets...</Text>
       </SafeAreaView>
     )
