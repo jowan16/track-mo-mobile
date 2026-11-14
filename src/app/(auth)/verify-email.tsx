@@ -134,11 +134,11 @@ export default function VerifyEmailScreen() {
 
           <Text style={styles.eyebrow}>{isSuccess ? 'EMAIL VERIFICATION COMPLETE' : 'EMAIL VERIFICATION'}</Text>
           <Text style={styles.title}>
-            {isSuccess ? 'Email Verified Successfully' : errorContent.title}
+            {isSuccess ? 'Your Email Has Been Successfully Verified!' : errorContent.title}
           </Text>
           <Text style={styles.message}>
             {isSuccess
-              ? 'Your email has been successfully verified! You can now log in to your account.'
+              ? 'Your email address is now verified. You can return to the app whenever you are ready.'
               : errorContent.message}
           </Text>
 
