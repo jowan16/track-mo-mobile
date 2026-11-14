@@ -43,6 +43,7 @@ export default function AdminCategoriesScreen() {
   const [showError, setShowError] = useState('')
   const [saving, setSaving] = useState(false)
   const [iconSearch, setIconSearch] = useState('')
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const previewColor = draft?.color && /^#[0-9a-fA-F]{6}$/.test(draft.color) ? draft.color : '#0F766E'
 
   const loadCategories = useCallback(async () => {
@@ -88,6 +89,7 @@ export default function AdminCategoriesScreen() {
     setColorError('')
     setShowError('')
     setIconSearch('')
+    setIconPickerOpen(false)
     setDraft({ ...emptyDraft })
   }
 
@@ -96,6 +98,7 @@ export default function AdminCategoriesScreen() {
     setColorError('')
     setShowError('')
     setIconSearch('')
+    setIconPickerOpen(false)
     setDraft({
       id: category.id,
       name: category.name,
@@ -257,34 +260,55 @@ export default function AdminCategoriesScreen() {
               />
               {colorError ? <Text style={styles.fieldError}>{colorError}</Text> : null}
 
-              <Text style={styles.fieldLabel}>Icon library</Text>
-              <View style={styles.iconPreviewRow}>
-                <CategoryIcon icon={draft?.icon ?? 'coins'} color={previewColor} size={48} backgroundColor={previewColor + '22'} />
+              <Text style={styles.fieldLabel}>Icon</Text>
+              <Pressable
+                style={styles.iconPickerTrigger}
+                onPress={() => setIconPickerOpen((open) => !open)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: iconPickerOpen }}
+                accessibilityLabel={iconPickerOpen ? 'Close icon selector' : 'Choose category icon'}
+              >
+                <CategoryIcon icon={draft?.icon ?? 'coins'} color={previewColor} size={38} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.previewTitle}>Selected icon preview</Text>
+                  <Text style={styles.previewTitle}>Selected icon</Text>
                   <Text style={styles.previewHex}>{draft?.icon?.startsWith('custom:') ? 'Saved custom image' : CATEGORY_ICON_OPTIONS.find((item) => item.key === draft?.icon)?.name || 'Choose an icon'}</Text>
                 </View>
-              </View>
-              <TextInput value={iconSearch} onChangeText={setIconSearch} placeholder="Search icons by name or category" placeholderTextColor="#94A3B8" style={styles.input} autoCapitalize="none" />
-              <View style={styles.iconLibrary}>
-                {Array.from(new Set(CATEGORY_ICON_OPTIONS.map((item) => item.group))).map((group) => {
-                  const groupItems = CATEGORY_ICON_OPTIONS.filter((item) => item.group === group && (item.name + ' ' + item.group + ' ' + item.key).toLowerCase().includes(iconSearch.trim().toLowerCase()))
-                  if (groupItems.length === 0) return null
-                  return (
-                    <View key={group} style={styles.iconGroup}>
-                      <Text style={styles.iconGroupTitle}>{group}</Text>
-                      <View style={styles.iconChoices}>
-                        {groupItems.map((item) => (
-                          <Pressable key={item.key} onPress={() => setDraft((current) => current ? { ...current, icon: item.key } : current)} style={[styles.iconChoice, draft?.icon === item.key && styles.iconChoiceActive]} accessibilityLabel={item.name + ', ' + item.group}>
-                            <CategoryIcon icon={item.key} color={draft?.icon === item.key ? adminColors.primary : '#475569'} size={27} />
-                            <Text style={[styles.iconChoiceText, draft?.icon === item.key && styles.iconChoiceLabelActive]} numberOfLines={1}>{item.name}</Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    </View>
-                  )
-                })}
-              </View>
+                <Text style={styles.iconPickerAction}>{iconPickerOpen ? 'Close  −' : 'Choose  +'}</Text>
+              </Pressable>
+              {iconPickerOpen ? (
+                <View style={styles.iconPickerPanel}>
+                  <TextInput value={iconSearch} onChangeText={setIconSearch} placeholder="Search icons by name or category" placeholderTextColor="#94A3B8" style={styles.input} autoCapitalize="none" />
+                  <View style={styles.iconLibrary}>
+                    {Array.from(new Set(CATEGORY_ICON_OPTIONS.map((item) => item.group))).map((group) => {
+                      const groupItems = CATEGORY_ICON_OPTIONS.filter((item) => item.group === group && (item.name + ' ' + item.group + ' ' + item.key).toLowerCase().includes(iconSearch.trim().toLowerCase()))
+                      if (groupItems.length === 0) return null
+                      return (
+                        <View key={group} style={styles.iconGroup}>
+                          <Text style={styles.iconGroupTitle}>{group}</Text>
+                          <View style={styles.iconChoices}>
+                            {groupItems.map((item) => (
+                              <Pressable
+                                key={item.key}
+                                onPress={() => {
+                                  setDraft((current) => current ? { ...current, icon: item.key } : current)
+                                  setIconPickerOpen(false)
+                                  setIconSearch('')
+                                }}
+                                style={styles.iconChoice}
+                                accessibilityRole="button"
+                                accessibilityLabel={item.name + ', ' + item.group}
+                              >
+                                <CategoryIcon icon={item.key} color={draft?.icon === item.key ? adminColors.primary : '#475569'} size={29} />
+                                <Text style={[styles.iconChoiceText, draft?.icon === item.key && styles.iconChoiceLabelActive]} numberOfLines={1}>{item.name}</Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        </View>
+                      )
+                    })}
+                  </View>
+                </View>
+              ) : null}
               <View style={styles.switchRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.fieldLabel}>Show in first-login picker</Text>
@@ -339,10 +363,13 @@ const styles = StyleSheet.create({
   fieldLabel: { color: adminColors.text, fontSize: 11, fontWeight: '800', marginTop: 4 },
   input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 10, color: adminColors.text, fontSize: 12 },
   fieldError: { color: adminColors.danger, fontSize: 10 },
-  iconLibrary: { gap: 12 },
-  iconGroup: { gap: 7 },
-  iconGroupTitle: { color: adminColors.muted, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
-  iconChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  iconPickerTrigger: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 7, paddingHorizontal: 2, minHeight: 58 },
+  iconPickerAction: { color: adminColors.primary, fontSize: 11, fontWeight: '900' },
+  iconPickerPanel: { gap: 12, paddingTop: 4, paddingBottom: 5 },
+  iconLibrary: { gap: 16 },
+  iconGroup: { gap: 9 },
+  iconGroupTitle: { color: adminColors.muted, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6 },
+  iconChoices: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 15, rowGap: 12 },
   colorPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 11, backgroundColor: '#F6F7FB' },
   colorPreview: { width: 42, height: 42, borderRadius: 12, borderWidth: 1, borderColor: '#00000018' },
   previewTitle: { color: adminColors.text, fontSize: 11, fontWeight: '900' },
@@ -351,9 +378,8 @@ const styles = StyleSheet.create({
   colorSwatch: { width: 28, height: 28, borderRadius: 15, borderWidth: 1, borderColor: '#00000018' },
   colorSwatchActive: { borderWidth: 3, borderColor: adminColors.text, transform: [{ scale: 1.12 }] },
   iconPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 11, backgroundColor: '#F6F7FB' },
-  iconChoice: { width: 76, minHeight: 68, paddingVertical: 7, paddingHorizontal: 4, borderRadius: 11, borderWidth: 1, borderColor: adminColors.border, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', gap: 4 },
-  iconChoiceActive: { borderWidth: 2, borderColor: adminColors.primary, backgroundColor: '#EEF0FF' },
-  iconChoiceText: { color: '#475569', fontSize: 9, fontWeight: '700', textAlign: 'center', maxWidth: '100%' },
+  iconChoice: { width: 62, minHeight: 58, paddingVertical: 3, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  iconChoiceText: { color: '#64748B', fontSize: 9, fontWeight: '600', textAlign: 'center', maxWidth: '100%' },
   iconChoiceLabelActive: { color: adminColors.primary, fontWeight: '900' },
   switchRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
   switchHint: { color: adminColors.muted, fontSize: 9, marginTop: 2 },
