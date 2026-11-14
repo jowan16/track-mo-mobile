@@ -45,7 +45,7 @@ function AppContent() {
               : /token|invalid|missing/.test(errorValue)
                 ? 'invalid'
                 : 'verification'
-          router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } })
+          router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } } as never)
           return
         }
 
@@ -66,7 +66,7 @@ function AppContent() {
           if (error) throw error
         } else {
           console.warn('Track Mo received an auth deep link without a supported verification token.')
-          router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType: 'missing' } })
+          router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType: 'missing' } } as never)
           return
         }
 
@@ -83,7 +83,7 @@ function AppContent() {
           console.warn('Email was verified, but the temporary session could not be cleared:', signOutError)
         }
 
-        router.replace('/(auth)/verify-email?status=success')
+        router.replace('/(auth)/verify-email?status=success' as never)
       } catch (error) {
         console.error('Unable to complete email verification:', error)
         const message = error instanceof Error ? error.message.toLowerCase() : ''
@@ -94,7 +94,7 @@ function AppContent() {
             : /token|invalid|missing/.test(message)
               ? 'invalid'
               : 'verification'
-        router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } })
+        router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } } as never)
       }
     }
 
