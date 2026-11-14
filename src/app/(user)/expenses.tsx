@@ -541,7 +541,9 @@ export default function ExpensesScreen() {
       // Preserve the complete OCR text in the Receipt Details field.
       // Keep each detected receipt line separate for easier reading and editing.
       const source = params.receiptSource === 'qr' ? 'qr' : 'image'
-      const note = formatReceiptDetails(params.receiptRawText || '')
+      const qrPayload = params.receiptRawText || ''
+      const isStructuredQrPayload = source === 'qr' && (/^https?:\/\//i.test(qrPayload) || /^[\s]*[\[{]/.test(qrPayload))
+      const note = isStructuredQrPayload ? '' : formatReceiptDetails(qrPayload)
 
       setEditing(null)
       setReceiptContext({
