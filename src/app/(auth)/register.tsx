@@ -27,6 +27,8 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false)
   const [banner, setBanner] = useState('')
   const [successEmail, setSuccessEmail] = useState('')
+  const [resending, setResending] = useState(false)
+  const [resendFeedback, setResendFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleRegister = async () => {
@@ -107,31 +109,121 @@ export default function RegisterScreen() {
     }
   }
 
+  const handleResendVerification = async () => {
+    if (resending || !successEmail) return
+
+    setResending(true)
+    setResendFeedback(null)
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: successEmail,
+        options: {
+          emailRedirectTo: 'trackmomobile://login',
+        },
+      })
+
+      if (error) throw error
+
+      setResendFeedback({
+        type: 'success',
+        message: 'A new verification link has been sent. Please check your inbox and spam folder.',
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to resend the verification email. Please try again.'
+      setResendFeedback({
+        type: 'error',
+        message: /rate limit|too many requests/i.test(message)
+          ? 'Too many resend attempts. Please wait a few minutes before trying again.'
+          : message,
+      })
+    } finally {
+      setResending(false)
+    }
+  }
+
   if (successEmail) {
     return (
       <View style={styles.container}>
-        <View style={styles.successCard}>
-          <View style={styles.successIcon}>
-            <Text style={styles.successCheck}>✓</Text>
+        <ScrollView
+          contentContainerStyle={styles.successScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.successCard}>
+            <View style={styles.successIcon}>
+              <Text style={styles.successCheck}>✓</Text>
+            </View>
+            <Text style={styles.successEyebrow}>YOU'RE ALMOST THERE</Text>
+            <Text style={styles.successTitle}>Account Created Successfully!</Text>
+            <Text style={styles.successMessage}>
+              Please verify your email address to activate your account. Open the message we sent and tap its verification link before logging in.
+            </Text>
+            <View style={styles.emailNotice}>
+              <Text style={styles.emailNoticeLabel}>VERIFICATION EMAIL SENT TO</Text>
+              <Text style={styles.emailNoticeAddress}>{successEmail}</Text>
+            </View>
+            <View style={styles.instructionRow}>
+              <Text style={styles.instructionNumber}>1</Text>
+              <Text style={styles.instructionText}>Open your email inbox.</Text>
+            </View>
+            <View style={styles.instructionRow}>
+              <Text style={styles.instructionNumber}>2</Text>
+              <Text style={styles.instructionText}>Find the Track Mo verification email.</Text>
+            </View>
+            <View style={styles.instructionRow}>
+              <Text style={styles.instructionNumber}>3</Text>
+              <Text style={styles.instructionText}>Tap the link to confirm your email.</Text>
+            </View>
+            <Text style={styles.successHint}>
+              Can't find the email? Check your spam or junk folder, or request a new link below.
+            </Text>
+
+            {resendFeedback ? (
+              <View
+                style={[
+                  styles.feedbackBanner,
+                  resendFeedback.type === 'success'
+                    ? styles.feedbackSuccess
+                    : styles.feedbackError,
+                ]}
+                accessibilityRole="alert"
+              >
+                <Text
+                  style={[
+                    styles.feedbackText,
+                    resendFeedback.type === 'success'
+                      ? styles.feedbackSuccessText
+                      : styles.feedbackErrorText,
+                  ]}
+                >
+                  {resendFeedback.message}
+                </Text>
+              </View>
+            ) : null}
+
+            <Pressable
+              style={[styles.resendButton, resending && styles.disabledButton]}
+              onPress={handleResendVerification}
+              disabled={resending}
+              accessibilityRole="button"
+            >
+              {resending ? (
+                <ActivityIndicator color="#0F766E" />
+              ) : (
+                <Text style={styles.resendButtonText}>Resend Verification Email</Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={styles.button}
+              onPress={() => router.replace('/(auth)/login')}
+            >
+              <Text style={styles.buttonText}>Back to login</Text>
+            </Pressable>
           </View>
-          <Text style={styles.successTitle}>Account Created Successfully!</Text>
-          <Text style={styles.successMessage}>
-            Please check your email and click the verification link to confirm your email address before logging in.
-          </Text>
-          <View style={styles.emailNotice}>
-            <Text style={styles.emailNoticeLabel}>Verification email sent to</Text>
-            <Text style={styles.emailNoticeAddress}>{successEmail}</Text>
-          </View>
-          <Text style={styles.successHint}>
-            If you don't see the message, check your spam or junk folder.
-          </Text>
-          <Pressable
-            style={styles.button}
-            onPress={() => router.replace('/(auth)/login')}
-          >
-            <Text style={styles.buttonText}>Back to login</Text>
-          </Pressable>
-        </View>
+        </ScrollView>
       </View>
     )
   }
@@ -314,25 +406,51 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A211C' },
+  successScrollContent: {
+    flexGrow: 1, justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 28,
+  },
   successCard: {
     width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 22, padding: 26, borderWidth: 1, borderColor: '#DCE8E3',
-    alignItems: 'center', justifyContent: 'center', margin: 22,
+    borderRadius: 24, paddingHorizontal: 24, paddingVertical: 28,
+    borderWidth: 1, borderColor: '#DCE8E3', alignItems: 'center',
+    shadowColor: '#000000', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12, shadowRadius: 18, elevation: 5,
   },
   successIcon: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: '#DCFCE7',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+    width: 68, height: 68, borderRadius: 34, backgroundColor: '#DCFCE7',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
-  successCheck: { color: '#15803D', fontSize: 36, fontWeight: '800' },
-  successTitle: { color: '#10231D', fontSize: 22, fontWeight: '800', textAlign: 'center' },
-  successMessage: { color: '#475569', fontSize: 14, lineHeight: 22, textAlign: 'center', marginTop: 12 },
+  successCheck: { color: '#15803D', fontSize: 38, fontWeight: '800' },
+  successEyebrow: { color: '#0F8A72', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8 },
+  successTitle: { color: '#10231D', fontSize: 22, lineHeight: 29, fontWeight: '800', textAlign: 'center' },
+  successMessage: { color: '#52645C', fontSize: 14, lineHeight: 22, textAlign: 'center', marginTop: 10 },
   emailNotice: {
     width: '100%', backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0',
-    borderRadius: 12, padding: 14, marginTop: 20,
+    borderRadius: 13, paddingHorizontal: 14, paddingVertical: 15, marginTop: 20,
   },
-  emailNoticeLabel: { color: '#166534', fontSize: 12, fontWeight: '600', textAlign: 'center' },
-  emailNoticeAddress: { color: '#14532D', fontSize: 14, fontWeight: '800', textAlign: 'center', marginTop: 5 },
-  successHint: { color: '#64748B', fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 16 },
+  emailNoticeLabel: { color: '#166534', fontSize: 10, fontWeight: '800', letterSpacing: 0.7, textAlign: 'center' },
+  emailNoticeAddress: { color: '#14532D', fontSize: 14, fontWeight: '800', textAlign: 'center', marginTop: 7 },
+  instructionRow: { width: '100%', flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingHorizontal: 2 },
+  instructionNumber: {
+    width: 23, height: 23, borderRadius: 12, overflow: 'hidden',
+    backgroundColor: '#E6F4EF', color: '#0F766E', textAlign: 'center',
+    textAlignVertical: 'center', fontSize: 12, fontWeight: '800', marginRight: 10,
+  },
+  instructionText: { flex: 1, color: '#40534A', fontSize: 13, lineHeight: 19 },
+  successHint: { color: '#64748B', fontSize: 12, lineHeight: 19, textAlign: 'center', marginTop: 17 },
+  feedbackBanner: { width: '100%', borderRadius: 11, padding: 12, marginTop: 16, borderWidth: 1 },
+  feedbackSuccess: { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' },
+  feedbackError: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+  feedbackText: { fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  feedbackSuccessText: { color: '#166534' },
+  feedbackErrorText: { color: '#B91C1C' },
+  resendButton: {
+    width: '100%', minHeight: 48, borderRadius: 11, borderWidth: 1.5,
+    borderColor: '#0F8A72', backgroundColor: '#FFFFFF', alignItems: 'center',
+    justifyContent: 'center', marginTop: 18, paddingHorizontal: 12, paddingVertical: 12,
+  },
+  resendButtonText: { color: '#0F766E', fontSize: 14, fontWeight: '800', textAlign: 'center' },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 22 },
   brand: { alignItems: 'center', marginBottom: 22 },
   brandName: { color: '#FFFFFF', fontSize: 23, fontWeight: '800' },
