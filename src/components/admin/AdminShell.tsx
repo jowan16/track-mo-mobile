@@ -142,11 +142,7 @@ export function AdminShell({
                       closeDrawer()
                       router.replace(item.route)
                     }}
-                    style={({ pressed }) => [
-                      styles.menuItem,
-                      active && styles.activeMenuItem,
-                      pressed && styles.menuItemPressed,
-                    ]}
+                    style={[styles.menuItem, active && styles.activeMenuItem]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
                   >
@@ -282,7 +278,6 @@ const styles = StyleSheet.create({
     borderRadius: 11,
   },
   activeMenuItem: { backgroundColor: '#EEF2FF' },
-  menuItemPressed: { backgroundColor: '#F1F5F9' },
   menuIcon: { width: 30, color: '#68756F', fontSize: 21, fontWeight: '700' },
   activeMenuIcon: { color: adminColors.primary },
   menuText: { color: '#34413B', fontSize: 14, fontWeight: '600' },
