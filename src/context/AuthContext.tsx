@@ -1,5 +1,6 @@
 
 import type { Session } from '@supabase/supabase-js'
+import { AppState } from 'react-native'
 import {
     createContext,
     useCallback,
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const signingInRef = useRef(false)
+  const heartbeatInFlightRef = useRef(false)
 
   const userId = session?.user.id
 
@@ -238,6 +240,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void supabase.removeChannel(channel)
     }
   }, [userId])
+
+  // Record a server-timestamped heartbeat while the app is in the foreground.
+  // Admin screens consider a user online for 90 seconds after this heartbeat.
+  useEffect(() => {
+    if (!userId || profile?.status !== 'active') return
+
+    let mounted = true
+    let heartbeatInterval: ReturnType<typeof setInterval> | null = null
+
+    const sendHeartbeat = async () => {
+      if (!mounted || heartbeatInFlightRef.current) return
+      heartbeatInFlightRef.current = true
+
+      try {
+        const { error } = await supabase.rpc('touch_last_active')
+        if (error && mounted) {
+          console.warn('Unable to update last active timestamp:', error.message)
+        }
+      } finally {
+        heartbeatInFlightRef.current = false
+      }
+    }
+
+    const startHeartbeat = () => {
+      if (heartbeatInterval) clearInterval(heartbeatInterval)
+      void sendHeartbeat()
+      heartbeatInterval = setInterval(() => {
+        void sendHeartbeat()
+      }, 30_000)
+    }
+
+    const stopHeartbeat = () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval)
+        heartbeatInterval = null
+      }
+    }
+
+    if (AppState.currentState === 'active') startHeartbeat()
+
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        startHeartbeat()
+      } else {
+        stopHeartbeat()
+      }
+    })
+
+    return () => {
+      mounted = false
+      stopHeartbeat()
+      appStateSubscription.remove()
+    }
+  }, [userId, profile?.status])
 
   // Sign in and verify the account before allowing access.
   const signIn = useCallback(async (
