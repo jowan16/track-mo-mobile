@@ -44,11 +44,6 @@ export default function SettingsScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [savingAccount, setSavingAccount] = useState(false)
 
-  const [reminderTime, setReminderTime] = useState(
-    profile?.daily_reminder_time?.slice(0, 5) ?? '08:00',
-  )
-  const [savingTime, setSavingTime] = useState(false)
-
   const [savingPreference, setSavingPreference] = useState(false)
 
   const updateProfile = async (values: Record<string, unknown>) => {
@@ -129,7 +124,7 @@ export default function SettingsScreen() {
   }
 
   const handleNotificationChange = async (
-    field: 'email_alerts' | 'warn_80' | 'warn_100' | 'daily_reminder',
+    field: 'email_alerts' | 'warn_80' | 'warn_100',
     value: boolean,
   ) => {
     try {
@@ -142,26 +137,6 @@ export default function SettingsScreen() {
       )
     } finally {
       setSavingPreference(false)
-    }
-  }
-
-  const handleSaveReminderTime = async () => {
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) {
-      Alert.alert('Invalid time', 'Enter a valid time in HH:MM format.')
-      return
-    }
-
-    try {
-      setSavingTime(true)
-      await updateProfile({ daily_reminder_time: `${reminderTime}:00` })
-      Alert.alert('Success', 'Your reminder time has been updated.')
-    } catch (error) {
-      Alert.alert(
-        'Update failed',
-        error instanceof Error ? error.message : 'Unable to save reminder time.',
-      )
-    } finally {
-      setSavingTime(false)
     }
   }
 
@@ -390,49 +365,6 @@ export default function SettingsScreen() {
               onValueChange={(value) =>
                 handleNotificationChange('warn_100', value)}
             />
-
-            <View style={styles.separator} />
-
-            <PreferenceSwitch
-              dark={dark}
-              styles={styles}
-              savingPreference={savingPreference}
-              title="Daily Reminder"
-              description="Receive a daily reminder to track your expenses."
-              value={profile.daily_reminder}
-              onValueChange={(value) =>
-                handleNotificationChange('daily_reminder', value)}
-            />
-
-            {profile.daily_reminder && (
-              <>
-                <View style={styles.separator} />
-                <Text style={styles.label}>Daily Reminder Time (24-hour)</Text>
-                <View style={styles.timeRow}>
-                  <TextInput
-                    value={reminderTime}
-                    onChangeText={setReminderTime}
-                    placeholder="08:00"
-                    placeholderTextColor={C.muted}
-                    keyboardType="numbers-and-punctuation"
-                    maxLength={5}
-                    style={[styles.input, styles.timeInput]}
-                  />
-                  <Pressable
-                    style={styles.primaryButton}
-                    onPress={handleSaveReminderTime}
-                    disabled={savingTime}
-                  >
-                    {savingTime
-                      ? <ActivityIndicator color="#fff" />
-                      : <Text style={styles.primaryButtonText}>Save Time</Text>}
-                  </Pressable>
-                </View>
-                <Text style={styles.description}>
-                  Time zone: {profile.daily_reminder_timezone || 'Not configured'}
-                </Text>
-              </>
-            )}
 
             {savingPreference && (
               <Text style={styles.savingText}>Saving preference...</Text>
