@@ -1,8 +1,7 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { useAppTheme } from '@/context/ThemeContext'
 import { useState } from 'react'
 import {
-  Alert, Image, Pressable, ScrollView, StyleSheet,
+  ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet,
   Text, View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -179,7 +178,7 @@ export default function ScanReceiptScreen() {
 
         {processing ? (
           <View style={styles.processingCard}>
-            <StaticLoader size="large" color={COLORS.brand} />
+            <ActivityIndicator size="large" color={COLORS.brand} />
             <Text style={styles.processingTitle}>Reading your receipt…</Text>
             <Text style={styles.processingText}>Your expense form will open automatically when recognition is complete.</Text>
           </View>
