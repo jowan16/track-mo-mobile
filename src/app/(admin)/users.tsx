@@ -90,8 +90,8 @@ export default function AdminUsersScreen() {
   const [blocked, setBlocked] = useState('')
   const [activityClock, setActivityClock] = useState(Date.now())
 
-  const loadAccounts = useCallback(async () => {
-    setLoading(true)
+  const loadAccounts = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true)
     setError('')
     const [profilesResult, sessionsResult] = await Promise.all([
       supabase
@@ -107,17 +107,27 @@ export default function AdminUsersScreen() {
       const queryError = profilesResult.error ?? sessionsResult.error
       console.error('Admin account activity error:', queryError)
       setError(queryError.message)
-      setAccounts([])
-      setActivitySessions([])
+      if (showLoading) {
+        setAccounts([])
+        setActivitySessions([])
+      }
     } else {
       setAccounts((profilesResult.data ?? []) as Account[])
       setActivitySessions((sessionsResult.data ?? []) as ActivitySession[])
     }
-    setLoading(false)
+    if (showLoading) setLoading(false)
   }, [])
 
   useEffect(() => {
     void loadAccounts()
+  }, [loadAccounts])
+
+  // Reconcile periodically in case the admin's Realtime connection was interrupted.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadAccounts(false)
+    }, 60_000)
+    return () => clearInterval(interval)
   }, [loadAccounts])
 
 
