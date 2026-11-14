@@ -434,6 +434,7 @@ export default {
           AffectedBudget
         >();
         const forcedThresholds = new Set<number>();
+        const forcedEmailThresholds = new Set<number>();
 
         if (payload.table === "expenses") {
           const records = [
@@ -489,19 +490,20 @@ export default {
 
           if (activeBudgetsError) throw activeBudgetsError;
 
-          // Allow a fresh alert when the user re-enables email alerts
-          // or re-enables an individual threshold warning.
+          // Re-enabling an in-app threshold starts a fresh in-app alert cycle.
+          // Re-enabling email permission must only send the email; it must not
+          // create another in-app warning for a threshold already reported.
           const previousProfile = payload.old_record as ProfileRecord | null;
-          const resetThresholds: number[] = [];
-          if (!previousProfile?.email_alerts && profileRecord.email_alerts) {
-            resetThresholds.push(80, 100);
-          } else {
-            if (!previousProfile?.warn_80 && profileRecord.warn_80) resetThresholds.push(80);
-            if (!previousProfile?.warn_100 && profileRecord.warn_100) resetThresholds.push(100);
+          if (!previousProfile?.warn_80 && profileRecord.warn_80) {
+            forcedThresholds.add(80);
           }
-
-          // Force a new alert cycle when a previously disabled preference is enabled.
-          resetThresholds.forEach((threshold) => forcedThresholds.add(threshold));
+          if (!previousProfile?.warn_100 && profileRecord.warn_100) {
+            forcedThresholds.add(100);
+          }
+          if (!previousProfile?.email_alerts && profileRecord.email_alerts) {
+            forcedEmailThresholds.add(80);
+            forcedEmailThresholds.add(100);
+          }
 
           for (const budgetItem of activeBudgets || []) {
             const key = [profileRecord.id, budgetItem.category_id, month, year].join("-");
@@ -656,7 +658,11 @@ export default {
             if (claimError) throw claimError;
 
             if (alertCycle === null || alertCycle === undefined) {
-              if (thresholdEnabled && profile.email_alerts && recipientEmail) {
+              if (
+                thresholdEnabled &&
+                profile.email_alerts &&
+                recipientEmail &&
+              ) {
                 const { data: state, error: stateError } = await supabase
                   .from("budget_alert_threshold_state")
                   .select("is_above, crossing_count")
@@ -666,26 +672,39 @@ export default {
 
                 if (stateError) throw stateError;
 
-                if (state?.is_above && Number(state.crossing_count) > 0) {
-                  const { data: failedLog, error: failedLogError } = await supabase
+                const currentCycle = Number(state?.crossing_count || 0);
+                const isCurrentlyAbove =
+                  !!state?.is_above && percentage >= threshold && currentCycle > 0;
+
+                if (isCurrentlyAbove) {
+                  const { data: existingLog, error: existingLogError } = await supabase
                     .from("email_notification_logs")
-                    .select("id")
+                    .select("id, delivery_status")
                     .eq("user_id", item.userId)
                     .eq("budget_id", budget.id)
                     .eq("threshold", threshold)
-                    .eq("alert_cycle", state.crossing_count)
+                    .eq("alert_cycle", currentCycle)
                     .eq("notification_type", "budget_alert")
-                    .eq("delivery_status", "failed")
                     .maybeSingle();
 
-                  if (failedLogError) throw failedLogError;
+                  if (existingLogError) throw existingLogError;
 
-                  if (failedLog) {
+                  // Retry failed delivery, or send once when email permission
+                  // has just been enabled for a threshold already reached.
+                  const shouldSend =
+                    !existingLog ||
+                    existingLog.delivery_status === "failed";
+
+                  if (
+                    shouldSend &&
+                    (forcedEmailThresholds.has(threshold) ||
+                      existingLog?.delivery_status === "failed")
+                  ) {
                     const delivered = await deliverBudgetAlertEmail(supabase, {
                       userId: item.userId,
                       budgetId: budget.id,
                       threshold,
-                      alertCycle: Number(state.crossing_count),
+                      alertCycle: currentCycle,
                       recipientEmail,
                       name: profile.full_name || "User",
                       categoryName,
