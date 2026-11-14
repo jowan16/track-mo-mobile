@@ -15,6 +15,7 @@ export type ParsedReceipt = {
   suggestedCategory: string
   payment_method: string
   bank_name?: string
+  receipt_type?: 'payment' | 'merchant'
 }
 
 const cleanLine = (value: string) =>
@@ -430,6 +431,10 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
       { name: 'Maybank', aliases: ['maybank', 'maybankphilippines'] },
       { name: 'HSBC', aliases: ['hsbc', 'hongkongandshanghaibankingcorporation'] },
       { name: 'Citi', aliases: ['citi', 'citibank'] },
+      { name: 'MariBank', aliases: ['maribank', 'maribankinc', 'maribankphilippines'] },
+      { name: 'SeaBank', aliases: ['seabank', 'seabankphilippines'] },
+      { name: 'CIMB Bank', aliases: ['cimb', 'cimbbank', 'cimbbankphilippines'] },
+      { name: 'Tonik Bank', aliases: ['tonik', 'tonikbank'] },
     ]
     return banks.find((bank) => bank.aliases.includes(normalized))?.name ?? value.trim()
   }
@@ -461,6 +466,10 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
           { name: 'Maybank', pattern: /\bMAYBANK\b/i },
           { name: 'HSBC', pattern: /\bHSBC\b/i },
           { name: 'Citi', pattern: /\bCITIBANK\b|\bCITI\b/i },
+          { name: 'MariBank', pattern: /\bMARI\s?BANK\b/i },
+          { name: 'SeaBank', pattern: /\bSEA\s?BANK\b/i },
+          { name: 'CIMB Bank', pattern: /\bCIMB(?:\s+BANK)?\b/i },
+          { name: 'Tonik Bank', pattern: /\bTONIK(?:\s+BANK)?\b/i },
         ]
         return bankPatterns.find(({ pattern }) => pattern.test(raw))?.name ?? ''
       })()
@@ -478,6 +487,22 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
     raw,
   ].join('\n'))
 
+  // Only classify a QR as a bank/payment confirmation when transaction evidence
+  // is present. A merchant's QR code used to receive payment remains a merchant.
+  const referenceValue = firstText([
+    'transactionid', 'transactionreference', 'referencenumber', 'referenceid',
+    'rrn', 'retrievalreferencenumber', 'approvalcode', 'authcode', 'traceid',
+    'paymentreference', 'transferid',
+  ])
+  const statusValue = firstText(['paymentstatus', 'transactionstatus', 'status']).toLowerCase()
+  const hasSuccessfulStatus = /^(success|successful|completed|complete|paid|approved|settled)$/i.test(statusValue)
+  const hasPaymentConfirmationText = /\b(?:payment successful|payment completed|transaction successful|transaction completed|transfer successful|transfer completed|payment receipt|transaction receipt)\b/i.test(raw)
+  const hasBankAndTransactionDetails = Boolean(bank_name && (referenceValue || (total !== null && receipt_date)))
+  const receipt_type: 'payment' | 'merchant' =
+    hasSuccessfulStatus || hasPaymentConfirmationText || hasBankAndTransactionDetails
+      ? 'payment'
+      : 'merchant'
+
   return {
     merchant_name,
     receipt_date,
@@ -488,5 +513,6 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
     suggestedCategory: categorySource.suggestedCategory,
     payment_method,
     bank_name,
+    receipt_type,
   }
 }
