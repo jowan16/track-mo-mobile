@@ -196,42 +196,6 @@ export default function SettingsScreen() {
 
   const styles = makeStyles(C)
 
-  const Section = ({ title, children }: {
-    title: string
-    children: React.ReactNode
-  }) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.card}>{children}</View>
-    </View>
-  )
-
-  const PreferenceSwitch = ({
-    title,
-    description,
-    value,
-    onValueChange,
-  }: {
-    title: string
-    description: string
-    value: boolean
-    onValueChange: (value: boolean) => void
-  }) => (
-    <View style={styles.switchRow}>
-      <View style={styles.switchText}>
-        <Text style={styles.itemTitle}>{title}</Text>
-        <Text style={styles.description}>{description}</Text>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        disabled={savingPreference}
-        trackColor={{ false: dark ? '#46534d' : '#d5ddd8', true: '#0f766e' }}
-        thumbColor="#ffffff"
-      />
-    </View>
-  )
-
   if (!profile) {
     return (
       <SafeAreaView style={[styles.screen, styles.center]}>
@@ -253,7 +217,7 @@ export default function SettingsScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Section title="MY ACCOUNT">
+          <Section title="MY ACCOUNT" styles={styles}>
             <View style={styles.accountHeader}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>
@@ -350,7 +314,7 @@ export default function SettingsScreen() {
             </Pressable>
           </Section>
 
-          <Section title="APPEARANCE">
+          <Section title="APPEARANCE" styles={styles}>
             <Text style={styles.description}>
               Choose how Track Mo looks on your device.
             </Text>
@@ -389,8 +353,11 @@ export default function SettingsScreen() {
             </View>
           </Section>
 
-          <Section title="NOTIFICATIONS">
+          <Section title="NOTIFICATIONS" styles={styles}>
             <PreferenceSwitch
+              dark={dark}
+              styles={styles}
+              savingPreference={savingPreference}
               title="Email Budget Alerts"
               description="Master switch for all budget-warning emails. Turn this off to stop 80% and 100% email alerts."
               value={profile.email_alerts}
@@ -401,6 +368,9 @@ export default function SettingsScreen() {
             <View style={styles.separator} />
 
             <PreferenceSwitch
+              dark={dark}
+              styles={styles}
+              savingPreference={savingPreference}
               title="80% Budget Warning"
               description="Show the 80% warning in each category and allow its email alert when Email Budget Alerts is on."
               value={profile.warn_80}
@@ -411,6 +381,9 @@ export default function SettingsScreen() {
             <View style={styles.separator} />
 
             <PreferenceSwitch
+              dark={dark}
+              styles={styles}
+              savingPreference={savingPreference}
               title="100% Budget Warning"
               description="Show the 100% warning in each category and allow its email alert when Email Budget Alerts is on."
               value={profile.warn_100}
@@ -421,6 +394,9 @@ export default function SettingsScreen() {
             <View style={styles.separator} />
 
             <PreferenceSwitch
+              dark={dark}
+              styles={styles}
+              savingPreference={savingPreference}
               title="Daily Reminder"
               description="Receive a daily reminder to track your expenses."
               value={profile.daily_reminder}
@@ -463,7 +439,7 @@ export default function SettingsScreen() {
             )}
           </Section>
 
-          <Section title="ACCOUNT">
+          <Section title="ACCOUNT" styles={styles}>
             <Text style={styles.description}>
               Sign out of your Track Mo account on this device.
             </Text>
@@ -660,4 +636,58 @@ function makeStyles(C: {
       marginTop: 4,
     },
   })
+}
+
+
+type SettingsStyles = ReturnType<typeof makeStyles>
+
+function Section({
+  title,
+  children,
+  styles,
+}: {
+  title: string
+  children: React.ReactNode
+  styles: SettingsStyles
+}) {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.card}>{children}</View>
+    </View>
+  )
+}
+
+function PreferenceSwitch({
+  title,
+  description,
+  value,
+  onValueChange,
+  savingPreference,
+  dark,
+  styles,
+}: {
+  title: string
+  description: string
+  value: boolean
+  onValueChange: (value: boolean) => void
+  savingPreference: boolean
+  dark: boolean
+  styles: SettingsStyles
+}) {
+  return (
+    <View style={styles.switchRow}>
+      <View style={styles.switchText}>
+        <Text style={styles.itemTitle}>{title}</Text>
+        <Text style={styles.description}>{description}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        disabled={savingPreference}
+        trackColor={{ false: dark ? '#46534d' : '#d5ddd8', true: '#0f766e' }}
+        thumbColor="#ffffff"
+      />
+    </View>
+  )
 }
