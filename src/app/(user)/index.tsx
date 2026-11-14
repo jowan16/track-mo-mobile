@@ -1263,7 +1263,7 @@ export default function UserDashboard() {
       <Modal
         visible={categoryModalVisible}
         transparent
-        animationType="slide"
+        animationType="none"
         onRequestClose={() => setCategoryModalVisible(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(10, 25, 20, 0.48)', justifyContent: 'flex-end' }}>
