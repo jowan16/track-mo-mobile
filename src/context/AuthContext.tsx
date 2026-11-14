@@ -258,6 +258,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error && mounted) {
           console.warn('Unable to update last active timestamp:', error.message)
         }
+      } catch (error) {
+        if (mounted) console.warn('Unable to send activity heartbeat:', error)
       } finally {
         heartbeatInFlightRef.current = false
       }
