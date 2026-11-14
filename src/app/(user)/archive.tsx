@@ -161,7 +161,14 @@ export default function ArchiveScreen() {
   }, [profile?.id])
 
   useEffect(() => {
-    loadArchive()
+    void loadArchive()
+    const channel = supabase
+      .channel('user-archive-categories')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        void loadArchive()
+      })
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
   }, [loadArchive])
 
   const onRefresh = () => {
