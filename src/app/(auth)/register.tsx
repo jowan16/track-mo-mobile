@@ -1,7 +1,7 @@
+import { StaticLoader } from '@/components/StaticLoader'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -261,7 +261,7 @@ export default function RegisterScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <StaticLoader color="#FFFFFF" />
             ) : (
               <Text style={styles.buttonText}>Sign up</Text>
             )}
