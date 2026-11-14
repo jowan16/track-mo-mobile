@@ -20,6 +20,17 @@ type AuditRow = {
 type Filter = 'all' | 'users' | 'categories'
 const PAGE_SIZE = 10
 
+const manilaDateKey = (value: Date) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(value)
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
 export default function AdminAuditScreen() {
   const [logs, setLogs] = useState<AuditRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,12 +67,7 @@ export default function AdminAuditScreen() {
     (filter === 'categories' && /categor/i.test(log.action))
   ), [logs, filter])
 
-  const today = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
+  const today = manilaDateKey(new Date())
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -76,7 +82,7 @@ export default function AdminAuditScreen() {
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Activities today</Text>
           <Text style={styles.summaryValue}>
-            {logs.filter((log) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(log.created_at)) === today).length}
+            {logs.filter((log) => manilaDateKey(new Date(log.created_at)) === today).length}
           </Text>
         </View>
       </View>
