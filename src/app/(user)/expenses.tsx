@@ -407,6 +407,12 @@ export default function ExpensesScreen() {
 
   useEffect(() => {
     let mounted = true
+    const channel = supabase
+      .channel('user-expenses-categories')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        void loadExpenses()
+      })
+      .subscribe()
 
     const initialize = async () => {
       setLoading(true)
@@ -419,6 +425,7 @@ export default function ExpensesScreen() {
 
     return () => {
       mounted = false
+      void supabase.removeChannel(channel)
     }
   }, [loadExpenses])
 
