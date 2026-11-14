@@ -1,6 +1,6 @@
-import { StaticLoader } from '@/components/StaticLoader'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -99,7 +99,7 @@ export default function AdminAuditScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {loading ? (
-        <StaticLoader color={adminColors.primary} style={{ margin: 30 }} />
+        <ActivityIndicator color={adminColors.primary} style={{ margin: 30 }} />
       ) : visible.length === 0 ? (
         <View style={styles.emptyCard}><Text style={styles.emptyText}>No audit entries found.</Text></View>
       ) : visible.map((log) => (
