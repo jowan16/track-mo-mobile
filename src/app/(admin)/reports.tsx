@@ -100,7 +100,7 @@ export default function AdminReportsScreen() {
         supabase.rpc('admin_top_categories', { p_start: start, p_end: end }),
         supabase.rpc('admin_user_growth'),
         supabase.from('categories').select('id, name, icon, color'),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'user'),
       ])
       const failure = s.error || t.error || g.error || c.error || users.error
       if (failure) {
@@ -211,15 +211,15 @@ export default function AdminReportsScreen() {
 
         <h2>1. System Overview</h2>
         <table class="cards"><tr>
-          <td><div class="metric">${totalUsers.toLocaleString()}</div><div class="metric-label">Total registered users</div></td>
+          <td><div class="metric">${totalUsers.toLocaleString()}</div><div class="metric-label">Total registered user accounts</div></td>
           <td><div class="metric">${stats.active_users.toLocaleString()}</div><div class="metric-label">${activeLabel}</div></td>
           <td><div class="metric">${stats.new_users.toLocaleString()}</div><div class="metric-label">${newUserLabel}</div></td>
         </tr></table>
         <div class="note"><strong>${stats.expenses_count.toLocaleString()}</strong> ${expenseLabel.toLowerCase()}.</div>
 
         <h2>2. User Growth Statistics</h2>
-        <p class="muted">Total registered users by month over the last six months.</p>
-        ${growthRows ? `<table class="data"><tr><th>Month</th><th class="number">Total registered users</th></tr>${growthRows}</table>` : '<p class="muted">No user growth data available.</p>'}
+        <p class="muted">Cumulative registered user accounts by month over the last six months.</p>
+        ${growthRows ? `<table class="data"><tr><th>Month</th><th class="number">Registered user accounts</th></tr>${growthRows}</table>` : '<p class="muted">No user growth data available.</p>'}
 
         <h2>3. Expense Statistics</h2>
         <table class="data"><tr><th>Metric</th><th class="number">Count</th></tr>
