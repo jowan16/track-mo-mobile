@@ -97,7 +97,7 @@ export function AdminShell({
       <Modal
         visible={drawerVisible}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={closeDrawer}
         statusBarTranslucent
       >
