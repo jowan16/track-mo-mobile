@@ -181,12 +181,13 @@ export default function AdminCategoriesScreen() {
     const asset = result.assets[0]
     const extension = (asset.fileName?.split('.').pop() || asset.uri.split('.').pop()?.split('?')[0] || 'png').toLowerCase()
     const mimeType = asset.mimeType || (extension === 'svg' ? 'image/svg+xml' : extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : extension === 'webp' ? 'image/webp' : 'image/png')
+    const safeExtension = mimeType === 'image/svg+xml' ? 'svg' : mimeType === 'image/jpeg' ? 'jpg' : mimeType === 'image/webp' ? 'webp' : 'png'
     if (!['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(mimeType)) { Alert.alert('Unsupported icon', 'Choose an SVG, PNG, JPG, or WebP image.'); return }
     if (asset.fileSize && asset.fileSize > 2 * 1024 * 1024) { Alert.alert('File too large', 'Category icons must be 2 MB or smaller.'); return }
     setUploadingIcon(true)
     try {
       const bytes = await (await fetch(asset.uri)).arrayBuffer()
-      const filePath = 'defaults/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + extension
+      const filePath = 'defaults/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + safeExtension
       const { error: uploadError } = await supabase.storage.from('category-icons').upload(filePath, bytes, { contentType: mimeType, upsert: true })
       if (uploadError) throw uploadError
       const { data } = supabase.storage.from('category-icons').getPublicUrl(filePath)
@@ -329,12 +330,23 @@ export default function AdminCategoriesScreen() {
                 </View>
               </View>
               <TextInput value={iconSearch} onChangeText={setIconSearch} placeholder="Search icons by name or category" placeholderTextColor="#94A3B8" style={styles.input} autoCapitalize="none" />
-              <View style={styles.iconChoices}>
-                {CATEGORY_ICON_OPTIONS.filter((item) => (item.name + ' ' + item.group + ' ' + item.key).toLowerCase().includes(iconSearch.trim().toLowerCase())).map((item) => (
-                  <Pressable key={item.key} onPress={() => setDraft((current) => current ? { ...current, icon: item.key } : current)} style={[styles.iconChoice, draft?.icon === item.key && styles.iconChoiceActive]} accessibilityLabel={item.name + ', ' + item.group}>
-                    <Text style={styles.iconChoiceText}>{item.glyph}</Text>
-                  </Pressable>
-                ))}
+              <View style={styles.iconLibrary}>
+                {Array.from(new Set(CATEGORY_ICON_OPTIONS.map((item) => item.group))).map((group) => {
+                  const groupItems = CATEGORY_ICON_OPTIONS.filter((item) => item.group === group && (item.name + ' ' + item.group + ' ' + item.key).toLowerCase().includes(iconSearch.trim().toLowerCase()))
+                  if (groupItems.length === 0) return null
+                  return (
+                    <View key={group} style={styles.iconGroup}>
+                      <Text style={styles.iconGroupTitle}>{group}</Text>
+                      <View style={styles.iconChoices}>
+                        {groupItems.map((item) => (
+                          <Pressable key={item.key} onPress={() => setDraft((current) => current ? { ...current, icon: item.key } : current)} style={[styles.iconChoice, draft?.icon === item.key && styles.iconChoiceActive]} accessibilityLabel={item.name + ', ' + item.group}>
+                            <Text style={styles.iconChoiceText}>{item.glyph}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  )
+                })}
               </View>
               <Pressable style={styles.uploadButton} onPress={() => void uploadCustomIcon()} disabled={uploadingIcon}>
                 <Text style={styles.uploadButtonText}>{uploadingIcon ? 'Uploading icon…' : 'Upload custom SVG / PNG / JPG / WebP'}</Text>
@@ -417,6 +429,9 @@ const styles = StyleSheet.create({
   fieldLabel: { color: adminColors.text, fontSize: 11, fontWeight: '800', marginTop: 4 },
   input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 10, color: adminColors.text, fontSize: 12 },
   fieldError: { color: adminColors.danger, fontSize: 10 },
+  iconLibrary: { gap: 12 },
+  iconGroup: { gap: 7 },
+  iconGroupTitle: { color: adminColors.muted, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
   iconChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   colorPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 11, backgroundColor: '#F6F7FB' },
   colorPreview: { width: 42, height: 42, borderRadius: 12, borderWidth: 1, borderColor: '#00000018' },
