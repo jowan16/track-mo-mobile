@@ -52,7 +52,7 @@ export default function AdminCategoriesScreen() {
       .from('categories')
       .select('id, slug, name, icon, color, bg, is_active, show_in_picker, sort_order')
       .is('user_id', null)
-      .order('sort_order', { ascending: false })
+      .order('sort_order', { ascending: true })
     if (queryError) {
       setError(queryError.message)
       setCategories([])
@@ -262,7 +262,7 @@ export default function AdminCategoriesScreen() {
                 <CategoryIcon icon={draft?.icon ?? 'coins'} color={previewColor} size={48} backgroundColor={previewColor + '22'} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.previewTitle}>Selected icon preview</Text>
-                  <Text style={styles.previewHex}>{draft?.icon?.startsWith('custom:') ? 'Custom uploaded image' : CATEGORY_ICON_OPTIONS.find((item) => item.key === draft?.icon)?.name || 'Icon'}</Text>
+                  <Text style={styles.previewHex}>{draft?.icon?.startsWith('custom:') ? 'Saved custom image' : CATEGORY_ICON_OPTIONS.find((item) => item.key === draft?.icon)?.name || 'Choose an icon'}</Text>
                 </View>
               </View>
               <TextInput value={iconSearch} onChangeText={setIconSearch} placeholder="Search icons by name or category" placeholderTextColor="#94A3B8" style={styles.input} autoCapitalize="none" />
@@ -276,7 +276,8 @@ export default function AdminCategoriesScreen() {
                       <View style={styles.iconChoices}>
                         {groupItems.map((item) => (
                           <Pressable key={item.key} onPress={() => setDraft((current) => current ? { ...current, icon: item.key } : current)} style={[styles.iconChoice, draft?.icon === item.key && styles.iconChoiceActive]} accessibilityLabel={item.name + ', ' + item.group}>
-                            <Text style={styles.iconChoiceText}>{item.glyph}</Text>
+                            <CategoryIcon icon={item.key} color={draft?.icon === item.key ? adminColors.primary : '#475569'} size={27} />
+                            <Text style={[styles.iconChoiceText, draft?.icon === item.key && styles.iconChoiceLabelActive]} numberOfLines={1}>{item.name}</Text>
                           </Pressable>
                         ))}
                       </View>
@@ -350,9 +351,10 @@ const styles = StyleSheet.create({
   colorSwatch: { width: 28, height: 28, borderRadius: 15, borderWidth: 1, borderColor: '#00000018' },
   colorSwatchActive: { borderWidth: 3, borderColor: adminColors.text, transform: [{ scale: 1.12 }] },
   iconPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 11, backgroundColor: '#F6F7FB' },
-  iconChoice: { width: 39, height: 39, borderRadius: 9, borderWidth: 1, borderColor: adminColors.border, alignItems: 'center', justifyContent: 'center' },
+  iconChoice: { width: 76, minHeight: 68, paddingVertical: 7, paddingHorizontal: 4, borderRadius: 11, borderWidth: 1, borderColor: adminColors.border, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', gap: 4 },
   iconChoiceActive: { borderWidth: 2, borderColor: adminColors.primary, backgroundColor: '#EEF0FF' },
-  iconChoiceText: { fontSize: 20, fontWeight: '900' },
+  iconChoiceText: { color: '#475569', fontSize: 9, fontWeight: '700', textAlign: 'center', maxWidth: '100%' },
+  iconChoiceLabelActive: { color: adminColors.primary, fontWeight: '900' },
   switchRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
   switchHint: { color: adminColors.muted, fontSize: 9, marginTop: 2 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 9, marginTop: 10 },
