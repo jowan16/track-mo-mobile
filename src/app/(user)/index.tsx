@@ -478,16 +478,17 @@ export default function UserDashboard() {
 
   const handleSaveCategories = async () => {
     if (!profile?.id || savingCategories) return
-    if (selectedCategoryIds.size === 0) {
-      Alert.alert('Select a category', 'Select at least one category to continue.')
+    const selectableIds = new Set(pickerOptions.map((category) => category.id))
+    const selectedAvailableIds = [...selectedCategoryIds].filter((id) => selectableIds.has(id))
+    if (selectedAvailableIds.length === 0) {
+      Alert.alert('Select a category', 'Select at least one currently available category.')
       return
     }
 
-    const selectableIds = new Set(pickerOptions.map((category) => category.id))
     const currentlySelected = data.categories
       .filter((category) => selectableIds.has(category.id))
       .map((category) => category.id)
-    const toAdd = [...selectedCategoryIds].filter((id) => !currentlySelected.includes(id))
+    const toAdd = selectedAvailableIds.filter((id) => !currentlySelected.includes(id))
     const toRemove = currentlySelected.filter((id) => !selectedCategoryIds.has(id))
 
     if (toAdd.length === 0 && toRemove.length === 0) {
