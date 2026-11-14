@@ -133,13 +133,21 @@ export default function RegisterScreen() {
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to resend the verification email. Please try again.'
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? String((error as { code?: unknown }).code ?? '')
+          : ''
       setResendFeedback({
         type: 'error',
-        message: /email address not authorized|email_address_not_authorized/i.test(message)
-          ? 'Supabase default email service only sends to authorized project team addresses. Configure custom SMTP (for example, Brevo) to send verification emails to other addresses.'
-          : /rate limit|too many requests|over_email_send_rate_limit/i.test(message)
-            ? 'Supabase email sending limit has been reached. Wait before retrying, or configure custom SMTP to increase delivery capacity.'
-            : message,
+        message: /already confirmed|already verified|email_confirmed|user_already_exists/i.test(`${errorCode} ${message}`)
+          ? 'This email address has already been verified. You can log in to your account.'
+          : /email address not authorized|email_address_not_authorized/i.test(`${errorCode} ${message}`)
+            ? 'Supabase default email service only sends to authorized project team addresses. Configure custom SMTP (for example, Brevo) to send verification emails to other addresses.'
+            : /rate limit|too many requests|over_email_send_rate_limit|429/i.test(`${errorCode} ${message}`)
+              ? 'A verification email was requested recently. Please wait at least 60 seconds before trying again.'
+              : /smtp|email provider|mail send|failed to send/i.test(message)
+                ? 'The email service could not send the verification message. Check the configured SMTP provider and its delivery logs.'
+                : 'Unable to resend the verification email. Please try again later.',
       })
     } finally {
       setResending(false)
