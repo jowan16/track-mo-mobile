@@ -214,13 +214,6 @@ export default function ScanReceiptScreen() {
           >
             <Text style={styles.secondaryText}>▧  Upload from Gallery</Text>
           </Pressable>
-          <Pressable
-            style={[styles.qrButton, processing && styles.disabled]}
-            onPress={() => void startQrScanning()}
-            disabled={processing}
-          >
-            <Text style={styles.qrButtonText}>▦  Scan QR Receipt</Text>
-          </Pressable>
 
           <Text style={styles.hint}>JPG or PNG · Maximum 10 MB · QR receipt codes supported</Text>
         </View>
