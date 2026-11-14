@@ -13,6 +13,8 @@ import {
 } from 'react-native'
 
 import { AdminShell, adminColors } from '@/components/admin/AdminShell'
+import { CategoryIcon, CATEGORY_ICON_OPTIONS } from '@/components/CategoryIcon'
+import * as ImagePicker from 'expo-image-picker'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 
@@ -29,11 +31,6 @@ type Category = {
 }
 type Draft = { id: number | null; name: string; color: string; icon: string; show: boolean }
 
-const ICON_OPTIONS = ['bus', 'plus-square', 'utensils', 'zap', 'play', 'shopping-bag', 'home', 'coins', 'piggy-bank']
-const ICON_GLYPHS: Record<string, string> = {
-  coins: '◉', bus: '↔', 'plus-square': '+', utensils: '♨', zap: 'ϟ',
-  play: '▶', 'shopping-bag': '▣', home: '⌂', 'piggy-bank': '●', wallet: '▤',
-}
 const emptyDraft: Draft = { id: null, name: '', color: '#0F766E', icon: 'coins', show: true }
 
 export default function AdminCategoriesScreen() {
@@ -48,6 +45,8 @@ export default function AdminCategoriesScreen() {
   const [saving, setSaving] = useState(false)
   const [toggleTarget, setToggleTarget] = useState<Category | null>(null)
   const [trackedCount, setTrackedCount] = useState(0)
+  const [iconSearch, setIconSearch] = useState('')
+  const [uploadingIcon, setUploadingIcon] = useState(false)
 
   const loadCategories = useCallback(async () => {
     setLoading(true)
@@ -55,6 +54,7 @@ export default function AdminCategoriesScreen() {
     const { data, error: queryError } = await supabase
       .from('categories')
       .select('id, slug, name, icon, color, bg, is_active, show_in_picker, sort_order')
+      .is('user_id', null)
       .order('sort_order')
     if (queryError) {
       setError(queryError.message)
@@ -65,7 +65,16 @@ export default function AdminCategoriesScreen() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { void loadCategories() }, [loadCategories])
+  useEffect(() => {
+    void loadCategories()
+    const channel = supabase
+      .channel('admin-default-categories')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        void loadCategories()
+      })
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [loadCategories])
 
   const writeAudit = async (action: string) => {
     if (!profile) return
@@ -81,6 +90,7 @@ export default function AdminCategoriesScreen() {
     setNameError('')
     setColorError('')
     setShowError('')
+    setIconSearch('')
     setDraft({ ...emptyDraft })
   }
 
@@ -88,6 +98,7 @@ export default function AdminCategoriesScreen() {
     setNameError('')
     setColorError('')
     setShowError('')
+    setIconSearch('')
     setDraft({
       id: category.id,
       name: category.name,
@@ -160,6 +171,42 @@ export default function AdminCategoriesScreen() {
     }
   }
 
+  const uploadCustomIcon = async () => {
+    if (!draft || uploadingIcon) return
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) { Alert.alert('Permission required', 'Allow photo library access to upload a category icon.'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 })
+    if (result.canceled || !result.assets?.[0]) return
+    const asset = result.assets[0]
+    const extension = (asset.fileName?.split('.').pop() || asset.uri.split('.').pop()?.split('?')[0] || 'png').toLowerCase()
+    const mimeType = asset.mimeType || (extension === 'svg' ? 'image/svg+xml' : extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : extension === 'webp' ? 'image/webp' : 'image/png')
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(mimeType)) { Alert.alert('Unsupported icon', 'Choose an SVG, PNG, JPG, or WebP image.'); return }
+    if (asset.fileSize && asset.fileSize > 2 * 1024 * 1024) { Alert.alert('File too large', 'Category icons must be 2 MB or smaller.'); return }
+    setUploadingIcon(true)
+    try {
+      const bytes = await (await fetch(asset.uri)).arrayBuffer()
+      const filePath = 'defaults/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + extension
+      const { error: uploadError } = await supabase.storage.from('category-icons').upload(filePath, bytes, { contentType: mimeType, upsert: true })
+      if (uploadError) throw uploadError
+      const { data } = supabase.storage.from('category-icons').getPublicUrl(filePath)
+      setDraft((current) => current ? { ...current, icon: 'custom:' + data.publicUrl } : current)
+    } catch (error) { Alert.alert('Icon upload failed', error instanceof Error ? error.message : 'Please try again.') }
+    finally { setUploadingIcon(false) }
+  }
+
+  const softDeleteCategory = (category: Category) => {
+    Alert.alert('Remove category?', '“' + category.name + '” will be hidden from category selection. Existing expenses and budgets will be preserved.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => { void (async () => {
+        setSaving(true)
+        const { error: deleteError } = await supabase.from('categories').update({ is_active: false, show_in_picker: false }).eq('id', category.id).is('user_id', null)
+        if (deleteError) Alert.alert('Unable to remove category', deleteError.message)
+        else { await writeAudit('Removed category "' + category.name + '" (soft delete)'); await loadCategories(); Alert.alert('Category removed', 'The category is hidden. Historical records remain unchanged.') }
+        setSaving(false)
+      })() } },
+    ])
+  }
+
   const askToggle = async (category: Category) => {
     if (!category.is_active) {
       await toggleCategory(category)
@@ -220,6 +267,9 @@ export default function AdminCategoriesScreen() {
           <Pressable style={styles.editButton} onPress={() => openEdit(category)}>
             <Text style={styles.editText}>Edit</Text>
           </Pressable>
+          <Pressable style={styles.removeButton} onPress={() => softDeleteCategory(category)} disabled={saving}>
+            <Text style={styles.removeText}>Remove</Text>
+          </Pressable>
           <Pressable
             style={[styles.toggleButton, category.is_active ? styles.disableButton : styles.enableButton]}
             onPress={() => void askToggle(category)}
@@ -247,30 +297,49 @@ export default function AdminCategoriesScreen() {
               />
               {nameError ? <Text style={styles.fieldError}>{nameError}</Text> : null}
 
-              <Text style={styles.fieldLabel}>Color (hex)</Text>
+              <Text style={styles.fieldLabel}>Color palette</Text>
+              <View style={styles.colorPreviewRow}>
+                <View style={[styles.colorPreview, { backgroundColor: draft?.color || '#0F766E' }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.previewTitle}>Live preview</Text>
+                  <Text style={styles.previewHex}>{draft?.color?.toUpperCase() || '#0F766E'}</Text>
+                </View>
+              </View>
+              <View style={styles.colorPalette}>
+                {['#0F766E','#0D9488','#14B8A6','#2563EB','#3B82F6','#6366F1','#7C3AED','#A855F7','#DB2777','#E11D48','#DC2626','#EA580C','#D97706','#CA8A04','#65A30D','#16A34A','#475569','#334155','#1F2937','#111827','#F97316','#F43F5E','#06B6D4','#84CC16'].map((color) => (
+                  <Pressable key={color} onPress={() => setDraft((current) => current ? { ...current, color } : current)} style={[styles.colorSwatch, { backgroundColor: color }, draft?.color?.toUpperCase() === color && styles.colorSwatchActive]} />
+                ))}
+              </View>
+              <Text style={styles.fieldLabel}>Custom HEX color</Text>
               <TextInput
                 value={draft?.color ?? ''}
                 onChangeText={(value) => setDraft((current) => current ? { ...current, color: value } : current)}
                 placeholder="#0F766E"
                 autoCapitalize="characters"
                 style={styles.input}
+                maxLength={7}
               />
               {colorError ? <Text style={styles.fieldError}>{colorError}</Text> : null}
 
-              <Text style={styles.fieldLabel}>Icon</Text>
+              <Text style={styles.fieldLabel}>Icon library</Text>
+              <View style={styles.iconPreviewRow}>
+                <CategoryIcon icon={draft?.icon ?? 'coins'} color={draft?.color || adminColors.primary} size={48} backgroundColor={draft?.color ? draft.color + '22' : '#EEF0FB'} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.previewTitle}>Selected icon preview</Text>
+                  <Text style={styles.previewHex}>{draft?.icon?.startsWith('custom:') ? 'Custom uploaded image' : CATEGORY_ICON_OPTIONS.find((item) => item.key === draft?.icon)?.name || 'Icon'}</Text>
+                </View>
+              </View>
+              <TextInput value={iconSearch} onChangeText={setIconSearch} placeholder="Search icons by name or category" placeholderTextColor="#94A3B8" style={styles.input} autoCapitalize="none" />
               <View style={styles.iconChoices}>
-                {ICON_OPTIONS.map((icon) => (
-                  <Pressable
-                    key={icon}
-                    onPress={() => setDraft((current) => current ? { ...current, icon } : current)}
-                    style={[styles.iconChoice, draft?.icon === icon && styles.iconChoiceActive]}
-                  >
-                    <Text style={[styles.iconChoiceText, { color: draft?.color || adminColors.primary }]}>
-                      {ICON_GLYPHS[icon]}
-                    </Text>
+                {CATEGORY_ICON_OPTIONS.filter((item) => (item.name + ' ' + item.group + ' ' + item.key).toLowerCase().includes(iconSearch.trim().toLowerCase())).map((item) => (
+                  <Pressable key={item.key} onPress={() => setDraft((current) => current ? { ...current, icon: item.key } : current)} style={[styles.iconChoice, draft?.icon === item.key && styles.iconChoiceActive]} accessibilityLabel={item.name + ', ' + item.group}>
+                    <Text style={styles.iconChoiceText}>{item.glyph}</Text>
                   </Pressable>
                 ))}
               </View>
+              <Pressable style={styles.uploadButton} onPress={() => void uploadCustomIcon()} disabled={uploadingIcon}>
+                <Text style={styles.uploadButtonText}>{uploadingIcon ? 'Uploading icon…' : 'Upload custom SVG / PNG / JPG / WebP'}</Text>
+              </Pressable>
 
               <View style={styles.switchRow}>
                 <View style={{ flex: 1 }}>
@@ -334,6 +403,8 @@ const styles = StyleSheet.create({
   categoryMeta: { color: adminColors.muted, fontSize: 9, marginTop: 4 },
   editButton: { paddingHorizontal: 8, paddingVertical: 8 },
   editText: { color: adminColors.primary, fontSize: 10, fontWeight: '900' },
+  removeButton: { paddingHorizontal: 7, paddingVertical: 8 },
+  removeText: { color: adminColors.danger, fontSize: 10, fontWeight: '900' },
   toggleButton: { paddingHorizontal: 9, paddingVertical: 8, borderRadius: 8 },
   disableButton: { backgroundColor: '#FEECEC' },
   enableButton: { backgroundColor: '#DCFCE7' },
@@ -348,6 +419,16 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 10, color: adminColors.text, fontSize: 12 },
   fieldError: { color: adminColors.danger, fontSize: 10 },
   iconChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  colorPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 11, backgroundColor: '#F6F7FB' },
+  colorPreview: { width: 42, height: 42, borderRadius: 12, borderWidth: 1, borderColor: '#00000018' },
+  previewTitle: { color: adminColors.text, fontSize: 11, fontWeight: '900' },
+  previewHex: { color: adminColors.muted, fontSize: 10, marginTop: 3 },
+  colorPalette: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, paddingVertical: 5 },
+  colorSwatch: { width: 28, height: 28, borderRadius: 15, borderWidth: 1, borderColor: '#00000018' },
+  colorSwatchActive: { borderWidth: 3, borderColor: adminColors.text, transform: [{ scale: 1.12 }] },
+  iconPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 11, backgroundColor: '#F6F7FB' },
+  uploadButton: { borderWidth: 1, borderColor: adminColors.border, borderStyle: 'dashed', borderRadius: 10, padding: 12, alignItems: 'center' },
+  uploadButtonText: { color: adminColors.primary, fontSize: 11, fontWeight: '900' },
   iconChoice: { width: 39, height: 39, borderRadius: 9, borderWidth: 1, borderColor: adminColors.border, alignItems: 'center', justifyContent: 'center' },
   iconChoiceActive: { borderWidth: 2, borderColor: adminColors.primary, backgroundColor: '#EEF0FF' },
   iconChoiceText: { fontSize: 20, fontWeight: '900' },
