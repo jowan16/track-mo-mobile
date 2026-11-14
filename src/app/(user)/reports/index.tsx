@@ -158,21 +158,33 @@ export default function ReportsScreen() {
 
   useEffect(() => {
     let active = true
+
+    // Use a unique topic for every effect instance. Screen remounts can happen
+    // before Supabase finishes removing the previous subscribed channel.
+    const channelTopic = `user-reports-categories:${profile?.id ?? 'guest'}:${Date.now()}:${Math.random().toString(36).slice(2)}`
     const channel = supabase
-      .channel('user-reports-categories')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
-        void loadReport()
-      })
-      .subscribe()
+      .channel(channelTopic)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'categories' },
+        () => {
+          if (active) void loadReport()
+        },
+      )
+
+    // Register callbacks before subscribing to the channel.
+    channel.subscribe()
+
     setLoading(true)
     loadReport().finally(() => {
       if (active) setLoading(false)
     })
+
     return () => {
       active = false
       void supabase.removeChannel(channel)
     }
-  }, [loadReport])
+  }, [loadReport, profile?.id])
 
   const refresh = async () => {
     setRefreshing(true)
