@@ -122,21 +122,31 @@ function AppContent() {
     return () => subscription.remove()
   }, [])
 
-  // Avoid rendering the index/login route while an incoming verification link is being resolved.
-  if (!initialUrlChecked || handlingAuthCallback) {
-    return <View style={{ flex: 1, backgroundColor: '#0A211C' }} />
-  }
-
   return (
     <RouterThemeProvider
       value={resolvedTheme === 'dark' ? DarkTheme : DefaultTheme}
     >
-      <Stack screenOptions={{ headerShown: false, animation: "none" }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(user)" />
-        <Stack.Screen name="(admin)" />
-      </Stack>
+      <>
+        <Stack screenOptions={{ headerShown: false, animation: "none" }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(user)" />
+          <Stack.Screen name="(admin)" />
+        </Stack>
+        {(!initialUrlChecked || handlingAuthCallback) ? (
+          <View
+            pointerEvents="auto"
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              backgroundColor: '#0A211C',
+            }}
+          />
+        ) : null}
+      </>
     </RouterThemeProvider>
   )
 }
