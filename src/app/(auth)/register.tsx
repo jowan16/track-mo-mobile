@@ -15,6 +15,7 @@ import {
 import { supabase } from '@/services/supabase'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const AUTH_REDIRECT_URL = 'trackmomobile://login'
 
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('')
@@ -76,7 +77,7 @@ export default function RegisterScreen() {
         password,
         options: {
           data: { full_name: normalizedName },
-          emailRedirectTo: 'trackmomobile://login',
+          emailRedirectTo: AUTH_REDIRECT_URL,
         },
       })
 
@@ -120,7 +121,7 @@ export default function RegisterScreen() {
         type: 'signup',
         email: successEmail,
         options: {
-          emailRedirectTo: 'trackmomobile://login',
+          emailRedirectTo: AUTH_REDIRECT_URL,
         },
       })
 
@@ -134,9 +135,11 @@ export default function RegisterScreen() {
       const message = error instanceof Error ? error.message : 'Unable to resend the verification email. Please try again.'
       setResendFeedback({
         type: 'error',
-        message: /rate limit|too many requests/i.test(message)
-          ? 'Too many resend attempts. Please wait a few minutes before trying again.'
-          : message,
+        message: /email address not authorized|email_address_not_authorized/i.test(message)
+          ? 'Supabase default email service only sends to authorized project team addresses. Configure custom SMTP (for example, Brevo) to send verification emails to other addresses.'
+          : /rate limit|too many requests|over_email_send_rate_limit/i.test(message)
+            ? 'Supabase email sending limit has been reached. Wait before retrying, or configure custom SMTP to increase delivery capacity.'
+            : message,
       })
     } finally {
       setResending(false)
