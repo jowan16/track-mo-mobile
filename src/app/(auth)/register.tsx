@@ -26,6 +26,7 @@ export default function RegisterScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [banner, setBanner] = useState('')
+  const [successEmail, setSuccessEmail] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleRegister = async () => {
@@ -98,12 +99,41 @@ export default function RegisterScreen() {
         if (signOutError) throw signOutError
       }
 
-      router.replace('/(auth)/login')
+      setSuccessEmail(normalizedEmail)
     } catch {
       setBanner('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (successEmail) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.successCard}>
+          <View style={styles.successIcon}>
+            <Text style={styles.successCheck}>✓</Text>
+          </View>
+          <Text style={styles.successTitle}>Account Created Successfully!</Text>
+          <Text style={styles.successMessage}>
+            Please check your email and click the verification link to confirm your email address before logging in.
+          </Text>
+          <View style={styles.emailNotice}>
+            <Text style={styles.emailNoticeLabel}>Verification email sent to</Text>
+            <Text style={styles.emailNoticeAddress}>{successEmail}</Text>
+          </View>
+          <Text style={styles.successHint}>
+            If you don't see the message, check your spam or junk folder.
+          </Text>
+          <Pressable
+            style={styles.button}
+            onPress={() => router.replace('/(auth)/login')}
+          >
+            <Text style={styles.buttonText}>Back to login</Text>
+          </Pressable>
+        </View>
+      </View>
+    )
   }
 
   return (
@@ -284,6 +314,25 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A211C' },
+  successCard: {
+    width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 22, padding: 26, borderWidth: 1, borderColor: '#DCE8E3',
+    alignItems: 'center', justifyContent: 'center', margin: 22,
+  },
+  successIcon: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: '#DCFCE7',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+  },
+  successCheck: { color: '#15803D', fontSize: 36, fontWeight: '800' },
+  successTitle: { color: '#10231D', fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  successMessage: { color: '#475569', fontSize: 14, lineHeight: 22, textAlign: 'center', marginTop: 12 },
+  emailNotice: {
+    width: '100%', backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0',
+    borderRadius: 12, padding: 14, marginTop: 20,
+  },
+  emailNoticeLabel: { color: '#166534', fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  emailNoticeAddress: { color: '#14532D', fontSize: 14, fontWeight: '800', textAlign: 'center', marginTop: 5 },
+  successHint: { color: '#64748B', fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 16 },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 22 },
   brand: { alignItems: 'center', marginBottom: 22 },
   brandName: { color: '#FFFFFF', fontSize: 23, fontWeight: '800' },
