@@ -551,43 +551,80 @@ export default {
         for (const item of affectedBudgets.values()) {
           budgetsChecked++;
 
-          const { data: profile, error: profileError } =
-            await supabase
-              .from("profiles")
-              .select(
-                "email, full_name, currency, status, email_alerts, warn_80, warn_100",
-              )
-              .eq("id", item.userId)
-              .maybeSingle();
+          const { data: profile, error: profileError } = await supabase
+            .from("profiles")
+            .select("email, full_name, currency, status, email_alerts, warn_80, warn_100")
+            .eq("id", item.userId)
+            .maybeSingle();
 
-          if (profileError) {
-            throw profileError;
-          }
-
+          if (profileError) throw profileError;
           if (!profile || String(profile.status || "").toLowerCase() !== "active") {
             continue;
           }
 
-          const { data: budget, error: budgetError } =
-            await supabase
-              .from("budgets")
-              .select("id, amount")
-              .eq("user_id", item.userId)
-              .eq("category_id", item.categoryId)
-              .eq("month", item.month)
-              .eq("year", item.year)
-              .eq("is_archived", false)
-              .maybeSingle();
+          const { data: budget, error: budgetError } = await supabase
+            .from("budgets")
+            .select("id, amount")
+            .eq("user_id", item.userId)
+            .eq("category_id", item.categoryId)
+            .eq("month", item.month)
+            .eq("year", item.year)
+            .eq("is_archived", false)
+            .maybeSingle();
 
-          if (budgetError) {
-            throw budgetError;
-          }
+          if (budgetError) throw budgetError;
 
           if (!budget || Number(budget.amount) <= 0) {
-            // An archived budget is below both thresholds. This resets its
-            // crossing state so restoring it can create a fresh crossing.
             if (item.budgetId && item.archived) {
-              let recipientEmail: string | null = null;
+              for (const threshold of [80, 100]) {
+                const { error: stateError } = await supabase.rpc(
+                  "claim_budget_alert_crossing",
+                  {
+                    p_budget_id: item.budgetId,
+                    p_threshold: threshold,
+                    p_percentage: 0,
+                    p_force: false,
+                  },
+                );
+                if (stateError) throw stateError;
+              }
+            }
+            continue;
+          }
+
+          const { data: category, error: categoryError } = await supabase
+            .from("categories")
+            .select("name")
+            .eq("id", item.categoryId)
+            .maybeSingle();
+
+          if (categoryError) throw categoryError;
+          const categoryName = category?.name || "Other";
+
+          const { startDate, endDate } = getMonthDetails(
+            `${item.year}-${String(item.month).padStart(2, "0")}-01`,
+          );
+
+          const { data: expenses, error: expensesError } = await supabase
+            .from("expenses")
+            .select("amount")
+            .eq("user_id", item.userId)
+            .eq("category_id", item.categoryId)
+            .eq("is_archived", false)
+            .gte("spent_on", startDate)
+            .lt("spent_on", endDate);
+
+          if (expensesError) throw expensesError;
+
+          const totalSpent = (expenses || []).reduce(
+            (total, expense) => total + Number(expense.amount || 0),
+            0,
+          );
+          const budgetAmount = Number(budget.amount);
+          const percentage = (totalSpent / budgetAmount) * 100;
+          const currency = profile.currency || "PHP";
+
+          let recipientEmail: string | null = null;
           if (profile.email_alerts && (profile.warn_80 || profile.warn_100)) {
             try {
               const { data: authUser, error: authUserError } =
@@ -595,7 +632,10 @@ export default {
               if (authUserError) throw authUserError;
               recipientEmail = authUser.user?.email || null;
             } catch (emailLookupError) {
-              console.error("Unable to resolve the authenticated account email:", emailLookupError);
+              console.error(
+                "Unable to resolve the authenticated account email:",
+                emailLookupError,
+              );
             }
           }
 
@@ -616,8 +656,6 @@ export default {
             if (claimError) throw claimError;
 
             if (alertCycle === null || alertCycle === undefined) {
-              // A failed email for the current crossing can be retried on the
-              // next budget event without creating another in-app notification.
               if (thresholdEnabled && profile.email_alerts && recipientEmail) {
                 const { data: state, error: stateError } = await supabase
                   .from("budget_alert_threshold_state")
@@ -701,7 +739,9 @@ export default {
             if (!profile.email_alerts) continue;
             if (!recipientEmail) {
               emailsFailed++;
-              console.error("Budget alert email skipped: authenticated account email is unavailable.");
+              console.error(
+                "Budget alert email skipped: authenticated account email is unavailable.",
+              );
               continue;
             }
 
