@@ -89,7 +89,7 @@ export default function LoginScreen() {
       if (profile.status !== 'active') {
         setBanner(
           profile.status === 'suspended'
-            ? 'Your account is suspended. Contact the administrator.'
+            ? 'Your account has been suspended. Please contact the administrator for assistance.'
             : 'Your account is not active. Contact the administrator.',
         )
         return
@@ -137,7 +137,7 @@ export default function LoginScreen() {
       ) {
         setBanner(
           message.toLowerCase().includes('suspended')
-            ? 'Your account is suspended. Contact the administrator.'
+            ? 'Your account has been suspended. Please contact the administrator for assistance.'
             : 'Your account is not active. Contact the administrator.',
         )
         return
