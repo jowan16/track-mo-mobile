@@ -228,7 +228,8 @@ export default function AdminReportsScreen() {
         <p class="muted">Expense statistics represent non-archived system records within the selected date range. Individual transaction details are not included.</p>
 
         <h2>4. Most Used Expense Categories</h2>
-        ${categoryRows ? `<table class="data"><tr><th>Category</th><th class="number">Usage count</th><th class="number">Share</th></tr>${categoryRows}</table>` : '<p class="muted">No category usage data for this reporting period.</p>'}
+        <p class="muted">Top five categories by usage. Share is calculated from the displayed top-five category counts.</p>
+        ${categoryRows ? `<table class="data"><tr><th>Category</th><th class="number">Usage count</th><th class="number">Share of top five</th></tr>${categoryRows}</table>` : '<p class="muted">No category usage data for this reporting period.</p>'}
 
         <h2>5. Summary and Observations</h2>
         ${observations.map((item) => `<p class="note">${escapeHtml(item)}</p>`).join('')}
