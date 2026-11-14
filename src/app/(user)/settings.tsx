@@ -84,7 +84,7 @@ export default function SettingsScreen() {
         return
       }
 
-      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\\d/.test(password)) {
+      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
         Alert.alert(
           'Invalid password',
           'Use at least 8 characters, including a letter and a number.',
