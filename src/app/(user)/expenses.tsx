@@ -726,7 +726,7 @@ export default function ExpensesScreen() {
         if (receiptContext && !editing) {
           return await supabase.rpc('save_receipt_expense', {
             p_storage_path: receiptContext.path,
-            p_merchant_name: receiptContext.draft.merchant_name.trim(),
+            p_merchant_name: receiptContext.source === 'image' ? receiptContext.draft.merchant_name.trim() : null,
             p_receipt_date: form.spent_on,
             p_subtotal: receiptContext.draft.subtotal,
             p_tax: receiptContext.draft.tax,
@@ -748,6 +748,7 @@ export default function ExpensesScreen() {
               model: receiptContext.model,
               raw_text: receiptContext.rawText,
               qr_payload: receiptContext.source === 'qr' ? receiptContext.rawText : null,
+              bank_name: receiptContext.source === 'qr' ? (receiptContext.draft.bank_name?.trim() || null) : null,
               confirmed_at: new Date().toISOString(),
             },
           })
@@ -1244,19 +1245,40 @@ export default function ExpensesScreen() {
             >
               {receiptContext ? (
                 <>
-                  {/* RECEIPT MERCHANT */}
-                  <Text style={styles.fieldLabel}>Merchant</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={receiptContext.draft.merchant_name}
-                    onChangeText={(value) => setReceiptContext((current) => current ? ({
-                      ...current,
-                      draft: { ...current.draft, merchant_name: value },
-                    }) : current)}
-                    placeholder="Enter merchant name"
-                    placeholderTextColor="#84908b"
-                    editable={!saving}
-                  />
+                  {receiptContext.source === 'qr' ? (
+                    <>
+                      <Text style={styles.fieldLabel}>Bank</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={receiptContext.draft.bank_name || ''}
+                        onChangeText={(value) => setReceiptContext((current) => current ? ({
+                          ...current,
+                          draft: { ...current.draft, bank_name: value },
+                        }) : current)}
+                        placeholder="Not identified — enter bank name"
+                        placeholderTextColor="#84908b"
+                        editable={!saving}
+                      />
+                      <Text style={styles.fieldHint}>
+                        The bank is detected only when its name is included in the QR data. Please verify it before saving.
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.fieldLabel}>Merchant</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={receiptContext.draft.merchant_name}
+                        onChangeText={(value) => setReceiptContext((current) => current ? ({
+                          ...current,
+                          draft: { ...current.draft, merchant_name: value },
+                        }) : current)}
+                        placeholder="Enter merchant name"
+                        placeholderTextColor="#84908b"
+                        editable={!saving}
+                      />
+                    </>
+                  )}
 
                   {/* CATEGORY */}
                   <Text style={styles.fieldLabel}>Category</Text>
