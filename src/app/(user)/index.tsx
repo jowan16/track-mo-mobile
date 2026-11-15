@@ -1183,7 +1183,7 @@ export default function UserDashboard() {
           {data.expenses.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptySymbol}>₱</Text>
-              <Text style={styles.emptyTitle}>No expenses this month</Text>
+              <Text style={styles.emptyTitle}>No recent expenses</Text>
               <Text style={styles.emptyDescription}>
                 Your transactions will appear here when you start recording
                 expenses.
