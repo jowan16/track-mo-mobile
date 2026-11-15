@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/context/AuthContext'
 import { CategoryIcon } from '@/components/CategoryIcon'
-import { supabase } from '@/services/supabase'
+import { supabase, withValidSession } from '@/services/supabase'
 import { UserPageHeader } from '@/components/user-navigation'
 
 // --------------------------------------------------
@@ -248,46 +248,54 @@ export default function UserDashboard() {
     const toExclusive = localDateString(firstDayOfNextMonth)
 
     try {
+      const { results, error: requestError } = await withValidSession(async () => {
+        const results = await Promise.all([
+          supabase
+            .from('categories')
+            .select('*')
+            .eq('is_active', true)
+            .order('sort_order'),
+
+          supabase
+            .from('user_categories')
+            .select('category_id')
+            .eq('user_id', profile.id),
+
+          supabase
+            .from('expenses')
+            .select('*')
+            .eq('user_id', profile.id)
+            .eq('is_archived', false)
+            .gte('spent_on', from)
+            .lt('spent_on', toExclusive)
+            .order('spent_on', { ascending: false })
+            .order('created_at', { ascending: false }),
+
+          supabase
+            .from('budgets')
+            .select('*')
+            .eq('user_id', profile.id)
+            .eq('is_archived', false)
+            .eq('month', now.getMonth() + 1)
+            .eq('year', now.getFullYear()),
+        ])
+
+        // Return a single error to the session helper so it can refresh an
+        // expired JWT and retry the complete dashboard load exactly once.
+        return {
+          results,
+          error: results.find((result) => result.error)?.error ?? null,
+        }
+      })
+
       const [
         categoriesResult,
         userCategoriesResult,
         expensesResult,
         budgetsResult,
-      ] = await Promise.all([
-        supabase
-          .from('categories')
-          .select('*')
-          .eq('is_active', true)
-          .order('sort_order'),
+      ] = results
 
-        supabase
-          .from('user_categories')
-          .select('category_id')
-          .eq('user_id', profile.id),
-
-        supabase
-          .from('expenses')
-          .select('*')
-          .eq('user_id', profile.id)
-          .eq('is_archived', false)
-          .gte('spent_on', from)
-          .lt('spent_on', toExclusive)
-          .order('spent_on', { ascending: false })
-          .order('created_at', { ascending: false }),
-
-        supabase
-          .from('budgets')
-          .select('*')
-          .eq('user_id', profile.id)
-          .eq('is_archived', false)
-          .eq('month', now.getMonth() + 1)
-          .eq('year', now.getFullYear()),
-      ])
-
-      if (categoriesResult.error) throw categoriesResult.error
-      if (userCategoriesResult.error) throw userCategoriesResult.error
-      if (expensesResult.error) throw expensesResult.error
-      if (budgetsResult.error) throw budgetsResult.error
+      if (requestError) throw requestError
 
       const selectedCategoryIds = new Set(
         (userCategoriesResult.data ?? []).map(
