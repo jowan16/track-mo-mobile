@@ -162,13 +162,24 @@ export default function ArchiveScreen() {
 
   useEffect(() => {
     void loadArchive()
+
+    // Give each effect setup its own topic. This prevents a stale/reconnecting
+    // channel with the same topic from being reused during React effect remounts.
+    const channelTopic = `user-archive-categories-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const channel = supabase
-      .channel('user-archive-categories')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
-        void loadArchive()
-      })
+      .channel(channelTopic)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'categories' },
+        () => {
+          void loadArchive()
+        },
+      )
       .subscribe()
-    return () => { void supabase.removeChannel(channel) }
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
   }, [loadArchive])
 
   const onRefresh = () => {
