@@ -356,6 +356,32 @@ export default function UserDashboard() {
       },
     )
 
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'expenses',
+        filter: `user_id=eq.${profile?.id ?? ''}`,
+      },
+      () => {
+        if (mounted) void loadDashboard()
+      },
+    )
+
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'budgets',
+        filter: `user_id=eq.${profile?.id ?? ''}`,
+      },
+      () => {
+        if (mounted) void loadDashboard()
+      },
+    )
+
     // Register all event handlers before subscribing.
     channel.subscribe()
 
@@ -410,7 +436,19 @@ export default function UserDashboard() {
     0,
   )
 
-  const budgetRemaining = totalBudget - totalExpense
+  const budgetedCategoryIds = useMemo(
+    () => new Set(data.budgets.map((budget) => budget.category_id)),
+    [data.budgets],
+  )
+
+  // Budget Remaining only subtracts spending in categories that have an
+  // active budget for the current month. Unbudgeted expenses still count
+  // toward Total Expense, but must not reduce the budget balance.
+  const expenseAgainstBudgets = currentMonthExpenses
+    .filter((expense) => budgetedCategoryIds.has(expense.category_id))
+    .reduce((total, expense) => total + expense.amount, 0)
+
+  const budgetRemaining = totalBudget - expenseAgainstBudgets
 
   const categorySpending = useMemo(() => {
     return data.categories.map((category) => {
