@@ -450,6 +450,12 @@ export default function UserDashboard() {
 
   const budgetRemaining = totalBudget - expenseAgainstBudgets
 
+  // Keep the overall budget health percentage consistent with Budget Remaining:
+  // only expenses in categories with an active budget count against the budget.
+  const budgetedExpensePercentage = totalBudget > 0
+    ? (expenseAgainstBudgets / totalBudget) * 100
+    : 0
+
   const categorySpending = useMemo(() => {
     return data.categories.map((category) => {
       const spent = currentMonthExpenses
@@ -970,7 +976,7 @@ export default function UserDashboard() {
                 styles.healthIcon,
                 {
                   backgroundColor:
-                    totalBudget > 0 && totalExpense / totalBudget >= 0.8
+                    totalBudget > 0 && budgetedExpensePercentage >= 80
                       ? '#fff1e0'
                       : (dark ? '#203d36' : '#e6f4f1'),
                 },
@@ -979,9 +985,9 @@ export default function UserDashboard() {
               <Text style={styles.healthIconText}>
                 {totalBudget === 0
                   ? '—'
-                  : totalExpense / totalBudget >= 1
+                  : budgetedExpensePercentage >= 100
                     ? '!'
-                    : totalExpense / totalBudget >= 0.8
+                    : budgetedExpensePercentage >= 80
                       ? '!'
                       : '✓'}
               </Text>
@@ -996,13 +1002,13 @@ export default function UserDashboard() {
                     styles.healthProgress,
                     {
                       width: `${Math.min(
-                        (totalExpense / totalBudget) * 100,
+                        budgetedExpensePercentage,
                         100,
                       )}%`,
                       backgroundColor:
-                        totalExpense / totalBudget >= 1
+                        budgetedExpensePercentage >= 100
                           ? '#dc2626'
-                          : totalExpense / totalBudget >= 0.8
+                          : budgetedExpensePercentage >= 80
                             ? '#d97706'
                             : (dark ? '#55c6b0' : '#0f766e'),
                     },
@@ -1012,7 +1018,7 @@ export default function UserDashboard() {
 
               <View style={styles.healthFooter}>
                 <Text style={styles.healthFooterText}>
-                  {peso(totalExpense)} spent
+                  {peso(expenseAgainstBudgets)} spent
                 </Text>
                 <Text style={styles.healthFooterText}>
                   {peso(totalBudget)} budget
@@ -1174,7 +1180,7 @@ export default function UserDashboard() {
             styles={styles}
           />
 
-          {currentMonthExpenses.length === 0 ? (
+          {data.expenses.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptySymbol}>₱</Text>
               <Text style={styles.emptyTitle}>No expenses this month</Text>
@@ -1185,7 +1191,7 @@ export default function UserDashboard() {
             </View>
           ) : (
             <View style={styles.listCard}>
-              {currentMonthExpenses.slice(0, 5).map((expense) => {
+              {data.expenses.slice(0, 5).map((expense) => {
                 const category = data.categories.find(
                   (item) => item.id === expense.category_id,
                 )
