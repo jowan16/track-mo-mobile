@@ -1,6 +1,6 @@
 import { useAppTheme } from '@/context/ThemeContext'
-import { useRef, useState } from 'react'
-import { Camera, CameraView, useCameraPermissions } from 'expo-camera'
+import { useState } from 'react'
+import { Camera } from 'expo-camera'
 import {
   ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet,
   Text, View,
@@ -34,74 +34,33 @@ export default function ScanReceiptScreen() {
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null)
   const [processing, setProcessing] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const [cameraOpen, setCameraOpen] = useState(false)
-  const [cameraReady, setCameraReady] = useState(false)
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions()
-  const cameraRef = useRef<CameraView>(null)
-  const liveQrPayload = useRef('')
-
-  const openReceiptCamera = async () => {
-    try {
-      const permission = cameraPermission?.granted
-        ? cameraPermission
-        : await requestCameraPermission()
-      if (!permission?.granted) {
-        Alert.alert('Permission required', 'Allow camera access to take a receipt photo.')
-        return
-      }
-      setCameraReady(false)
-      liveQrPayload.current = ''
-      setErrorMessage('')
-      setCameraOpen(true)
-    } catch {
-      Alert.alert('Camera unavailable', 'Unable to open the camera. Please try uploading a receipt image instead.')
-    }
-  }
-
-  const captureReceiptPhoto = async () => {
-    if (!cameraReady || processing) return
-    try {
-      const picture = await cameraRef.current?.takePictureAsync({ quality: 1 })
-      if (!picture?.uri) throw new Error('The camera could not capture this receipt.')
-      setCameraOpen(false)
-      const asset = {
-        uri: picture.uri,
-        width: picture.width,
-        height: picture.height,
-        type: 'image',
-        fileName: 'receipt.jpg',
-        mimeType: 'image/jpeg',
-        fileSize: undefined,
-        assetId: null,
-        base64: null,
-        duration: null,
-      } as ImagePicker.ImagePickerAsset
-      setImage(asset)
-      await uploadAndRecognize(asset, liveQrPayload.current)
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to capture this receipt.')
-    }
-  }
-
   const chooseImage = async (source: 'camera' | 'gallery') => {
     try {
+      let result: ImagePicker.ImagePickerResult
+
       if (source === 'camera') {
-        await openReceiptCamera()
-        return
+        const permission = await ImagePicker.requestCameraPermissionsAsync()
+        if (!permission.granted) {
+          Alert.alert('Permission required', 'Allow camera access to take a receipt photo.')
+          return
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          quality: 1,
+        })
+      } else {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+        if (!permission.granted) {
+          Alert.alert('Permission required', 'Allow photo library access to select a receipt.')
+          return
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          quality: 1,
+        })
       }
-
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (!permission.granted) {
-        Alert.alert('Permission required', 'Allow photo library access to select a receipt.')
-        return
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [3, 4],
-        quality: 1,
-      })
 
       if (result.canceled || !result.assets?.length) return
 
@@ -210,18 +169,18 @@ export default function ScanReceiptScreen() {
           </View>
           <Text style={styles.title}>Turn receipts into expenses</Text>
           <Text style={styles.description}>
-            Take a photo of a receipt or payment QR code, or choose an image. Track Mo will recognize the available details and let you review them before saving the expense.
+            Take a photo or choose an image, then crop it to focus on the receipt. Track Mo will recognize the available details and let you review them before saving the expense.
           </Text>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.selectionTitle}>Add your receipt</Text>
-          <Text style={styles.cardDescription}>Keep the receipt clear and well lit. Crop the image to include the entire receipt, especially its date and total.</Text>
+          <Text style={styles.cardDescription}>Keep the receipt clear and well lit. After taking or selecting a photo, adjust the crop to include the receipt edges, date, total, and any QR code.</Text>
 
           <Pressable
-            style={[styles.primaryButton, (processing || cameraOpen) && styles.disabled]}
+            style={[styles.primaryButton, processing && styles.disabled]}
             onPress={() => void chooseImage('camera')}
-            disabled={processing || cameraOpen}
+            disabled={processing}
           >
             <Text style={styles.primaryText}>▣  Take a Photo / Scan QR</Text>
           </Pressable>
@@ -233,49 +192,8 @@ export default function ScanReceiptScreen() {
             <Text style={styles.secondaryText}>▧  Upload from Gallery</Text>
           </Pressable>
 
-          <Text style={styles.hint}>JPG or PNG · Maximum 10 MB · QR receipt codes supported</Text>
+          <Text style={styles.hint}>JPG or PNG · Maximum 10 MB · Crop before scanning · QR receipt codes supported</Text>
         </View>
-
-        {cameraOpen ? (
-          <View style={styles.qrCard}>
-            <View style={styles.qrHeader}>
-              <View style={styles.qrHeaderText}>
-                <Text style={styles.previewTitle}>Take Receipt Photo</Text>
-                <Text style={styles.qrDescription}>Frame the full receipt or payment confirmation, then capture it. Track Mo will check the photo for a QR code and read its printed text.</Text>
-              </View>
-              <Pressable
-                style={styles.qrCloseButton}
-                onPress={() => setCameraOpen(false)}
-              >
-                <Text style={styles.qrCloseText}>×</Text>
-              </Pressable>
-            </View>
-            <View style={styles.qrCameraFrame}>
-              <CameraView
-                ref={cameraRef}
-                style={styles.qrCamera}
-                facing="back"
-                onCameraReady={() => setCameraReady(true)}
-                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-                onBarcodeScanned={(result) => {
-                  // Cache a QR detected in the same camera preview. Wait for
-                  // the user to capture the receipt before opening the review.
-                  if (!liveQrPayload.current && result.data?.trim()) {
-                    liveQrPayload.current = result.data.trim()
-                  }
-                }}
-              />
-            </View>
-            <Text style={styles.qrFooter}>After capture, Track Mo checks the image for a QR code and reads the receipt text. No separate scanner is needed.</Text>
-            <Pressable
-              style={[styles.primaryButton, (!cameraReady || processing) && styles.disabled]}
-              onPress={() => void captureReceiptPhoto()}
-              disabled={!cameraReady || processing}
-            >
-              <Text style={styles.primaryText}>●  Capture Receipt</Text>
-            </Pressable>
-          </View>
-        ) : null}
 
         {image ? (
           <View style={styles.previewCard}>
@@ -340,15 +258,6 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   primaryText: { color: COLORS.white, fontSize: 13, fontWeight: '800' },
   secondaryButton: { minHeight: 49, borderRadius: 11, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15, marginTop: 10 },
   secondaryText: { color: COLORS.ink, fontSize: 13, fontWeight: '700' },
-  qrCard: { backgroundColor: COLORS.white, borderRadius: 17, padding: 15, borderWidth: 1, borderColor: COLORS.line },
-  qrHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  qrHeaderText: { flex: 1 },
-  qrDescription: { color: COLORS.muted, fontSize: 11, marginTop: 4 },
-  qrCloseButton: { width: 34, height: 34, borderRadius: 10, backgroundColor: COLORS.brandLight, alignItems: 'center', justifyContent: 'center' },
-  qrCloseText: { color: COLORS.brand, fontSize: 24, lineHeight: 27 },
-  qrCameraFrame: { width: '100%', height: 320, overflow: 'hidden', borderRadius: 12, backgroundColor: '#000000' },
-  qrCamera: { flex: 1 },
-  qrFooter: { color: COLORS.muted, fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: 10 },
   disabled: { opacity: 0.55 },
   hint: { color: COLORS.muted, fontSize: 10, textAlign: 'center', marginTop: 12 },
   previewCard: { backgroundColor: COLORS.white, borderRadius: 17, padding: 16, borderWidth: 1, borderColor: COLORS.line },
