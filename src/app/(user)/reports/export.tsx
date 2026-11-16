@@ -17,6 +17,7 @@ import * as Sharing from 'expo-sharing'
 import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
+import { csvCell, htmlText } from '@/utils/userHelpers'
 
 type ExportKind = 'detailed' | 'category' | 'monthly'
 
@@ -55,18 +56,6 @@ function getC(dark: boolean) { return dark ? {
 
 const money = (value: number) =>
   `₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-
-const csvCell = (value: unknown) =>
-  `"${String(value ?? '').replace(/"/g, '""')}"`
-
-const htmlText = (value: unknown) =>
-  String(value ?? '').replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[character] || character)
 
 export default function ReportExportScreen() {
   const { resolvedTheme } = useAppTheme()

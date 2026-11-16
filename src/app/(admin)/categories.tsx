@@ -16,6 +16,7 @@ import { AdminShell, adminColors } from '@/components/admin/AdminShell'
 import { CategoryIcon, CATEGORY_ICON_OPTIONS } from '@/components/CategoryIcon'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
+import { validateCategoryDraft } from '@/utils/adminHelpers'
 
 type Category = {
   id: number
@@ -113,27 +114,14 @@ export default function AdminCategoriesScreen() {
 
   const saveDraft = async () => {
     if (!draft || saving) return
-    let valid = true
     setNameError('')
     setColorError('')
     setShowError('')
-
-    if (!draft.name.trim()) {
-      setNameError('Enter a category name.')
-      valid = false
-    } else if (draft.name.trim().length > 30) {
-      setNameError('Name is too long (30 characters max).')
-      valid = false
-    }
-    if (!/^#[0-9a-fA-F]{6}$/.test(draft.color)) {
-      setColorError('Enter a valid hex color, for example #0F766E.')
-      valid = false
-    }
-    if (!draft.show && categories.filter((c) => c.id !== draft.id && c.is_active && c.show_in_picker).length === 0) {
-      setShowError('At least one category must stay visible in the picker.')
-      valid = false
-    }
-    if (!valid) return
+    const validation = validateCategoryDraft(draft, categories)
+    setNameError(validation.name ?? '')
+    setColorError(validation.color ?? '')
+    setShowError(validation.show ?? '')
+    if (Object.keys(validation).length > 0) return
 
     setSaving(true)
     const name = draft.name.trim()

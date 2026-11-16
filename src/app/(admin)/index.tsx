@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import {
   ActivityIndicator,
@@ -10,6 +10,8 @@ import {
 
 import { AdminShell, adminColors } from '@/components/admin/AdminShell'
 import { supabase } from '@/services/supabase'
+import { adminStatCards } from '@/utils/adminHelpers'
+import { adminStatsFromRpc } from '@/utils/adminDashboardCounts'
 
 type Stats = {
   total_users: number
@@ -40,8 +42,10 @@ export default function AdminOverviewScreen() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const requestId = useRef(0)
 
   const loadData = useCallback(async () => {
+    const currentRequestId = ++requestId.current
     setLoading(true)
     setError('')
 
@@ -60,19 +64,30 @@ export default function AdminOverviewScreen() {
           .order('sort_order')
           .limit(4),
       ])
+      if (currentRequestId !== requestId.current) return
 
       if (statsResult.error) throw statsResult.error
+      const validStats = adminStatsFromRpc(statsResult.data)
+      if (!validStats) {
+        setStats(null)
+        throw new Error('Unable to load admin statistics. The server returned invalid metrics.')
+      }
       if (accountsResult.error) throw accountsResult.error
       if (categoriesResult.error) throw categoriesResult.error
 
-      setStats((statsResult.data?.[0] ?? null) as Stats | null)
+      setStats(validStats)
       setAccounts((accountsResult.data ?? []) as Account[])
       setCategories((categoriesResult.data ?? []) as Category[])
     } catch (err) {
-      console.error('Admin overview error:', err)
-      setError(err instanceof Error ? err.message : 'Unable to load admin overview.')
+      if (currentRequestId === requestId.current) {
+        setStats(null)
+        setAccounts([])
+        setCategories([])
+        console.error('Admin overview error:', err)
+        setError(err instanceof Error ? err.message : 'Unable to load admin overview.')
+      }
     } finally {
-      setLoading(false)
+      if (currentRequestId === requestId.current) setLoading(false)
     }
   }, [])
 
@@ -82,12 +97,7 @@ export default function AdminOverviewScreen() {
     }, [loadData]),
   )
 
-  const cards = [
-    { label: 'Registered users', value: stats?.total_users },
-    { label: 'Active users', value: stats?.active_users },
-    { label: 'Admins', value: stats?.admins },
-    { label: 'Expenses logged', value: stats?.expenses_count },
-  ]
+  const cards = adminStatCards(stats)
 
   return (
     <AdminShell title="Overview" subtitle="A summary of Track Mo, Pake Ko! system activity.">

@@ -14,6 +14,7 @@ import {
 import { AdminShell, adminColors } from '@/components/admin/AdminShell'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
+import { filterAccounts, formatLastActive, isAccountOnline, manilaDateKey } from '@/utils/adminHelpers'
 
 type Role = 'user' | 'admin'
 type Account = {
@@ -31,50 +32,6 @@ type ActivitySession = {
   user_id: string
   last_seen_at: string
   token_expires_at: string | null
-}
-
-const ONLINE_WINDOW_MS = 90_000
-
-function isAccountOnline(account: Account, sessions: ActivitySession[], now: number) {
-  if (account.status !== 'active') return false
-  return sessions.some((session) => {
-    if (session.user_id !== account.id) return false
-    const lastSeen = new Date(session.last_seen_at).getTime()
-    const expiresAt = session.token_expires_at ? new Date(session.token_expires_at).getTime() : null
-    const age = now - lastSeen
-    return Number.isFinite(lastSeen) && age >= 0 && age <= ONLINE_WINDOW_MS &&
-      (expiresAt === null || (Number.isFinite(expiresAt) && expiresAt > now))
-  })
-}
-
-function manilaDateKey(date: Date) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(date)
-  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ''
-  return `${part('year')}-${part('month')}-${part('day')}`
-}
-
-function formatLastActive(lastSeenAt: string | null, now: number) {
-  if (!lastSeenAt) return 'Never active'
-  const date = new Date(lastSeenAt)
-  const timestamp = date.getTime()
-  if (!Number.isFinite(timestamp)) return 'Unavailable'
-  const elapsed = Math.max(0, now - timestamp)
-  if (elapsed < 60_000) return 'Just now'
-  if (elapsed < 60 * 60_000) {
-    const minutes = Math.floor(elapsed / 60_000)
-    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
-  }
-  if (elapsed < 24 * 60 * 60_000) {
-    const hours = Math.floor(elapsed / (60 * 60_000))
-    return hours === 1 ? '1 hour ago' : `${hours} hours ago`
-  }
-  const yesterday = new Date(now - 24 * 60 * 60_000)
-  if (manilaDateKey(date) === manilaDateKey(yesterday)) return 'Yesterday'
-  return date.toLocaleDateString('en-PH', {
-    timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric',
-  })
 }
 
 export default function AdminUsersScreen() {
@@ -179,12 +136,7 @@ export default function AdminUsersScreen() {
     return () => clearInterval(interval)
   }, [])
 
-  const filtered = useMemo(() => accounts.filter((account) => {
-    const matchesRole = account.role === tab
-    const haystack = `${account.full_name ?? ''} ${account.email ?? ''}`.toLowerCase()
-    const matchesStatus = statusFilter === 'all' || account.status === statusFilter
-    return matchesRole && matchesStatus && haystack.includes(search.trim().toLowerCase())
-  }), [accounts, tab, statusFilter, search])
+  const filtered = useMemo(() => filterAccounts(accounts, tab, statusFilter, search), [accounts, tab, statusFilter, search])
 
   const pageSize = 8
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))

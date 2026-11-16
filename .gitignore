@@ -46,3 +46,6 @@ example
 # Local backup files
 *.bak
 *.backup
+
+# Jest coverage output
+coverage/

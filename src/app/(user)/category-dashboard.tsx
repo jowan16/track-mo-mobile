@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAuth } from '@/context/AuthContext'
 import { CategoryIcon } from '@/components/CategoryIcon'
 import { supabase } from '@/services/supabase'
+import { retainValidSelections, toggleSelection } from '@/utils/userHelpers'
 
 type Category = {
   id: number
@@ -108,18 +109,13 @@ export default function CategoryDashboardScreen() {
   }, [])
 
   useEffect(() => {
-    setSelectedIds((current) => new Set([...current].filter((id) => categories.some((category) => category.id === id))))
+    setSelectedIds((current) => retainValidSelections(current, categories.map((category) => category.id)))
   }, [categories])
 
   const selectedCount = useMemo(() => selectedIds.size, [selectedIds])
 
   const toggleCategory = (id: number) => {
-    setSelectedIds((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    setSelectedIds((current) => toggleSelection(current, id))
   }
 
   const toggleAll = () => {

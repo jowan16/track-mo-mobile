@@ -19,6 +19,7 @@ import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
 import { useAppTheme, type ThemePreference } from '@/context/ThemeContext'
 import { supabase } from '@/services/supabase'
+import { validateProfileChanges } from '@/utils/userHelpers'
 
 export default function SettingsScreen() {
   const { profile, refreshProfile, signOut } = useAuth()
@@ -62,35 +63,15 @@ export default function SettingsScreen() {
   const handleSaveAccount = async () => {
     const name = fullName.trim()
     const wantsPasswordChange = password.length > 0 || confirmPassword.length > 0
-
-    if (!name) {
-      Alert.alert('Required field', 'Please enter your full name.')
+    const validationError = validateProfileChanges(name, password, confirmPassword)
+    if (validationError) {
+      const title = validationError.includes('full name') ? 'Required field'
+        : validationError.includes('not exceed') ? 'Invalid name'
+          : validationError.includes('Enter and confirm') ? 'Password required'
+            : validationError.includes('do not match') ? 'Password mismatch'
+              : 'Invalid password'
+      Alert.alert(title, validationError)
       return
-    }
-
-    if (name.length > 60) {
-      Alert.alert('Invalid name', 'Your name must not exceed 60 characters.')
-      return
-    }
-
-    if (wantsPasswordChange) {
-      if (!password || !confirmPassword) {
-        Alert.alert('Password required', 'Enter and confirm your new password, or leave both password fields empty.')
-        return
-      }
-
-      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-        Alert.alert(
-          'Invalid password',
-          'Use at least 8 characters, including a letter and a number.',
-        )
-        return
-      }
-
-      if (password !== confirmPassword) {
-        Alert.alert('Password mismatch', 'Your new password and confirmation do not match.')
-        return
-      }
     }
 
     try {
