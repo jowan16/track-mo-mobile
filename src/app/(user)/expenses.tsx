@@ -1206,82 +1206,28 @@ export default function ExpensesScreen() {
             >
               {receiptContext ? (
                 <>
-                  {receiptContext.draft.receipt_type === 'payment' ? (
-                    <View style={styles.receiptReview}>
-                      <Text style={styles.receiptSectionTitle}>Recognized Payment Information</Text>
-                      {[
-                        ['Transaction Status', receiptContext.draft.transaction_status || 'Unknown'],
-                        ['Amount', form.amount && Number.isFinite(Number(form.amount))
-                          ? Number(form.amount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
-                          : 'Unknown'],
-                        ['Merchant', receiptContext.draft.merchant_name || 'Unknown'],
-                        ['Category', availableCategories.find((item) => item.id === form.category_id)?.name || receiptContext.draft.suggestedCategory || 'Unknown'],
-                      ].map(([label, value], index, rows) => (
-                        <View
-                          key={label}
-                          style={[styles.receiptInfoRow, index === rows.length - 1 && styles.receiptInfoLastRow]}
-                        >
-                          <Text style={styles.receiptInfoLabel}>{label}</Text>
-                          <Text style={styles.receiptInfoValue}>{value}</Text>
-                        </View>
-                      ))}
-                      <Text style={styles.receiptEditHint}>
-                        Review the extracted payment details. Unknown values were not present or could not be read; Track Mo will not guess them.
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={styles.receiptReview}>
-                      <Text style={styles.receiptSectionTitle}>Recognized Receipt Information</Text>
-                      {[
-                        ['Receipt Date', receiptContext.draft.receipt_date || 'Unknown'],
-                        ['Amount', form.amount && Number.isFinite(Number(form.amount))
-                          ? Number(form.amount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
-                          : 'Unknown'],
-                        ['Category', availableCategories.find((item) => item.id === form.category_id)?.name || receiptContext.draft.suggestedCategory || 'Unknown'],
-                        ['Items', receiptContext.draft.items.length
-                          ? receiptContext.draft.items.map((item) => item.item_name).join(', ')
-                          : 'No item details detected'],
-                      ].map(([label, value], index, rows) => (
-                        <View
-                          key={label}
-                          style={[styles.receiptInfoRow, index === rows.length - 1 && styles.receiptInfoLastRow]}
-                        >
-                          <Text style={styles.receiptInfoLabel}>{label}</Text>
-                          <Text style={styles.receiptInfoValue}>{value}</Text>
-                        </View>
-                      ))}
-                      <Text style={styles.receiptEditHint}>
-                        Check the detected store, date, amount, items, and category. You can correct the expense details below.
-                      </Text>
-                    </View>
-                  )}
-
-                  {receiptContext.draft.receipt_type === 'payment' ? (
-                    <>
-                      <Text style={styles.fieldLabel}>Bank / payment app</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={receiptContext.draft.bank_name || ''}
-                        onChangeText={(value) => setReceiptContext((current) => current ? ({
-                          ...current,
-                          draft: { ...current.draft, bank_name: value },
-                        }) : current)}
-                        placeholder="Unknown payment provider"
-                        placeholderTextColor="#84908b"
-                        editable={!saving}
-                      />
-                    </>
-                  ) : null}
-
-                  <Text style={styles.fieldLabel}>Store / Merchant</Text>
+                  {/* MERCHANT for normal receipts; BANK for QR payment receipts */}
+                  <Text style={styles.fieldLabel}>
+                    {receiptContext.draft.receipt_type === 'payment' ? 'Bank' : 'Merchant'}
+                  </Text>
                   <TextInput
                     style={styles.input}
-                    value={receiptContext.draft.merchant_name}
+                    value={
+                      receiptContext.draft.receipt_type === 'payment'
+                        ? receiptContext.draft.bank_name || ''
+                        : receiptContext.draft.merchant_name || ''
+                    }
                     onChangeText={(value) => setReceiptContext((current) => current ? ({
                       ...current,
-                      draft: { ...current.draft, merchant_name: value },
+                      draft: current.draft.receipt_type === 'payment'
+                        ? { ...current.draft, bank_name: value }
+                        : { ...current.draft, merchant_name: value },
                     }) : current)}
-                    placeholder="Unknown merchant"
+                    placeholder={
+                      receiptContext.draft.receipt_type === 'payment'
+                        ? 'Unknown bank or payment app'
+                        : 'Unknown merchant'
+                    }
                     placeholderTextColor="#84908b"
                     editable={!saving}
                   />
@@ -1329,8 +1275,8 @@ export default function ExpensesScreen() {
                   />
                   <Text style={styles.fieldHint}>Use YYYY-MM-DD format. Future dates are not allowed.</Text>
 
-                  {/* AMOUNT */}
-                  <Text style={styles.fieldLabel}>Receipt Total Amount (₱)</Text>
+                  {/* RECEIPT TOTAL */}
+                  <Text style={styles.fieldLabel}>Receipt Total (₱)</Text>
                   <TextInput
                     style={styles.input}
                     value={form.amount}
@@ -1341,7 +1287,22 @@ export default function ExpensesScreen() {
                     editable={!saving}
                   />
 
-                  {/* PAYMENT METHOD */}
+                  {/* RECEIPT DETAILS */}
+                  <Text style={styles.fieldLabel}>Receipt Details</Text>
+                  <TextInput
+                    style={[styles.input, styles.noteInput, styles.receiptDetailsInput]}
+                    value={form.note}
+                    onChangeText={(value) => updateForm({ note: value.slice(0, 10000) })}
+                    placeholder="The recognized receipt details will appear here..."
+                    placeholderTextColor="#84908b"
+                    multiline
+                    textAlignVertical="top"
+                    editable={!saving}
+                    maxLength={10000}
+                  />
+                  <Text style={styles.characterCount}>{form.note.length}/10000 characters</Text>
+
+                  {/* PAYMENT METHOD remains available after receipt details */}
                   <Text style={styles.fieldLabel}>Payment Method</Text>
                   <View style={styles.methodChoices}>
                     {METHODS.map((method) => {
@@ -1358,21 +1319,6 @@ export default function ExpensesScreen() {
                       )
                     })}
                   </View>
-
-                  {/* RECEIPT DETAILS */}
-                  <Text style={styles.fieldLabel}>Receipt Details</Text>
-                  <TextInput
-                    style={[styles.input, styles.noteInput, styles.receiptDetailsInput]}
-                    value={form.note}
-                    onChangeText={(value) => updateForm({ note: value.slice(0, 10000) })}
-                    placeholder="The recognized receipt details will appear here..."
-                    placeholderTextColor="#84908b"
-                    multiline
-                    textAlignVertical="top"
-                    editable={!saving}
-                    maxLength={10000}
-                  />
-                  <Text style={styles.characterCount}>{form.note.length}/10000 characters</Text>
                 </>
               ) : (
                 <>
