@@ -1207,44 +1207,76 @@ export default function ExpensesScreen() {
             >
               {receiptContext ? (
                 <>
-                  <View style={styles.receiptReview}>
-                    <Text style={styles.receiptSectionTitle}>Recognized Payment Information</Text>
-                    {[
-                      ['Bank / payment app', receiptContext.draft.bank_name || 'Unknown'],
-                      ['Transaction status', receiptContext.draft.transaction_status || 'Unknown'],
-                      ['Amount', form.amount && Number.isFinite(Number(form.amount))
-                        ? Number(form.amount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
-                        : 'Unknown'],
-                      ['Merchant', receiptContext.draft.merchant_name || 'Unknown'],
-                      ['Category', availableCategories.find((item) => item.id === form.category_id)?.name || receiptContext.draft.suggestedCategory || 'Unknown'],
-                    ].map(([label, value], index, rows) => (
-                      <View
-                        key={label}
-                        style={[styles.receiptInfoRow, index === rows.length - 1 && styles.receiptInfoLastRow]}
-                      >
-                        <Text style={styles.receiptInfoLabel}>{label}</Text>
-                        <Text style={styles.receiptInfoValue}>{value}</Text>
-                      </View>
-                    ))}
-                    <Text style={styles.receiptEditHint}>
-                      Check the extracted information. Unknown values were not present or could not be read from the receipt.
-                    </Text>
-                  </View>
+                  {receiptContext.draft.receipt_type === 'payment' ? (
+                    <View style={styles.receiptReview}>
+                      <Text style={styles.receiptSectionTitle}>Recognized Payment Information</Text>
+                      {[
+                        ['Bank / Payment App', receiptContext.draft.bank_name || 'Unknown'],
+                        ['Transaction Status', receiptContext.draft.transaction_status || 'Unknown'],
+                        ['Amount', form.amount && Number.isFinite(Number(form.amount))
+                          ? Number(form.amount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
+                          : 'Unknown'],
+                        ['Merchant', receiptContext.draft.merchant_name || 'Unknown'],
+                        ['Category', availableCategories.find((item) => item.id === form.category_id)?.name || receiptContext.draft.suggestedCategory || 'Unknown'],
+                      ].map(([label, value], index, rows) => (
+                        <View
+                          key={label}
+                          style={[styles.receiptInfoRow, index === rows.length - 1 && styles.receiptInfoLastRow]}
+                        >
+                          <Text style={styles.receiptInfoLabel}>{label}</Text>
+                          <Text style={styles.receiptInfoValue}>{value}</Text>
+                        </View>
+                      ))}
+                      <Text style={styles.receiptEditHint}>
+                        Review the extracted payment details. Unknown values were not present or could not be read; Track Mo will not guess them.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.receiptReview}>
+                      <Text style={styles.receiptSectionTitle}>Recognized Receipt Information</Text>
+                      {[
+                        ['Store / Merchant', receiptContext.draft.merchant_name || 'Unknown'],
+                        ['Receipt Date', receiptContext.draft.receipt_date || 'Unknown'],
+                        ['Amount', form.amount && Number.isFinite(Number(form.amount))
+                          ? Number(form.amount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
+                          : 'Unknown'],
+                        ['Category', availableCategories.find((item) => item.id === form.category_id)?.name || receiptContext.draft.suggestedCategory || 'Unknown'],
+                        ['Items', receiptContext.draft.items.length
+                          ? receiptContext.draft.items.map((item) => item.item_name).join(', ')
+                          : 'No item details detected'],
+                      ].map(([label, value], index, rows) => (
+                        <View
+                          key={label}
+                          style={[styles.receiptInfoRow, index === rows.length - 1 && styles.receiptInfoLastRow]}
+                        >
+                          <Text style={styles.receiptInfoLabel}>{label}</Text>
+                          <Text style={styles.receiptInfoValue}>{value}</Text>
+                        </View>
+                      ))}
+                      <Text style={styles.receiptEditHint}>
+                        Check the detected store, date, amount, items, and category. You can correct the expense details below.
+                      </Text>
+                    </View>
+                  )}
 
-                  <Text style={styles.fieldLabel}>Bank / payment app</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={receiptContext.draft.bank_name || ''}
-                    onChangeText={(value) => setReceiptContext((current) => current ? ({
-                      ...current,
-                      draft: { ...current.draft, bank_name: value },
-                    }) : current)}
-                    placeholder="Unknown payment provider"
-                    placeholderTextColor="#84908b"
-                    editable={!saving}
-                  />
+                  {receiptContext.draft.receipt_type === 'payment' ? (
+                    <>
+                      <Text style={styles.fieldLabel}>Bank / payment app</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={receiptContext.draft.bank_name || ''}
+                        onChangeText={(value) => setReceiptContext((current) => current ? ({
+                          ...current,
+                          draft: { ...current.draft, bank_name: value },
+                        }) : current)}
+                        placeholder="Unknown payment provider"
+                        placeholderTextColor="#84908b"
+                        editable={!saving}
+                      />
+                    </>
+                  ) : null}
 
-                  <Text style={styles.fieldLabel}>Merchant</Text>
+                  <Text style={styles.fieldLabel}>Store / Merchant</Text>
                   <TextInput
                     style={styles.input}
                     value={receiptContext.draft.merchant_name}
