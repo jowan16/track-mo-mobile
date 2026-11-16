@@ -19,6 +19,17 @@ describe('receipt parsing', () => {
     expect(parsed.receipt_type).toBe('merchant')
   })
 
+  it('extracts merchant and amount from a QR Ph EMV payload without inventing bank or payment status', () => {
+    const payload = '0002010102125204581253036085406500.005802PH5912THE SM STORE6006MANILA6304ABCD'
+    const parsed = parseReceiptQR(payload)
+
+    expect(parsed.merchant_name).toBe('THE SM STORE')
+    expect(parsed.total).toBe(500)
+    expect(parsed.bank_name).toBe('')
+    expect(parsed.transaction_status).toBe('')
+    expect(parsed.receipt_type).toBe('merchant')
+  })
+
   it('recognizes a successful payment QR and normalizes bank aliases', () => {
     const parsed = parseReceiptQR(JSON.stringify({ bank: 'BDO', amount: '500', status: 'SUCCESS', transactionId: 'abc' }))
     expect(parsed.receipt_type).toBe('payment')
