@@ -34,7 +34,7 @@ describe('receipt parsing', () => {
       'Amount Paid: PHP 500.00',
       'Reference No: 123456789',
       '2026-11-17',
-    ].join('\\n'))
+    ].join('\n'))
 
     expect(parsed.bank_name).toBe('BDO Pay')
     expect(parsed.transaction_status).toBe('Successful')
@@ -58,7 +58,7 @@ describe('receipt parsing', () => {
   })
 
   it('recognizes failed payment status from OCR text', () => {
-    const parsed = parseReceiptText('GCash\\nPayment Failed\\nAmount: PHP 75.00')
+    const parsed = parseReceiptText('GCash\nPayment Failed\nAmount: PHP 75.00')
     expect(parsed.bank_name).toBe('GCash')
     expect(parsed.transaction_status).toBe('Failed')
   })
