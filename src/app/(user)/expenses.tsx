@@ -229,7 +229,7 @@ export default function ExpensesScreen() {
   const styles = makeStyles(dark, COLORS)
 
   const { profile } = useAuth()
-  const params = useLocalSearchParams<{ openForm?: string; category?: string; receiptDraft?: string; receiptPath?: string; receiptSource?: string; receiptModel?: string; receiptRawText?: string }>()
+  const params = useLocalSearchParams<{ openForm?: string; category?: string; receiptDraft?: string; receiptPath?: string; receiptSource?: string; receiptModel?: string; receiptRawText?: string; receiptQrPayload?: string }>()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [availableCategories, setAvailableCategories] = useState<Category[]>([])
@@ -253,7 +253,7 @@ export default function ExpensesScreen() {
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const [budgetWarning, setBudgetWarning] = useState(false)
-  const [receiptContext, setReceiptContext] = useState<{ path: string | null; source: 'image' | 'qr'; draft: import('@/services/receiptParser').ParsedReceipt; model: string; rawText: string; detections: unknown[] } | null>(null)
+  const [receiptContext, setReceiptContext] = useState<{ path: string | null; source: 'image' | 'qr'; draft: import('@/services/receiptParser').ParsedReceipt; model: string; rawText: string; qrPayload: string; detections: unknown[] } | null>(null)
 
   // ------------------------------------------------
   // LOAD EXPENSES, TRACKED CATEGORIES AND BUDGETS
@@ -512,6 +512,7 @@ export default function ExpensesScreen() {
         draft,
         model: params.receiptModel || 'unknown',
         rawText: params.receiptRawText || '',
+        qrPayload: params.receiptQrPayload || '',
         detections: [],
       })
       setForm({
@@ -530,9 +531,9 @@ export default function ExpensesScreen() {
         error instanceof Error ? error.message : 'The scanned receipt could not be opened.',
       )
     } finally {
-      router.setParams({ receiptDraft: undefined, receiptPath: undefined, receiptSource: undefined, receiptModel: undefined, receiptRawText: undefined })
+      router.setParams({ receiptDraft: undefined, receiptPath: undefined, receiptSource: undefined, receiptModel: undefined, receiptRawText: undefined, receiptQrPayload: undefined })
     }
-  }, [loading, params.receiptDraft, params.receiptPath, params.receiptSource, params.receiptModel, params.receiptRawText, availableCategories])
+  }, [loading, params.receiptDraft, params.receiptPath, params.receiptSource, params.receiptModel, params.receiptRawText, params.receiptQrPayload, availableCategories])
 
   const openEdit = (expense: Expense) => {
     setEditing(expense)
@@ -686,9 +687,7 @@ export default function ExpensesScreen() {
         if (receiptContext && !editing) {
           return await supabase.rpc('save_receipt_expense', {
             p_storage_path: receiptContext.path,
-            p_merchant_name: receiptContext.source === 'image' || receiptContext.draft.receipt_type !== 'payment'
-              ? receiptContext.draft.merchant_name.trim() || null
-              : null,
+            p_merchant_name: receiptContext.draft.merchant_name.trim() || null,
             p_receipt_date: form.spent_on,
             p_subtotal: receiptContext.draft.subtotal,
             p_tax: receiptContext.draft.tax,
@@ -709,10 +708,9 @@ export default function ExpensesScreen() {
               source: receiptContext.source,
               model: receiptContext.model,
               raw_text: receiptContext.rawText,
-              qr_payload: receiptContext.source === 'qr' ? receiptContext.rawText : null,
-              bank_name: receiptContext.source === 'qr' && receiptContext.draft.receipt_type === 'payment'
-                ? (receiptContext.draft.bank_name?.trim() || null)
-                : null,
+              qr_payload: receiptContext.qrPayload || null,
+              bank_name: receiptContext.draft.bank_name?.trim() || null,
+              transaction_status: receiptContext.draft.transaction_status || null,
               confirmed_at: new Date().toISOString(),
             },
           })
@@ -1209,40 +1207,55 @@ export default function ExpensesScreen() {
             >
               {receiptContext ? (
                 <>
-                  {receiptContext.source === 'qr' && receiptContext.draft.receipt_type === 'payment' ? (
-                    <>
-                      <Text style={styles.fieldLabel}>Bank</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={receiptContext.draft.bank_name || ''}
-                        onChangeText={(value) => setReceiptContext((current) => current ? ({
-                          ...current,
-                          draft: { ...current.draft, bank_name: value },
-                        }) : current)}
-                        placeholder="Not identified — enter bank name"
-                        placeholderTextColor="#84908b"
-                        editable={!saving}
-                      />
-                      <Text style={styles.fieldHint}>
-                        This QR was identified as a payment confirmation. Verify the detected bank before saving.
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={styles.fieldLabel}>Merchant</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={receiptContext.draft.merchant_name}
-                        onChangeText={(value) => setReceiptContext((current) => current ? ({
-                          ...current,
-                          draft: { ...current.draft, merchant_name: value },
-                        }) : current)}
-                        placeholder="Enter merchant name"
-                        placeholderTextColor="#84908b"
-                        editable={!saving}
-                      />
-                    </>
-                  )}
+                  <View style={styles.receiptReview}>
+                    <Text style={styles.receiptSectionTitle}>Recognized Payment Information</Text>
+                    {[
+                      ['Bank / payment app', receiptContext.draft.bank_name || 'Unknown'],
+                      ['Transaction status', receiptContext.draft.transaction_status || 'Unknown'],
+                      ['Amount', form.amount && Number.isFinite(Number(form.amount))
+                        ? Number(form.amount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
+                        : 'Unknown'],
+                      ['Merchant', receiptContext.draft.merchant_name || 'Unknown'],
+                      ['Category', availableCategories.find((item) => item.id === form.category_id)?.name || receiptContext.draft.suggestedCategory || 'Unknown'],
+                    ].map(([label, value], index, rows) => (
+                      <View
+                        key={label}
+                        style={[styles.receiptInfoRow, index === rows.length - 1 && styles.receiptInfoLastRow]}
+                      >
+                        <Text style={styles.receiptInfoLabel}>{label}</Text>
+                        <Text style={styles.receiptInfoValue}>{value}</Text>
+                      </View>
+                    ))}
+                    <Text style={styles.receiptEditHint}>
+                      Check the extracted information. Unknown values were not present or could not be read from the receipt.
+                    </Text>
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Bank / payment app</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={receiptContext.draft.bank_name || ''}
+                    onChangeText={(value) => setReceiptContext((current) => current ? ({
+                      ...current,
+                      draft: { ...current.draft, bank_name: value },
+                    }) : current)}
+                    placeholder="Unknown payment provider"
+                    placeholderTextColor="#84908b"
+                    editable={!saving}
+                  />
+
+                  <Text style={styles.fieldLabel}>Merchant</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={receiptContext.draft.merchant_name}
+                    onChangeText={(value) => setReceiptContext((current) => current ? ({
+                      ...current,
+                      draft: { ...current.draft, merchant_name: value },
+                    }) : current)}
+                    placeholder="Unknown merchant"
+                    placeholderTextColor="#84908b"
+                    editable={!saving}
+                  />
 
                   {/* CATEGORY */}
                   <Text style={styles.fieldLabel}>Category</Text>
