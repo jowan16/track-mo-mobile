@@ -14,6 +14,22 @@ describe('receipt parsing', () => {
     expect(parseReceiptText('Store\nSUBTOTAL 125.00').total).toBeNull()
   })
 
+  it('keeps an ordinary store receipt in the normal receipt flow', () => {
+    const parsed = parseReceiptText([
+      'THE SM STORE',
+      'Date: 2026-11-17',
+      'Cotton Shirt 500.00',
+      'TOTAL PHP 500.00',
+      'Cash',
+    ].join('\n'))
+
+    expect(parsed.receipt_type).toBe('merchant')
+    expect(parsed.merchant_name).toMatch(/SM Store/i)
+    expect(parsed.receipt_date).toBe('2026-11-17')
+    expect(parsed.total).toBe(500)
+    expect(parsed.suggestedCategory).toBe('Shopping')
+  })
+
   it('classifies an ordinary merchant QR as a merchant receipt', () => {
     const parsed = parseReceiptQR('https://merchant.example/pay?amount=50')
     expect(parsed.receipt_type).toBe('merchant')
