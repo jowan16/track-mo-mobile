@@ -25,4 +25,41 @@ describe('receipt parsing', () => {
     expect(parsed.bank_name).toBe('BDO Unibank')
     expect(parsed.total).toBe(500)
   })
+
+  it('extracts payment provider, successful status, amount, and merchant from a photographed receipt', () => {
+    const parsed = parseReceiptText([
+      'BDO Pay',
+      'PAYMENT SUCCESSFUL',
+      'THE SM STORE',
+      'Amount Paid: PHP 500.00',
+      'Reference No: 123456789',
+      '2026-11-17',
+    ].join('\\n'))
+
+    expect(parsed.bank_name).toBe('BDO Pay')
+    expect(parsed.transaction_status).toBe('Successful')
+    expect(parsed.total).toBe(500)
+    expect(parsed.merchant_name).toMatch(/SM Store/i)
+    expect(parsed.receipt_type).toBe('payment')
+    expect(parsed.suggestedCategory).toBe('Shopping')
+  })
+
+  it('does not label a pending QR payment as successful', () => {
+    const parsed = parseReceiptQR(JSON.stringify({
+      bank: 'Maya',
+      amount: '125.50',
+      status: 'PENDING',
+      transactionId: 'pending-123',
+    }))
+
+    expect(parsed.bank_name).toBe('Maya')
+    expect(parsed.transaction_status).toBe('Pending')
+    expect(parsed.receipt_type).toBe('payment')
+  })
+
+  it('recognizes failed payment status from OCR text', () => {
+    const parsed = parseReceiptText('GCash\\nPayment Failed\\nAmount: PHP 75.00')
+    expect(parsed.bank_name).toBe('GCash')
+    expect(parsed.transaction_status).toBe('Failed')
+  })
 })
