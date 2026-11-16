@@ -38,6 +38,7 @@ export default function ScanReceiptScreen() {
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraPermission, requestCameraPermission] = useCameraPermissions()
   const cameraRef = useRef<CameraView>(null)
+  const liveQrPayload = useRef('')
 
   const openReceiptCamera = async () => {
     try {
@@ -49,6 +50,7 @@ export default function ScanReceiptScreen() {
         return
       }
       setCameraReady(false)
+      liveQrPayload.current = ''
       setErrorMessage('')
       setCameraOpen(true)
     } catch {
@@ -75,7 +77,7 @@ export default function ScanReceiptScreen() {
         duration: null,
       } as ImagePicker.ImagePickerAsset
       setImage(asset)
-      await uploadAndRecognize(asset)
+      await uploadAndRecognize(asset, liveQrPayload.current)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to capture this receipt.')
     }
@@ -117,7 +119,7 @@ export default function ScanReceiptScreen() {
     }
   }
 
-  const uploadAndRecognize = async (asset: ImagePicker.ImagePickerAsset) => {
+  const uploadAndRecognize = async (asset: ImagePicker.ImagePickerAsset, previewQrPayload = '') => {
     if (!profile?.id) {
       setErrorMessage('Please sign in again before scanning a receipt.')
       return
@@ -141,7 +143,7 @@ export default function ScanReceiptScreen() {
         }),
       ])
 
-      const qrPayload = qrResults.find((result) => result.data?.trim())?.data?.trim() ?? ''
+      const qrPayload = qrResults.find((result) => result.data?.trim())?.data?.trim() ?? previewQrPayload
       const ocrText = ocrResult?.text?.trim() ?? ''
       if (!qrPayload && !ocrText) {
         throw new Error('No readable QR code or receipt text was detected. Try a clearer, closer photo.')
@@ -254,6 +256,14 @@ export default function ScanReceiptScreen() {
                 style={styles.qrCamera}
                 facing="back"
                 onCameraReady={() => setCameraReady(true)}
+                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                onBarcodeScanned={(result) => {
+                  // Cache a QR detected in the same camera preview. Wait for
+                  // the user to capture the receipt before opening the review.
+                  if (!liveQrPayload.current && result.data?.trim()) {
+                    liveQrPayload.current = result.data.trim()
+                  }
+                }}
               />
             </View>
             <Text style={styles.qrFooter}>After capture, Track Mo checks the image for a QR code and reads the receipt text. No separate scanner is needed.</Text>
