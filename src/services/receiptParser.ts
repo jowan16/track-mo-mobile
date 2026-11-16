@@ -94,7 +94,7 @@ const merchantFromLines = (lines: string[]) => {
   const header = lines.slice(0, 18).join(' ')
   const known = header.match(/\b(la\s+nueva\s+pharmacy|watsons|mercury\s+drug|rose\s+pharmacy|southstar\s+drug|generika|the\s+generic\s+pharmacy|tgp|medexpress|sm\s+(?:supermarket|hypermarket|store)|puregold|robinsons(?:\s+supermarket)?|gaisano|7[\s-]?eleven|alfamart|savemore|metro\s+supermarket|rustan'?s|jollibee|mcdonald'?s|mang\s+inasal|chowking|cebuana|lbc)\b/i)
   if (known) return known[0].replace(/\s+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
-  const ignored = /\b(receipt|invoice|sales|serial|tin|cashier|terminal|date|time|address|transaction|customer|thank|bir|pos)\b/i
+  const ignored = /\b(receipt|invoice|sales|serial|tin|cashier|terminal|date|time|address|transaction|customer|thank|bir|pos|gcash|maya|paymaya|bdo|bpi|metrobank|landbank|unionbank|rcbc|gotyme|seabank|cimb|tonik)\b/i
   return lines.slice(0, 8).find((line) => (line.match(/[A-Za-z]/g) ?? []).length >= 5 && line.length <= 70 && !ignored.test(line) && !/\d{5,}/.test(line)) ?? ''
 }
 
@@ -539,7 +539,7 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
     'paymentreference', 'transferid',
   ])
   const statusValue = firstText(['paymentstatus', 'transactionstatus', 'status']).toLowerCase()
-  const explicitStatus = /^(success|successful|completed|complete|paid|approved|settled)$/i.test(statusValue) ? 'Successful'
+  const explicitStatus: ParsedReceipt['transaction_status'] = /^(success|successful|completed|complete|paid|approved|settled)$/i.test(statusValue) ? 'Successful'
     : /^(pending|processing|in progress)$/i.test(statusValue) ? 'Pending'
     : /^(failed|declined|rejected|cancelled|canceled|reversed)$/i.test(statusValue) ? 'Failed'
     : ''
