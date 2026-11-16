@@ -192,7 +192,7 @@ export default function ScanReceiptScreen() {
           </View>
           <Text style={styles.title}>Turn receipts into expenses</Text>
           <Text style={styles.description}>
-            Take a photo or choose a receipt image, then crop it to include the full receipt. Track Mo will read it and show the recognized text in Receipt Details for review.
+            Scan a QR payment receipt, take a photo, or choose a receipt image. Track Mo will recognize the available details and let you review them before saving the expense.
           </Text>
         </View>
 
@@ -200,6 +200,13 @@ export default function ScanReceiptScreen() {
           <Text style={styles.selectionTitle}>Add your receipt</Text>
           <Text style={styles.cardDescription}>Keep the receipt clear and well lit. Crop the image to include the entire receipt, especially its date and total.</Text>
 
+          <Pressable
+            style={[styles.qrButton, (processing || qrScanning) && styles.disabled]}
+            onPress={() => void startQrScanning()}
+            disabled={processing || qrScanning}
+          >
+            <Text style={styles.qrButtonText}>▦  Scan QR Payment Receipt</Text>
+          </Pressable>
           <Pressable
             style={[styles.primaryButton, processing && styles.disabled]}
             onPress={() => void chooseImage('camera')}
