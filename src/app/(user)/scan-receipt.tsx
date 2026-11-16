@@ -1,6 +1,6 @@
 import { useAppTheme } from '@/context/ThemeContext'
 import { useRef, useState } from 'react'
-import { CameraView, useCameraPermissions } from 'expo-camera'
+import { Camera, CameraView, useCameraPermissions } from 'expo-camera'
 import {
   ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet,
   Text, View,
@@ -38,7 +38,6 @@ export default function ScanReceiptScreen() {
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraPermission, requestCameraPermission] = useCameraPermissions()
   const cameraRef = useRef<CameraView>(null)
-  const qrHandled = useRef(false)
 
   const openReceiptCamera = async () => {
     try {
@@ -49,7 +48,6 @@ export default function ScanReceiptScreen() {
         Alert.alert('Permission required', 'Allow camera access to take a receipt photo.')
         return
       }
-      qrHandled.current = false
       setCameraReady(false)
       setErrorMessage('')
       setCameraOpen(true)
@@ -80,35 +78,6 @@ export default function ScanReceiptScreen() {
       await uploadAndRecognize(asset)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to capture this receipt.')
-    }
-  }
-
-  const handleQrScanned = (result: { data: string }) => {
-    if (qrHandled.current || !result.data?.trim()) return
-    qrHandled.current = true
-    setCameraOpen(false)
-
-    try {
-      const draft = parseReceiptQR(result.data)
-      if (!draft.merchant_name && !draft.bank_name && draft.total === null && !draft.receipt_date && draft.items.length === 0) {
-        Alert.alert(
-          'No receipt details found',
-          'This QR code does not contain readable merchant or transaction details. Try scanning the printed receipt or enter the expense manually.',
-        )
-        return
-      }
-
-      router.push({
-        pathname: '/(user)/expenses',
-        params: {
-          receiptDraft: JSON.stringify(draft),
-          receiptSource: 'qr',
-          receiptModel: 'qr-code',
-          receiptRawText: result.data,
-        },
-      })
-    } catch {
-      Alert.alert('Unable to read QR code', 'This QR code could not be interpreted as receipt information. Please try again.')
     }
   }
 
@@ -158,34 +127,60 @@ export default function ScanReceiptScreen() {
     setErrorMessage('')
     try {
       const uploaded = await uploadReceipt(profile.id, asset)
-      const result = await recognizeReceipt(uploaded.path)
 
-      // Temporary OCR diagnostics: capture the provider's exact text and
-      // word boxes so we can distinguish OCR recognition errors from parsing.
-      console.log('[Receipt OCR] model:', result.model)
-      console.log('[Receipt OCR] raw text:\n' + result.text)
-      console.log('[Receipt OCR] detections:', JSON.stringify(
-        (result.detections ?? []).map((detection) => ({
-          text: detection.text_prediction?.text ?? '',
-          confidence: detection.text_prediction?.confidence ?? null,
-          bounding_box: detection.bounding_box ?? null,
-        })),
-        null,
-        2,
-      ))
+      // Decode QR from the captured/selected image itself. This supports
+      // printed QR payment receipts without requiring a separate live scanner.
+      const [qrResults, ocrResult] = await Promise.all([
+        Camera.scanFromURLAsync(asset.uri, ['qr']).catch((error) => {
+          console.warn('[Receipt QR] image decoding failed:', error)
+          return []
+        }),
+        recognizeReceipt(uploaded.path).catch((error) => {
+          console.warn('[Receipt OCR] recognition failed:', error)
+          return null
+        }),
+      ])
 
-      if (!result.text?.trim()) {
-        throw new Error('No readable text was detected. Try a clearer receipt photo.')
+      const qrPayload = qrResults.find((result) => result.data?.trim())?.data?.trim() ?? ''
+      const ocrText = ocrResult?.text?.trim() ?? ''
+      if (!qrPayload && !ocrText) {
+        throw new Error('No readable QR code or receipt text was detected. Try a clearer, closer photo.')
       }
 
-      const draft = parseReceiptText(result.text)
+      const qrDraft = qrPayload ? parseReceiptQR(qrPayload) : null
+      const textDraft = ocrText ? parseReceiptText(ocrText) : null
+      const baseDraft = textDraft ?? qrDraft!
+      const draft = {
+        ...baseDraft,
+        merchant_name: textDraft?.merchant_name || qrDraft?.merchant_name || '',
+        receipt_date: textDraft?.receipt_date || qrDraft?.receipt_date || '',
+        total: textDraft?.total ?? qrDraft?.total ?? null,
+        suggestedCategory:
+          textDraft?.suggestedCategory && textDraft.suggestedCategory !== 'Others'
+            ? textDraft.suggestedCategory
+            : qrDraft?.suggestedCategory || textDraft?.suggestedCategory || 'Others',
+        payment_method: textDraft?.payment_method || qrDraft?.payment_method || '',
+        bank_name: textDraft?.bank_name || qrDraft?.bank_name || '',
+        transaction_status: textDraft?.transaction_status || qrDraft?.transaction_status || '',
+        receipt_type:
+          textDraft?.receipt_type === 'payment' || qrDraft?.receipt_type === 'payment'
+            ? 'payment' as const
+            : 'merchant' as const,
+      }
+
+      console.log('[Receipt Recognition] source:', qrPayload ? 'photo+qr' : 'photo+ocr')
+      console.log('[Receipt Recognition] provider:', draft.bank_name || 'Unknown')
+      console.log('[Receipt Recognition] status:', draft.transaction_status || 'Unknown')
+
       router.push({
         pathname: '/(user)/expenses',
         params: {
           receiptPath: uploaded.path,
           receiptDraft: JSON.stringify(draft),
-          receiptModel: result.model || 'unknown',
-          receiptRawText: result.text,
+          receiptSource: qrPayload ? 'qr' : 'image',
+          receiptModel: ocrResult?.model || (qrPayload ? 'qr-code' : 'unknown'),
+          receiptRawText: ocrText || qrPayload,
+          receiptQrPayload: qrPayload,
         },
       })
     } catch (error) {
@@ -244,7 +239,7 @@ export default function ScanReceiptScreen() {
             <View style={styles.qrHeader}>
               <View style={styles.qrHeaderText}>
                 <Text style={styles.previewTitle}>Take Receipt Photo</Text>
-                <Text style={styles.qrDescription}>Point at a printed receipt or payment QR code. QR details are detected automatically.</Text>
+                <Text style={styles.qrDescription}>Frame the full receipt or payment confirmation, then capture it. Track Mo will check the photo for a QR code and read its printed text.</Text>
               </View>
               <Pressable
                 style={styles.qrCloseButton}
@@ -259,11 +254,9 @@ export default function ScanReceiptScreen() {
                 style={styles.qrCamera}
                 facing="back"
                 onCameraReady={() => setCameraReady(true)}
-                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-                onBarcodeScanned={handleQrScanned}
               />
             </View>
-            <Text style={styles.qrFooter}>If a QR payment receipt is recognized, its details open automatically. Otherwise, take a photo for text recognition.</Text>
+            <Text style={styles.qrFooter}>After capture, Track Mo checks the image for a QR code and reads the receipt text. No separate scanner is needed.</Text>
             <Pressable
               style={[styles.primaryButton, (!cameraReady || processing) && styles.disabled]}
               onPress={() => void captureReceiptPhoto()}
