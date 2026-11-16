@@ -9,6 +9,7 @@ import {
 
 import { AdminShell, adminColors } from '@/components/admin/AdminShell'
 import { supabase } from '@/services/supabase'
+import { filterAuditActions, manilaDateKey, paginate, type AuditFilter } from '@/utils/adminHelpers'
 
 type AuditRow = {
   id: number
@@ -17,19 +18,8 @@ type AuditRow = {
   action: string
   created_at: string
 }
-type Filter = 'all' | 'users' | 'categories'
+type Filter = AuditFilter
 const PAGE_SIZE = 10
-
-const manilaDateKey = (value: Date) => {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(value)
-  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ''
-  return `${part('year')}-${part('month')}-${part('day')}`
-}
 
 export default function AdminAuditScreen() {
   const [logs, setLogs] = useState<AuditRow[]>([])
@@ -61,16 +51,12 @@ export default function AdminAuditScreen() {
 
   useEffect(() => { void loadLogs() }, [loadLogs])
 
-  const filtered = useMemo(() => logs.filter((log) =>
-    filter === 'all' ||
-    (filter === 'users' && /user|admin|password|account/i.test(log.action)) ||
-    (filter === 'categories' && /categor/i.test(log.action))
-  ), [logs, filter])
+  const filtered = useMemo(() => filterAuditActions(logs, filter), [logs, filter])
 
   const today = manilaDateKey(new Date())
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const visible = paginate(filtered, page, PAGE_SIZE)
 
   return (
     <AdminShell title="Audit log" subtitle="Review recorded administrative actions. Audit entries cannot be edited or deleted.">

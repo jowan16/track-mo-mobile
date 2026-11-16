@@ -17,6 +17,7 @@ import { UserPageHeader } from '@/components/user-navigation'
 import { CategoryIcon } from '@/components/CategoryIcon'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
+import { archiveDateLabel as dateLabel, archiveMonthLabel as monthLabel } from '@/utils/userHelpers'
 
 type Category = {
   id: number
@@ -74,22 +75,6 @@ function peso(value: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`
-}
-
-function dateLabel(value: string) {
-  const date = new Date(`${value}T00:00:00`)
-  return date.toLocaleDateString('en-PH', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
-function monthLabel(month: number, year: number) {
-  return new Date(year, month - 1, 1).toLocaleDateString('en-PH', {
-    month: 'long',
-    year: 'numeric',
-  })
 }
 
 export default function ArchiveScreen() {

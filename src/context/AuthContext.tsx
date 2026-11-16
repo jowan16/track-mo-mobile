@@ -12,6 +12,7 @@ import {
 } from 'react'
 
 import { supabase } from '@/services/supabase'
+import { normalizeAppRole } from '@/utils/authHelpers'
 import type { Profile } from '@/types/profile'
 
 interface AuthContextType {
@@ -102,9 +103,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
     }
 
-    const role = result.role?.toLowerCase()
+    const role = normalizeAppRole(result.role)
 
-    if (role !== 'admin' && role !== 'user') {
+    if (!role) {
       throw new Error(
         'Your account has an invalid role. Please contact the administrator.',
       )

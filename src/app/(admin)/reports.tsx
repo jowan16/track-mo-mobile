@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -15,12 +15,22 @@ import * as FileSystem from 'expo-file-system/legacy'
 import { AdminShell, adminColors } from '@/components/admin/AdminShell'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
+import { escapeHtml as escapeAdminReportHtml } from '@/utils/adminHelpers'
+import {
+  categorySummariesFromQuery,
+  registeredAccountCount,
+  reportStatsFromRpc,
+  topCategoriesFromRpc,
+  userGrowthFromRpc,
+  type GrowthPoint,
+  type CategorySummary,
+  type ReportStats,
+  type TopCategory,
+} from '@/utils/adminDashboardCounts'
 
 type Period = 'this' | 'last' | 'year'
-type ReportStats = { new_users: number; expenses_count: number; active_users: number }
-type TopCategory = { category_id: number; uses: number }
-type Growth = { label: string; total: number }
-type Category = { id: number; name: string; icon: string; color: string }
+type Growth = GrowthPoint
+type Category = CategorySummary
 
 function manilaDateParts() {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -52,12 +62,6 @@ function formatReportDate(value: string) {
   }).format(new Date(Date.UTC(year, month - 1, day, 12)))
 }
 
-function escapeHtml(value: string) {
-  return value.replace(/[&<>\"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;',
-  })[character] || character)
-}
-
 export default function AdminReportsScreen() {
   const { profile } = useAuth()
   const [period, setPeriod] = useState<Period>('this')
@@ -65,10 +69,13 @@ export default function AdminReportsScreen() {
   const [top, setTop] = useState<TopCategory[]>([])
   const [growth, setGrowth] = useState<Growth[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [totalUsers, setTotalUsers] = useState(0)
+  const [totalUsers, setTotalUsers] = useState<number | null>(null)
+  const [reportReady, setReportReady] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const retryLock = useRef(false)
 
   const today = manilaDateParts()
   const year = today.year
@@ -93,41 +100,73 @@ export default function AdminReportsScreen() {
   useEffect(() => {
     let active = true
     const load = async () => {
+      retryLock.current = false
       setLoading(true)
       setError('')
-      const [s, t, g, c, users] = await Promise.all([
-        supabase.rpc('admin_period_stats', { p_start: start, p_end: end }),
-        supabase.rpc('admin_top_categories', { p_start: start, p_end: end }),
-        supabase.rpc('admin_user_growth'),
-        supabase.from('categories').select('id, name, icon, color'),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'user'),
-      ])
-      const failure = s.error || t.error || g.error || c.error || users.error
-      if (failure) {
-        if (active) setError(failure.message)
-      } else if (active) {
-        setStats((s.data?.[0] ?? null) as ReportStats | null)
-        setTop((t.data ?? []) as TopCategory[])
-        setGrowth((g.data ?? []) as Growth[])
-        setCategories((c.data ?? []) as Category[])
-        setTotalUsers(users.count ?? 0)
+      setReportReady(false)
+      setStats(null)
+      setTotalUsers(null)
+      setTop([])
+      setGrowth([])
+      setCategories([])
+      try {
+        const [s, t, g, c, accountStats] = await Promise.all([
+          supabase.rpc('admin_period_stats', { p_start: start, p_end: end }),
+          supabase.rpc('admin_top_categories', { p_start: start, p_end: end }),
+          supabase.rpc('admin_user_growth'),
+          supabase.from('categories').select('id, name, icon, color'),
+          supabase.rpc('admin_stats'),
+        ])
+        if (!active) return
+        const failure = s.error || t.error || g.error || c.error || accountStats.error
+        if (failure) {
+          setError(failure.message)
+        } else {
+          const reportStats = reportStatsFromRpc(s.data)
+          const accountCount = registeredAccountCount(accountStats.data)
+          const topCategories = topCategoriesFromRpc(t.data)
+          const growthPoints = userGrowthFromRpc(g.data)
+          const categorySummaries = categorySummariesFromQuery(c.data)
+          if (reportStats === null || accountCount === null || topCategories === null || growthPoints === null || categorySummaries === null) {
+            setError('Unable to load system reports. The server returned invalid report data.')
+          } else {
+            setStats(reportStats)
+            setTop(topCategories)
+            setGrowth(growthPoints)
+            setCategories(categorySummaries)
+            setTotalUsers(accountCount)
+            setReportReady(true)
+          }
+        }
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : 'Unable to load system reports.')
+      } finally {
+        if (active) {
+          setLoading(false)
+          retryLock.current = false
+        }
       }
-      if (active) setLoading(false)
     }
     void load()
     return () => { active = false }
-  }, [start, end])
+  }, [start, end, retryCount])
+
+  const retryReport = () => {
+    if (loading || retryLock.current) return
+    retryLock.current = true
+    setRetryCount((value) => value + 1)
+  }
 
   const categoryById = new Map(categories.map((category) => [category.id, category]))
-  const cards = [
-    { label: 'New users', value: stats?.new_users ?? 0 },
-    { label: 'Expenses recorded', value: stats?.expenses_count ?? 0 },
-    { label: 'Active users', value: stats?.active_users ?? 0 },
-  ]
+  const cards = stats ? [
+    { label: 'New users', value: stats.new_users },
+    { label: 'Expenses recorded', value: stats.expenses_count },
+    { label: 'Active users', value: stats.active_users },
+  ] : []
   const maxGrowth = Math.max(1, ...growth.map((item) => item.total))
 
   const exportCsv = async () => {
-    if (!stats || exporting) return
+    if (!reportReady || !stats || totalUsers === null || exporting) return
     setExporting('csv')
     try {
       const inclusiveEnd = addCalendarDays(
@@ -158,7 +197,7 @@ export default function AdminReportsScreen() {
         [period === 'this' ? 'Expenses recorded this month' : period === 'last' ? 'Expenses recorded last month' : 'Expenses recorded this year', stats.expenses_count],
         [],
         ['USER GROWTH STATISTICS'],
-        ['Month', 'Cumulative registered user accounts'],
+        ['Month', 'Cumulative regular-user profiles'],
         ...growth.map((item) => [item.label, item.total]),
         [],
         ['EXPENSE STATISTICS'],
@@ -201,7 +240,7 @@ export default function AdminReportsScreen() {
   }
 
   const exportPdf = async () => {
-    if (!stats || exporting) return
+    if (!reportReady || !stats || totalUsers === null || exporting) return
     setExporting('pdf')
     try {
       const inclusiveEnd = addCalendarDays(
@@ -219,10 +258,10 @@ export default function AdminReportsScreen() {
       const categoryRows = top.map((item) => {
         const name = categoryById.get(item.category_id)?.name ?? 'Category'
         const percentage = categoryUsageTotal > 0 ? (item.uses / categoryUsageTotal) * 100 : 0
-        return `<tr><td>${escapeHtml(name)}</td><td class="number">${item.uses.toLocaleString()}</td><td class="number">${percentage.toFixed(1)}%</td></tr>`
+        return `<tr><td>${escapeAdminReportHtml(name)}</td><td class="number">${item.uses.toLocaleString()}</td><td class="number">${percentage.toFixed(1)}%</td></tr>`
       }).join('')
       const growthRows = growth.map((item) =>
-        `<tr><td>${escapeHtml(item.label)}</td><td class="number">${item.total.toLocaleString()}</td></tr>`,
+        `<tr><td>${escapeAdminReportHtml(item.label)}</td><td class="number">${item.total.toLocaleString()}</td></tr>`,
       ).join('')
       const newUserLabel = period === 'this' ? 'New users this month' : period === 'last' ? 'New users last month' : 'New users this year'
       const expenseLabel = period === 'this' ? 'Expenses recorded this month' : period === 'last' ? 'Expenses recorded last month' : 'Expenses recorded this year'
@@ -251,10 +290,10 @@ export default function AdminReportsScreen() {
         <p class="eyebrow">TRACK MO, PAKE KO!</p><h1>System Report</h1>
         <p class="subtitle">Administrative overview of system-wide usage and activity</p>
         <div class="meta">
-          <p><strong>Reporting period:</strong> ${escapeHtml(formatReportDate(start))} – ${escapeHtml(formatReportDate(inclusiveEnd))}</p>
+          <p><strong>Reporting period:</strong> ${escapeAdminReportHtml(formatReportDate(start))} – ${escapeAdminReportHtml(formatReportDate(inclusiveEnd))}</p>
           <p><strong>Filter:</strong> ${period === 'this' ? 'This Month' : period === 'last' ? 'Last Month' : 'This Year'}</p>
-          <p><strong>Date generated:</strong> ${escapeHtml(generatedAt)} (Philippine Time)</p>
-          <p><strong>Generated by:</strong> ${escapeHtml(profile?.full_name || 'Administrator')}</p>
+          <p><strong>Date generated:</strong> ${escapeAdminReportHtml(generatedAt)} (Philippine Time)</p>
+          <p><strong>Generated by:</strong> ${escapeAdminReportHtml(profile?.full_name || 'Administrator')}</p>
         </div>
 
         <h2>1. System Overview</h2>
@@ -266,12 +305,12 @@ export default function AdminReportsScreen() {
         <div class="note"><strong>${stats.expenses_count.toLocaleString()}</strong> ${expenseLabel.toLowerCase()}.</div>
 
         <h2>2. User Growth Statistics</h2>
-        <p class="muted">Cumulative registered user accounts by month over the last six months.</p>
-        ${growthRows ? `<table class="data"><tr><th>Month</th><th class="number">Registered user accounts</th></tr>${growthRows}</table>` : '<p class="muted">No user growth data available.</p>'}
+        <p class="muted">Cumulative regular-user profiles by month over the last six months.</p>
+        ${growthRows ? `<table class="data"><tr><th>Month</th><th class="number">Regular-user profiles</th></tr>${growthRows}</table>` : '<p class="muted">No user growth data available.</p>'}
 
         <h2>3. Expense Statistics</h2>
         <table class="data"><tr><th>Metric</th><th class="number">Count</th></tr>
-          <tr><td>${escapeHtml(expenseLabel)}</td><td class="number">${stats.expenses_count.toLocaleString()}</td></tr>
+          <tr><td>${escapeAdminReportHtml(expenseLabel)}</td><td class="number">${stats.expenses_count.toLocaleString()}</td></tr>
         </table>
         <p class="muted">Expense statistics represent non-archived system records within the selected date range. Individual transaction details are not included.</p>
 
@@ -280,12 +319,12 @@ export default function AdminReportsScreen() {
         ${categoryRows ? `<table class="data"><tr><th>Category</th><th class="number">Usage count</th><th class="number">Share of top five</th></tr>${categoryRows}</table>` : '<p class="muted">No category usage data for this reporting period.</p>'}
 
         <h2>5. Summary and Observations</h2>
-        ${observations.map((item) => `<p class="note">${escapeHtml(item)}</p>`).join('')}
+        ${observations.map((item) => `<p class="note">${escapeAdminReportHtml(item)}</p>`).join('')}
 
         <div class="footer">
           <strong>Track Mo, Pake Ko! — System Generated Report</strong><br>
-          Prepared by: ${escapeHtml(profile?.full_name || 'Administrator')}<br>
-          Generated: ${escapeHtml(generatedAt)} · All figures are aggregated system-wide statistics.
+          Prepared by: ${escapeAdminReportHtml(profile?.full_name || 'Administrator')}<br>
+          Generated: ${escapeAdminReportHtml(generatedAt)} · All figures are aggregated system-wide statistics.
         </div>
       </body></html>`
       const file = await Print.printToFileAsync({ html })
@@ -316,9 +355,22 @@ export default function AdminReportsScreen() {
       </View>
 
       {loading ? <ActivityIndicator color={adminColors.primary} style={{ margin: 30 }} /> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <View>
+          <Text style={styles.error}>{error}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retry system reports"
+            style={styles.retryButton}
+            onPress={retryReport}
+            disabled={loading}
+          >
+            <Text style={styles.exportText}>{loading ? 'Retrying…' : 'Retry'}</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
-      {!loading && !error && stats ? (
+      {!loading && !error && reportReady && stats ? (
         <>
           <View style={styles.statGrid}>
             {cards.map((card) => (
@@ -331,7 +383,7 @@ export default function AdminReportsScreen() {
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>User growth</Text>
-            <Text style={styles.sectionHint}>Total registered users over the last six months.</Text>
+            <Text style={styles.sectionHint}>Cumulative regular-user profiles over the last six months.</Text>
             {growth.length === 0 ? <Text style={styles.empty}>No growth data available.</Text> : growth.map((item) => (
               <View key={item.label} style={styles.growthRow}>
                 <Text style={styles.growthLabel}>{item.label}</Text>
@@ -360,10 +412,10 @@ export default function AdminReportsScreen() {
           </View>
 
           <View style={styles.exportRow}>
-            <Pressable style={styles.exportButton} onPress={exportPdf} disabled={loading || exporting !== null || !stats}>
+            <Pressable style={styles.exportButton} onPress={exportPdf} disabled={loading || exporting !== null || !reportReady || !stats || totalUsers === null}>
               <Text style={styles.exportText}>{exporting === 'pdf' ? 'Preparing PDF…' : 'Export PDF'}</Text>
             </Pressable>
-            <Pressable style={[styles.exportButton, styles.csvButton]} onPress={exportCsv} disabled={loading || exporting !== null || !stats}>
+            <Pressable style={[styles.exportButton, styles.csvButton]} onPress={exportCsv} disabled={loading || exporting !== null || !reportReady || !stats || totalUsers === null}>
               <Text style={styles.exportText}>{exporting === 'csv' ? 'Preparing CSV…' : 'Export CSV'}</Text>
             </Pressable>
           </View>
@@ -383,6 +435,7 @@ const styles = StyleSheet.create({
   exportButton: { backgroundColor: adminColors.primary, borderRadius: 9, paddingHorizontal: 13, paddingVertical: 10 },
   csvButton: { backgroundColor: '#334155' },
   exportText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
+  retryButton: { alignSelf: 'flex-start', marginTop: 8, backgroundColor: adminColors.primary, borderRadius: 9, paddingHorizontal: 13, paddingVertical: 10 },
   error: { color: adminColors.danger, backgroundColor: '#FEECEC', padding: 11, borderRadius: 9, fontSize: 11 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   statCard: { width: '31.5%', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 12, padding: 10, minHeight: 90 },
