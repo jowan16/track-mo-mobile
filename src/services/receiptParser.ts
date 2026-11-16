@@ -370,6 +370,47 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
   }
 
   const structured = readStructured(raw)
+  // QR Ph uses the EMVCo tag-length-value payload format. It can identify
+  // merchant and requested amount, but it does not prove that a payment cleared
+  // or reveal which bank the customer used.
+  if (!structured && /^\d{8,}/.test(raw)) {
+    const emvEntries: Array<[string, unknown]> = []
+    let offset = 0
+    while (offset + 4 <= raw.length) {
+      const tag = raw.slice(offset, offset + 2)
+      const lengthText = raw.slice(offset + 2, offset + 4)
+      if (!/^\d{2}$/.test(tag) || !/^\d{2}$/.test(lengthText)) break
+      const length = Number(lengthText)
+      const valueStart = offset + 4
+      const valueEnd = valueStart + length
+      if (valueEnd > raw.length) break
+      const value = raw.slice(valueStart, valueEnd)
+      if (tag === '54') emvEntries.push(['amount', value])
+      if (tag === '59') emvEntries.push(['merchantname', value])
+      if (tag === '52') emvEntries.push(['merchantcategorycode', value])
+      if (tag === '53') emvEntries.push(['currency', value])
+      if (tag === '58') emvEntries.push(['country', value])
+      if (tag === '62') {
+        let nestedOffset = 0
+        while (nestedOffset + 4 <= value.length) {
+          const nestedTag = value.slice(nestedOffset, nestedOffset + 2)
+          const nestedLengthText = value.slice(nestedOffset + 2, nestedOffset + 4)
+          if (!/^\d{2}$/.test(nestedTag) || !/^\d{2}$/.test(nestedLengthText)) break
+          const nestedLength = Number(nestedLengthText)
+          const nestedStart = nestedOffset + 4
+          const nestedEnd = nestedStart + nestedLength
+          if (nestedEnd > value.length) break
+          const nestedValue = value.slice(nestedStart, nestedEnd)
+          if (nestedTag === '01') emvEntries.push(['billnumber', nestedValue])
+          if (nestedTag === '05') emvEntries.push(['referencelabel', nestedValue])
+          nestedOffset = nestedEnd
+        }
+      }
+      offset = valueEnd
+      if (tag === '63') break
+    }
+    entries.push(...emvEntries)
+  }
   if (!structured && !/^https?:\/\//i.test(raw)) {
     raw.split(/\r?\n/).forEach((line) => {
       const pair = line.match(/^\s*([^:=|]{2,40})\s*[:=|]\s*(.*?)\s*$/)
