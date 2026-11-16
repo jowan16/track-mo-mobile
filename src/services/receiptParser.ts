@@ -38,6 +38,10 @@ const detectPaymentProvider = (text: string) => {
     { name: 'PSBank', pattern: /\bPSBANK\b|PHILIPPINE SAVINGS BANK/i },
     { name: 'Asia United Bank', pattern: /\bAUB\b|ASIA UNITED BANK/i },
     { name: 'DBP', pattern: /\bDBP\b|DEVELOPMENT BANK OF THE PHILIPPINES/i },
+    { name: 'Bank of Commerce', pattern: /\bBANK OF COMMERCE\b/i },
+    { name: 'Maybank', pattern: /\bMAYBANK\b/i },
+    { name: 'HSBC', pattern: /\bHSBC\b/i },
+    { name: 'Citi', pattern: /\bCITIBANK\b|\bCITI\b/i },
     { name: 'SeaBank', pattern: /\bSEA\s?BANK\b/i },
     { name: 'CIMB Bank', pattern: /\bCIMB(?: BANK)?\b/i },
     { name: 'Tonik Bank', pattern: /\bTONIK(?: BANK)?\b/i },
@@ -48,7 +52,7 @@ const detectPaymentProvider = (text: string) => {
 const detectTransactionStatus = (text: string): 'Successful' | 'Pending' | 'Failed' | '' => {
   if (/\b(failed|declined|rejected|unsuccessful|cancelled|canceled|reversed)\b/i.test(text)) return 'Failed'
   if (/\b(pending|processing|in progress|awaiting confirmation)\b/i.test(text)) return 'Pending'
-  if (/\b(successful|successfully|completed|paid successfully|payment received|payment sent|transfer successful|transaction complete|approved)\b/i.test(text)) return 'Successful'
+  if (/\b(success|successful|successfully|completed|paid successfully|payment received|payment sent|transfer successful|transaction complete|approved)\b/i.test(text)) return 'Successful'
   return ''
 }
 
