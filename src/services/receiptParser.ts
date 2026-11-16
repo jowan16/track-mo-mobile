@@ -15,7 +15,41 @@ export type ParsedReceipt = {
   suggestedCategory: string
   payment_method: string
   bank_name?: string
+  transaction_status?: 'Successful' | 'Pending' | 'Failed' | ''
   receipt_type?: 'payment' | 'merchant'
+}
+
+const detectPaymentProvider = (text: string) => {
+  const providers: Array<{ name: string; pattern: RegExp }> = [
+    { name: 'GCash', pattern: /\bGCASH\b/i },
+    { name: 'Maya', pattern: /\bMAYA\b|\bPAYMAYA\b/i },
+    { name: 'BDO Pay', pattern: /\bBDO\s+PAY\b/i },
+    { name: 'BDO Unibank', pattern: /\bBDO(?:\s+UNIBANK)?\b/i },
+    { name: 'BPI', pattern: /\bBPI\b|BANK OF THE PHILIPPINE ISLANDS/i },
+    { name: 'Metrobank', pattern: /\bMETROBANK\b|METROPOLITAN BANK AND TRUST/i },
+    { name: 'Land Bank of the Philippines', pattern: /\bLANDBANK\b|LAND BANK OF THE PHILIPPINES/i },
+    { name: 'PNB', pattern: /\bPNB\b|PHILIPPINE NATIONAL BANK/i },
+    { name: 'UnionBank', pattern: /\bUNION\s?BANK\b/i },
+    { name: 'RCBC', pattern: /\bRCBC\b|RIZAL COMMERCIAL BANKING/i },
+    { name: 'Security Bank', pattern: /\bSECURITY BANK\b/i },
+    { name: 'China Bank', pattern: /\bCHINA BANK\b|CHINA BANKING CORPORATION/i },
+    { name: 'EastWest Bank', pattern: /\bEASTWEST(?: BANK)?\b/i },
+    { name: 'GoTyme Bank', pattern: /\bGOTYME(?: BANK)?\b/i },
+    { name: 'PSBank', pattern: /\bPSBANK\b|PHILIPPINE SAVINGS BANK/i },
+    { name: 'Asia United Bank', pattern: /\bAUB\b|ASIA UNITED BANK/i },
+    { name: 'DBP', pattern: /\bDBP\b|DEVELOPMENT BANK OF THE PHILIPPINES/i },
+    { name: 'SeaBank', pattern: /\bSEA\s?BANK\b/i },
+    { name: 'CIMB Bank', pattern: /\bCIMB(?: BANK)?\b/i },
+    { name: 'Tonik Bank', pattern: /\bTONIK(?: BANK)?\b/i },
+  ]
+  return providers.find(({ pattern }) => pattern.test(text))?.name ?? ''
+}
+
+const detectTransactionStatus = (text: string): 'Successful' | 'Pending' | 'Failed' | '' => {
+  if (/\b(failed|declined|rejected|unsuccessful|cancelled|canceled|reversed)\b/i.test(text)) return 'Failed'
+  if (/\b(pending|processing|in progress|awaiting confirmation)\b/i.test(text)) return 'Pending'
+  if (/\b(successful|successfully|completed|paid successfully|payment received|payment sent|transfer successful|transaction complete|approved)\b/i.test(text)) return 'Successful'
+  return ''
 }
 
 const cleanLine = (value: string) =>
@@ -156,6 +190,9 @@ const totalFromReceiptLines = (lines: string[]) => {
   // Never substitute an item price or a sum of extracted item prices.
   const labels = [
     /\bGRAND\s+TOTAL\b/i,
+    /\b(?:AMOUNT|TOTAL)\s+PAID\b/i,
+    /\bPAYMENT\s+AMOUNT\b/i,
+    /\bTRANSACTION\s+AMOUNT\b/i,
     /\bTOTAL\s+DUE\b/i,
     /\bAMOUNT\s+DUE\b/i,
     /\bBALANCE\s+DUE\b/i,
@@ -204,12 +241,16 @@ export const parseReceiptText = (text: string): ParsedReceipt => {
   const receipt_date = dateFromText(full)
   const items = extractItems(lines)
   const total = totalFromReceiptLines(lines)
+  const bank_name = detectPaymentProvider(full)
+  const transaction_status = detectTransactionStatus(full)
   const payment_method =
     /\b(GCASH|MAYA|PAYMAYA|E-WALLET)\b/i.test(full) ? 'E-wallet'
     : /\b(VISA|MASTERCARD|MASTER CARD|DEBIT|CREDIT)\b/i.test(full) ? 'Card'
     : /\b(BANK TRANSFER|ONLINE TRANSFER)\b/i.test(full) ? 'Bank transfer'
     : /\b(CASH|CHANGE|TENDERED)\b/i.test(full) ? 'Cash'
+    : bank_name ? (/GCash|Maya/i.test(bank_name) ? 'E-wallet' : 'Bank transfer')
     : ''
+
   const categoryText = (merchant_name + ' ' + items.map((item) => item.item_name).join(' ') + ' ' + full).toLowerCase()
 
   // Score the complete OCR text instead of stopping at the first broad
@@ -282,7 +323,10 @@ export const parseReceiptText = (text: string): ParsedReceipt => {
 
   const suggestedCategory = bestCategory?.name ?? 'Others'
 
-  return { merchant_name, receipt_date, subtotal: null, tax: null, total, items, suggestedCategory, payment_method }
+  const hasPaymentEvidence = Boolean(transaction_status || /\b(payment confirmation|payment receipt|transaction receipt|reference (?:no|number|id))\b/i.test(full))
+  const receipt_type: 'payment' | 'merchant' = hasPaymentEvidence ? 'payment' : 'merchant'
+
+  return { merchant_name, receipt_date, subtotal: null, tax: null, total, items, suggestedCategory, payment_method, bank_name, transaction_status, receipt_type }
 }
 
 
@@ -495,11 +539,15 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
     'paymentreference', 'transferid',
   ])
   const statusValue = firstText(['paymentstatus', 'transactionstatus', 'status']).toLowerCase()
-  const hasSuccessfulStatus = /^(success|successful|completed|complete|paid|approved|settled)$/i.test(statusValue)
+  const explicitStatus = /^(success|successful|completed|complete|paid|approved|settled)$/i.test(statusValue) ? 'Successful'
+    : /^(pending|processing|in progress)$/i.test(statusValue) ? 'Pending'
+    : /^(failed|declined|rejected|cancelled|canceled|reversed)$/i.test(statusValue) ? 'Failed'
+    : ''
+  const transaction_status = explicitStatus || detectTransactionStatus(raw)
   const hasPaymentConfirmationText = /\b(?:payment successful|payment completed|transaction successful|transaction completed|transfer successful|transfer completed|payment receipt|transaction receipt)\b/i.test(raw)
   const hasBankAndTransactionDetails = Boolean(bank_name && (referenceValue || (total !== null && receipt_date)))
   const receipt_type: 'payment' | 'merchant' =
-    hasSuccessfulStatus || hasPaymentConfirmationText || hasBankAndTransactionDetails
+    Boolean(transaction_status) || hasPaymentConfirmationText || hasBankAndTransactionDetails
       ? 'payment'
       : 'merchant'
 
@@ -512,7 +560,8 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
     items: items.length ? items : fallback.items,
     suggestedCategory: categorySource.suggestedCategory,
     payment_method,
-    bank_name,
+    bank_name: bank_name || detectPaymentProvider(raw),
+    transaction_status,
     receipt_type,
   }
 }
