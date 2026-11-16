@@ -797,8 +797,7 @@ export default function ExpensesScreen() {
             } catch (error) {
               Alert.alert(
                 'Archive Failed',
-                error instanceof Error
-                  ? error.message
+                error instanceof Error                  ? error.message
                   : 'Unable to archive this expense.',
               )
             }
@@ -1211,7 +1210,6 @@ export default function ExpensesScreen() {
                     <View style={styles.receiptReview}>
                       <Text style={styles.receiptSectionTitle}>Recognized Payment Information</Text>
                       {[
-                        ['Bank / Payment App', receiptContext.draft.bank_name || 'Unknown'],
                         ['Transaction Status', receiptContext.draft.transaction_status || 'Unknown'],
                         ['Amount', form.amount && Number.isFinite(Number(form.amount))
                           ? Number(form.amount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
@@ -1235,7 +1233,6 @@ export default function ExpensesScreen() {
                     <View style={styles.receiptReview}>
                       <Text style={styles.receiptSectionTitle}>Recognized Receipt Information</Text>
                       {[
-                        ['Store / Merchant', receiptContext.draft.merchant_name || 'Unknown'],
                         ['Receipt Date', receiptContext.draft.receipt_date || 'Unknown'],
                         ['Amount', form.amount && Number.isFinite(Number(form.amount))
                           ? Number(form.amount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
@@ -1597,8 +1594,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     color: COLORS.muted,
     fontSize: 14,
   },
-  scrollView: {
-    flex: 1,
+  scrollView: {    flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
