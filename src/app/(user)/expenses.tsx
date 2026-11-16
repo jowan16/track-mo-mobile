@@ -420,6 +420,20 @@ export default function ExpensesScreen() {
           if (mounted) void loadExpenses()
         },
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expenses',
+        },
+        () => {
+          // Refresh the active expense list when an expense is archived,
+          // restored, edited, or permanently deleted. loadExpenses only
+          // retrieves this signed-in user's non-archived expenses.
+          if (mounted) void loadExpenses()
+        },
+      )
 
     // Register all postgres_changes handlers before subscribing.
     channel.subscribe()
