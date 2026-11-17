@@ -8,17 +8,17 @@ Branch: `test/automated-ut-it`
 | Category | Suites | Cases | Passed | Failed | Pass rate |
 |---|---:|---:|---:|---:|---:|
 | Unit tests | 9 | 134 | 134 | 0 | 100.00% |
-| Integration tests | 9 | 22 | 22 | 0 | 100.00% |
-| Combined suite | 18 | 156 | 156 | 0 | 100.00% |
+| Integration tests | 10 | 27 | 27 | 0 | 100.00% |
+| Combined suite | 19 | 161 | 161 | 0 | 100.00% |
 
 The pass rate is PASS / (PASS + FAIL); untested manual scenarios are excluded from the denominator.
 
 ## Coverage
 
-- Statements: 42.88% (1,561 / 3,640)
-- Lines: 44.21% (1,429 / 3,232)
+- Statements: 42.96% (1,564 / 3,640)
+- Lines: 44.27% (1,431 / 3,232)
 - Functions: 40.06% (353 / 881)
-- Branches: 35.77% (1,321 / 3,693)
+- Branches: 35.82% (1,323 / 3,693)
 
 Coverage is whole-source collection. Utilities have high coverage, but many screens and route flows remain untested.
 

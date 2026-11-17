@@ -1,10 +1,11 @@
 
 > track-mo-mobile@1.0.0 test:unit
-> jest --runInBand --testPathPatterns=__tests__/unit
+> jest --runInBand --testPathPatterns=__tests__/unit --json --outputFile=testing/revision-3/unit-jest-results.json
 
 
 Test Suites: 9 passed, 9 total
 Tests:       134 passed, 134 total
 Snapshots:   0 total
-Time:        1.261 s
+Time:        0.967 s, estimated 1 s
 Ran all test suites matching __tests__/unit.
+Test results written to: testing/revision-3/unit-jest-results.json

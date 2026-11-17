@@ -1,10 +1,11 @@
 
 > track-mo-mobile@1.0.0 test:integration
-> jest --runInBand --testPathPatterns=__tests__/integration
+> jest --runInBand --testPathPatterns=__tests__/integration --json --outputFile=testing/revision-3/integration-jest-results.json
 
 
-Test Suites: 9 passed, 9 total
-Tests:       22 passed, 22 total
+Test Suites: 10 passed, 10 total
+Tests:       27 passed, 27 total
 Snapshots:   0 total
-Time:        3.027 s
+Time:        3.404 s, estimated 4 s
 Ran all test suites matching __tests__/integration.
+Test results written to: testing/revision-3/integration-jest-results.json
