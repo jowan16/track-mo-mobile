@@ -1,0 +1,10 @@
+
+> track-mo-mobile@1.0.0 test:integration
+> jest --runInBand --testPathPatterns=__tests__/integration
+
+
+Test Suites: 9 passed, 9 total
+Tests:       22 passed, 22 total
+Snapshots:   0 total
+Time:        3.027 s
+Ran all test suites matching __tests__/integration.

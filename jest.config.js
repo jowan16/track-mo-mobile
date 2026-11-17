@@ -5,6 +5,8 @@ module.exports = {
   testMatch: [
     '**/__tests__/unit/**/*.test.ts',
     '**/__tests__/unit/**/*.test.tsx',
+    '**/__tests__/integration/**/*.test.ts',
+    '**/__tests__/integration/**/*.test.tsx',
   ],
 
   moduleNameMapper: {
@@ -23,6 +25,7 @@ module.exports = {
     'text',
     'html',
     'lcov',
+    'json-summary',
   ],
 
   clearMocks: true,
