@@ -35,21 +35,30 @@ function AppContent() {
           params.get('error') ??
           params.get('error_code')
 
+        const isPasswordRecovery =
+          params.get('type') === 'recovery' ||
+          parsedUrl.hostname === 'reset-password' ||
+          parsedUrl.pathname.replace(/^\\/+|\\/+$/g, '') === 'reset-password'
+
         if (callbackError) {
-          console.error('Email verification callback failed:', callbackError)
-          const errorValue = [
-            params.get('error_code') ?? '',
-            params.get('error') ?? '',
-            params.get('error_description') ?? '',
-          ].join(' ').toLowerCase()
-          const errorType = /expired|otp_expired/.test(errorValue)
-            ? 'expired'
-            : /already|used|token_not_found|one-time token not found|token not found/.test(errorValue)
-              ? 'already-used'
-              : /token|invalid|missing/.test(errorValue)
-                ? 'invalid'
-                : 'verification'
-          router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } } as never)
+          console.error('Auth callback failed:', callbackError)
+          if (isPasswordRecovery) {
+            router.replace('/(auth)/reset-password' as never)
+          } else {
+            const errorValue = [
+              params.get('error_code') ?? '',
+              params.get('error') ?? '',
+              params.get('error_description') ?? '',
+            ].join(' ').toLowerCase()
+            const errorType = /expired|otp_expired/.test(errorValue)
+              ? 'expired'
+              : /already|used|token_not_found|one-time token not found|token not found/.test(errorValue)
+                ? 'already-used'
+                : /token|invalid|missing/.test(errorValue)
+                  ? 'invalid'
+                  : 'verification'
+            router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } } as never)
+          }
           return
         }
 
@@ -65,7 +74,7 @@ function AppContent() {
           // Also support confirmation templates that use TokenHash links.
           const { error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
-            type: otpType as 'signup' | 'email',
+            type: otpType as 'signup' | 'email' | 'recovery',
           })
           if (error) throw error
         } else {
@@ -74,14 +83,20 @@ function AppContent() {
           return
         }
 
-        // Ask Supabase Auth to confirm the account's persisted verification status.
+        // Password recovery must keep the temporary authenticated session so
+        // updateUser({ password }) can authorize the password change.
+        if (isPasswordRecovery || otpType === 'recovery') {
+          router.replace('/(auth)/reset-password?verified=1' as never)
+          return
+        }
+
+        // Email confirmation is a separate flow from password recovery.
         const { data: verifiedUser, error: userError } = await supabase.auth.getUser()
         if (userError) throw userError
         if (!verifiedUser.user?.email_confirmed_at) {
           throw new Error('Supabase did not confirm the email verification status.')
         }
 
-        // The verification is complete. Clear the temporary callback session.
         const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
         if (signOutError) {
           console.warn('Email was verified, but the temporary session could not be cleared:', signOutError)
@@ -98,7 +113,14 @@ function AppContent() {
             : /token|invalid|missing/.test(message)
               ? 'invalid'
               : 'verification'
-        router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } } as never)
+        const incomingUrlIsRecovery =
+          /reset-password/i.test(url) ||
+          /type=recovery/i.test(url)
+        if (incomingUrlIsRecovery) {
+          router.replace('/(auth)/reset-password' as never)
+        } else {
+          router.replace({ pathname: '/(auth)/verify-email', params: { status: 'error', errorType } } as never)
+        }
       } finally {
         setHandlingAuthCallback(false)
       }
