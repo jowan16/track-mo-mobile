@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+
   const signingInRef = useRef(false)
   const heartbeatInFlightRef = useRef(false)
 
@@ -46,33 +47,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { data, error }
     }
 
-    // Refresh proactively if the saved access token is expired or about to
-    // expire, rather than sending a known-stale JWT to PostgREST.
+    // Confirm that the current session belongs to the requested user.
     const { data: sessionData, error: sessionError } =
       await supabase.auth.getSession()
 
     if (sessionError) throw sessionError
 
     if (
-      sessionData.session?.expires_at &&
+      !sessionData.session ||
+      sessionData.session.user.id !== id
+    ) {
+      return null
+    }
+
+    // Refresh proactively if the access token is expired or about to expire.
+    if (
+      sessionData.session.expires_at &&
       sessionData.session.expires_at <= Math.floor(Date.now() / 1000) + 60
     ) {
-      const { error: refreshError } = await supabase.auth.refreshSession()
+      const { data: refreshedData, error: refreshError } =
+        await supabase.auth.refreshSession()
+
       if (refreshError) throw refreshError
+
+      if (
+        !refreshedData.session ||
+        refreshedData.session.user.id !== id
+      ) {
+        return null
+      }
     }
 
     let result = await load()
 
-    // A request can still race with token expiry. Refresh once and retry only
-    // for an expired-JWT response; do not hide unrelated database errors.
+    // Retry once if the JWT has expired.
     if (
       result.error &&
       (result.error.code === 'PGRST303' ||
         /jwt expired|token expired/i.test(result.error.message))
     ) {
-      const { error: refreshError } = await supabase.auth.refreshSession()
+      const { data: refreshedData, error: refreshError } =
+        await supabase.auth.refreshSession()
+
       if (refreshError) throw refreshError
+
+      if (
+        !refreshedData.session ||
+        refreshedData.session.user.id !== id
+      ) {
+        return null
+      }
+
       result = await load()
+    }
+
+    // A sign-out may happen while the profile request is running.
+    if (result.error?.code === '42501') {
+      const { data: latestSession, error: latestSessionError } =
+        await supabase.auth.getSession()
+
+      if (latestSessionError) throw latestSessionError
+
+      if (
+        !latestSession.session ||
+        latestSession.session.user.id !== id
+      ) {
+        return null
+      }
     }
 
     if (result.error) throw result.error
@@ -168,8 +209,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Load and validate the profile when the user changes.
-
-  // Load and validate the profile when the user changes.
   useEffect(() => {
     let mounted = true
 
@@ -190,10 +229,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (mounted) setProfile(result)
       } catch (error) {
+        // The email-verification callback may already have signed out
+        // the temporary session. Do not treat that as a profile failure.
+        const { data: latestSession, error: sessionError } =
+          await supabase.auth.getSession()
+
+        const hasActiveUserSession =
+          !sessionError &&
+          latestSession.session?.user.id === userId
+
+        if (!hasActiveUserSession) {
+          if (mounted) setProfile(null)
+          return
+        }
+
         const message = error instanceof Error ? error.message : ''
         const isSuspension = message.toLowerCase().includes('suspended')
 
-        // A suspension is an expected access-control result, not an app error.
+        // A suspension is an expected access-control result.
         if (!isSuspension) {
           console.error('Unable to load user profile:', error)
         }
@@ -214,9 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [userId, validateProfile])
 
-
-  // Immediately end the local session if an administrator suspends this
-  // account while the user is already signed in.
+  // Immediately end the local session if an administrator suspends this account.
   useEffect(() => {
     if (!userId) return
 
@@ -232,6 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         (payload) => {
           const updatedProfile = payload.new as Profile
+
           if (updatedProfile.status?.toLowerCase() !== 'active') {
             setProfile(null)
             void supabase.auth.signOut({ scope: 'local' })
@@ -246,7 +298,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [userId])
 
   // Record a server-timestamped heartbeat while the app is in the foreground.
-  // Admin screens consider a user online for 90 seconds after this heartbeat.
   useEffect(() => {
     if (!userId || profile?.status !== 'active') return
 
@@ -255,15 +306,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const sendHeartbeat = async () => {
       if (!mounted || heartbeatInFlightRef.current) return
+
       heartbeatInFlightRef.current = true
 
       try {
         const { error } = await supabase.rpc('touch_last_active')
+
         if (error && mounted) {
-          console.warn('Unable to update last active timestamp:', error.message)
+          console.warn(
+            'Unable to update last active timestamp:',
+            error.message,
+          )
         }
       } catch (error) {
-        if (mounted) console.warn('Unable to send activity heartbeat:', error)
+        if (mounted) {
+          console.warn('Unable to send activity heartbeat:', error)
+        }
       } finally {
         heartbeatInFlightRef.current = false
       }
@@ -271,7 +329,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const startHeartbeat = () => {
       if (heartbeatInterval) clearInterval(heartbeatInterval)
+
       void sendHeartbeat()
+
       heartbeatInterval = setInterval(() => {
         void sendHeartbeat()
       }, 30_000)
@@ -284,15 +344,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    if (AppState.currentState === 'active') startHeartbeat()
+    if (AppState.currentState === 'active') {
+      startHeartbeat()
+    }
 
-    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') {
-        startHeartbeat()
-      } else {
-        stopHeartbeat()
-      }
-    })
+    const appStateSubscription = AppState.addEventListener(
+      'change',
+      (nextState) => {
+        if (nextState === 'active') {
+          startHeartbeat()
+        } else {
+          stopHeartbeat()
+        }
+      },
+    )
 
     return () => {
       mounted = false
@@ -317,16 +382,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error
 
-      // Do not allow an account without a confirmed email to proceed,
-      // even if email confirmation was accidentally disabled in project settings.
+      // Require email confirmation before allowing access.
       if (!data.user.email_confirmed_at) {
         await supabase.auth.signOut({ scope: 'local' })
-        throw new Error('Please verify your email address before logging in. Check your inbox for the verification link.')
+
+        throw new Error(
+          'Please verify your email address before logging in. Check your inbox for the verification link.',
+        )
       }
 
       try {
         const result = await validateProfile(data.user.id)
+
         setProfile(result)
+
         return result
       } catch (profileError) {
         await supabase.auth.signOut({ scope: 'local' })
@@ -344,29 +413,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const result = await validateProfile(userId)
+
       setProfile(result)
+
       return result
     } catch (error) {
       const message = error instanceof Error ? error.message : ''
+
       if (!message.toLowerCase().includes('suspended')) {
         console.error('Unable to refresh profile:', error)
       }
+
       setProfile(null)
+
       await supabase.auth.signOut({ scope: 'local' })
+
       return null
     }
   }, [userId, validateProfile])
 
   // Sign out the current user.
   const signOut = useCallback(async () => {
-    // The app uses Supabase's default global sign-out scope, so end all of this
-    // user's presence sessions before revoking the authenticated sessions.
-    const { error: presenceError } = await supabase.rpc('end_last_active_session')
+    const { error: presenceError } = await supabase.rpc(
+      'end_last_active_session',
+    )
+
     if (presenceError) {
-      console.warn('Unable to record session logout:', presenceError.message)
+      console.warn(
+        'Unable to record session logout:',
+        presenceError.message,
+      )
     }
 
     const { error } = await supabase.auth.signOut()
+
     if (error) throw error
 
     setProfile(null)
