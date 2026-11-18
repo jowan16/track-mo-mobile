@@ -166,7 +166,7 @@ export default function RegisterScreen() {
             <View style={styles.successIcon}>
               <Text style={styles.successCheck}>✓</Text>
             </View>
-            <Text style={styles.successEyebrow}>YOU'RE ALMOST THERE</Text>
+            <Text style={styles.successEyebrow}>YOU&apos;RE ALMOST THERE</Text>
             <Text style={styles.successTitle}>Account Created Successfully!</Text>
             <Text style={styles.successMessage}>
               Please verify your email address to activate your account. Open the message we sent and tap its verification link before logging in.

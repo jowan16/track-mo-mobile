@@ -1,5 +1,15 @@
 import { useAppTheme } from '@/context/ThemeContext'
-import React, { useState } from 'react'
+import {
+  Board,
+  Direction,
+  hasMoves,
+  moveBoard,
+  newGame,
+  sameBoard,
+  spawnTile,
+} from '@/utils/financial2048'
+import { router } from 'expo-router'
+import { useState } from 'react'
 import {
   PanResponder,
   Pressable,
@@ -9,9 +19,6 @@ import {
   Text,
   View,
 } from 'react-native'
-import { router } from 'expo-router'
-import { Board, Direction, SIZE, emptyBoard, hasMoves, moveBoard, newGame, sameBoard, spawnTile } from '@/utils/financial2048'
-
 function tileColors(value: number, dark: boolean) {
   const palette: Record<number, { bg: string; color: string }> = {
     0: { bg: dark ? '#263832' : '#e6ece8', color: 'transparent' },

@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,9 +13,10 @@ import {
 import { AdminShell, adminColors } from '@/components/admin/AdminShell'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
-import { filterAccounts, formatLastActive, isAccountOnline, manilaDateKey } from '@/utils/adminHelpers'
+import { formatLastActive, isAccountOnline } from '@/utils/adminHelpers'
 
 type Role = 'user' | 'admin'
+
 type Account = {
   id: string
   full_name: string | null
@@ -26,7 +26,9 @@ type Account = {
   created_at: string
   last_seen_at: string | null
 }
+
 type PendingAction = { kind: 'suspend' | 'reactivate'; target: Account } | null
+
 type ActivitySession = {
   session_id: string
   user_id: string
@@ -36,6 +38,7 @@ type ActivitySession = {
 
 export default function AdminUsersScreen() {
   const { profile } = useAuth()
+
   const [accounts, setAccounts] = useState<Account[]>([])
   const [activitySessions, setActivitySessions] = useState<ActivitySession[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,23 +50,29 @@ export default function AdminUsersScreen() {
   const [pending, setPending] = useState<PendingAction>(null)
   const [working, setWorking] = useState(false)
   const [blocked, setBlocked] = useState('')
-  const [activityClock, setActivityClock] = useState(Date.now())
+  const [activityClock, setActivityClock] = useState(0)
 
   const loadAccounts = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true)
+
     setError('')
+
     const [profilesResult, sessionsResult] = await Promise.all([
       supabase
         .from('profiles')
         .select('id, full_name, email, role, status, created_at, last_seen_at')
         .order('created_at', { ascending: false }),
+
       supabase.rpc('admin_get_user_activity_sessions'),
     ])
 
     if (profilesResult.error || sessionsResult.error) {
       const queryError = profilesResult.error ?? sessionsResult.error
+
       console.error('Admin account activity error:', queryError)
+
       setError(queryError?.message ?? 'Unable to load user activity information.')
+
       if (showLoading) {
         setAccounts([])
         setActivitySessions([])
@@ -72,23 +81,26 @@ export default function AdminUsersScreen() {
       setAccounts((profilesResult.data ?? []) as Account[])
       setActivitySessions((sessionsResult.data ?? []) as ActivitySession[])
     }
+
     if (showLoading) setLoading(false)
   }, [])
 
-  useEffect(() => {
-    void loadAccounts()
-  }, [loadAccounts])
+// Initial account loading.
+useEffect(() => {
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  void loadAccounts()
+}, [loadAccounts])
 
-  // Reconcile periodically in case the admin's Realtime connection was interrupted.
+  // Reconcile periodically in case the Realtime connection was interrupted.
   useEffect(() => {
     const interval = setInterval(() => {
       void loadAccounts(false)
     }, 60_000)
+
     return () => clearInterval(interval)
   }, [loadAccounts])
 
-
-  // Keep profile timestamps and each authenticated session synchronized in real time.
+  // Keep profile timestamps and authenticated sessions synchronized in real time.
   useEffect(() => {
     const channel = supabase
       .channel('admin-user-activity')
@@ -97,12 +109,20 @@ export default function AdminUsersScreen() {
         { event: 'UPDATE', schema: 'public', table: 'profiles' },
         (payload) => {
           const updated = payload.new as Account
+
           if (!updated?.id) return
-          setAccounts((current) => current.map((account) =>
-            account.id === updated.id
-              ? { ...account, status: updated.status, last_seen_at: updated.last_seen_at }
-              : account,
-          ))
+
+          setAccounts((current) =>
+            current.map((account) =>
+              account.id === updated.id
+                ? {
+                    ...account,
+                    status: updated.status,
+                    last_seen_at: updated.last_seen_at,
+                  }
+                : account,
+            ),
+          )
         },
       )
       .on(
@@ -112,9 +132,13 @@ export default function AdminUsersScreen() {
           const updated = payload.new as ActivitySession
           const previous = payload.old as Partial<ActivitySession>
           const sessionId = updated?.session_id ?? previous?.session_id
+
           if (!sessionId) return
+
           if (payload.eventType === 'DELETE') {
-            setActivitySessions((current) => current.filter((item) => item.session_id !== sessionId))
+            setActivitySessions((current) =>
+              current.filter((item) => item.session_id !== sessionId),
+            )
           } else if (updated?.session_id && updated.user_id) {
             setActivitySessions((current) => [
               ...current.filter((item) => item.session_id !== updated.session_id),
@@ -130,180 +154,333 @@ export default function AdminUsersScreen() {
     }
   }, [])
 
-  // This local clock only refreshes the Online/Offline label as heartbeats age.
+  // Refresh the Online/Offline label as activity heartbeats age.
   useEffect(() => {
-    const interval = setInterval(() => setActivityClock(Date.now()), 15_000)
-    return () => clearInterval(interval)
+    const updateClock = () => setActivityClock(Date.now())
+
+    const timeout = setTimeout(updateClock, 0)
+    const interval = setInterval(updateClock, 15_000)
+
+    return () => {
+      clearTimeout(timeout)
+      clearInterval(interval)
+    }
   }, [])
 
-  const filtered = useMemo(() => filterAccounts(accounts, tab, statusFilter, search), [accounts, tab, statusFilter, search])
+  // Filter accounts by account type, status, name, and email.
+  const searchTerm = search.trim().toLowerCase()
 
+  const filtered = accounts.filter((account) => {
+    const matchesRole = account.role === tab
+
+    const matchesStatus =
+      statusFilter === 'all' || account.status === statusFilter
+
+    const matchesSearch =
+      !searchTerm ||
+      (account.full_name ?? '').toLowerCase().includes(searchTerm) ||
+      (account.email ?? '').toLowerCase().includes(searchTerm)
+
+    return matchesRole && matchesStatus && matchesSearch
+  })
+
+  // Pagination.
   const pageSize = 8
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const visibleAccounts = filtered.slice(page * pageSize, (page + 1) * pageSize)
+  const currentPage = Math.min(page, pageCount - 1)
 
-  useEffect(() => {
-    if (page >= pageCount) setPage(Math.max(0, pageCount - 1))
-  }, [page, pageCount])
+  const visibleAccounts = filtered.slice(
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize,
+  )
 
   const writeAudit = async (action: string) => {
     if (!profile) return
+
     const { error: auditError } = await supabase.from('audit_log').insert({
       actor_id: profile.id,
       actor_name: profile.full_name || profile.email,
       action,
     })
-    if (auditError) console.warn('Unable to write audit entry:', auditError.message)
+
+    if (auditError) {
+      console.warn('Unable to write audit entry:', auditError.message)
+    }
   }
 
   const askAction = (kind: 'suspend' | 'reactivate', target: Account) => {
     setBlocked('')
+
     if (kind === 'suspend') {
       if (target.id === profile?.id) {
         setBlocked('You cannot suspend your own account.')
         return
       }
-      if (target.role === 'admin' &&
-        accounts.filter((account) => account.role === 'admin' && account.status === 'active').length <= 1) {
+
+      if (
+        target.role === 'admin' &&
+        accounts.filter(
+          (account) =>
+            account.role === 'admin' && account.status === 'active',
+        ).length <= 1
+      ) {
         setBlocked('At least one active admin is required.')
         return
       }
     }
+
     setPending({ kind, target })
   }
 
   const runPending = async () => {
     if (!pending || working) return
-    setWorking(true)
-    try {
-      const targetName = pending.target.full_name || pending.target.email || 'account'
-      const status = pending.kind === 'suspend' ? 'suspended' : 'active'
-      const { error: statusError } = await supabase.rpc('admin_set_account_status', {
-        p_target_user_id: pending.target.id,
-        p_status: status,
-      })
-      if (statusError) throw statusError
-      await writeAudit(`${pending.kind === 'suspend' ? 'Suspended' : 'Reactivated'} ${pending.target.role} ${targetName}`)
 
-      // Reflect the confirmed database update immediately in the admin list.
+    setWorking(true)
+
+    try {
+      const targetName =
+        pending.target.full_name || pending.target.email || 'account'
+
+      const status = pending.kind === 'suspend' ? 'suspended' : 'active'
+
+      const { error: statusError } = await supabase.rpc(
+        'admin_set_account_status',
+        {
+          p_target_user_id: pending.target.id,
+          p_status: status,
+        },
+      )
+
+      if (statusError) throw statusError
+
+      await writeAudit(
+        `${pending.kind === 'suspend' ? 'Suspended' : 'Reactivated'} ${pending.target.role} ${targetName}`,
+      )
+
+      // Reflect the confirmed database update immediately.
       setAccounts((current) =>
         current.map((account) =>
-          account.id === pending.target.id ? { ...account, status } : account,
+          account.id === pending.target.id
+            ? { ...account, status }
+            : account,
         ),
       )
 
       Alert.alert(
-        pending.kind === 'suspend' ? 'Account suspended' : 'Account reactivated',
+        pending.kind === 'suspend'
+          ? 'Account suspended'
+          : 'Account reactivated',
         pending.kind === 'suspend'
           ? 'The account has been suspended. The user can no longer access the application.'
           : 'The account has been reactivated. The user can log in again using their existing credentials.',
       )
+
       await loadAccounts()
       setPending(null)
     } catch (err) {
-      Alert.alert('Action failed', err instanceof Error ? err.message : 'Please try again.')
+      Alert.alert(
+        'Action failed',
+        err instanceof Error ? err.message : 'Please try again.',
+      )
     } finally {
       setWorking(false)
     }
   }
 
   const userAccounts = accounts.filter((account) => account.role === tab)
-  const activeCount = userAccounts.filter((account) => account.status === 'active').length
-  const suspendedCount = userAccounts.filter((account) => account.status === 'suspended').length
-  const onlineCount = userAccounts.filter((account) => isAccountOnline(account, activitySessions, activityClock)).length
+
+  const activeCount = userAccounts.filter(
+    (account) => account.status === 'active',
+  ).length
+
+  const suspendedCount = userAccounts.filter(
+    (account) => account.status === 'suspended',
+  ).length
+
+  const onlineCount = userAccounts.filter((account) =>
+    isAccountOnline(account, activitySessions, activityClock),
+  ).length
 
   return (
-    <AdminShell title="Users" subtitle="Manage registered user and administrator accounts.">
+    <AdminShell
+      title="Users"
+      subtitle="Manage registered user and administrator accounts."
+    >
       <View style={styles.introRow}>
         <View style={styles.introCopy}>
           <Text style={styles.eyebrow}>ACCOUNT DIRECTORY</Text>
           <Text style={styles.sectionTitle}>Manage accounts</Text>
-          <Text style={styles.sectionSubtitle}>Review account access and monitor recent activity.</Text>
+          <Text style={styles.sectionSubtitle}>
+            Review account access and monitor recent activity.
+          </Text>
         </View>
+
         <View style={styles.totalBadge}>
           <Text style={styles.totalValue}>{userAccounts.length}</Text>
           <Text style={styles.totalLabel}>TOTAL</Text>
         </View>
       </View>
+
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <View style={[styles.statDot, { backgroundColor: '#16A34A' }]} />
           <Text style={styles.statValue}>{activeCount}</Text>
           <Text style={styles.statLabel}>Active accounts</Text>
         </View>
+
         <View style={styles.statCard}>
           <View style={[styles.statDot, { backgroundColor: '#DC2626' }]} />
           <Text style={styles.statValue}>{suspendedCount}</Text>
           <Text style={styles.statLabel}>Suspended</Text>
         </View>
+
         <View style={styles.statCard}>
           <View style={[styles.statDot, { backgroundColor: '#2563EB' }]} />
           <Text style={styles.statValue}>{onlineCount}</Text>
           <Text style={styles.statLabel}>Online now</Text>
         </View>
       </View>
+
       <View style={styles.directoryCard}>
         <View>
           <Text style={styles.directoryTitle}>Accounts</Text>
-          <Text style={styles.directorySubtitle}>Choose an account type, then search the directory.</Text>
+          <Text style={styles.directorySubtitle}>
+            Choose an account type, then search the directory.
+          </Text>
         </View>
+
         <View style={styles.tabs}>
           {(['user', 'admin'] as Role[]).map((value) => {
             const selected = tab === value
+
             return (
-              <Pressable key={value} onPress={() => { setTab(value); setPage(0) }}
-                style={({ pressed }) => [styles.tab, selected && styles.tabActive, pressed && styles.controlPressed]}
-                accessibilityRole="button" accessibilityState={{ selected }}>
-                <Text style={[styles.tabText, selected && styles.tabTextActive]}>{value === 'user' ? 'Users' : 'Admins'}</Text>
-                <View style={[styles.tabCount, selected && styles.tabCountActive]}>
-                  <Text style={[styles.tabCountText, selected && styles.tabCountTextActive]}>
-                    {accounts.filter((a) => a.role === value).length}
+              <Pressable
+                key={value}
+                onPress={() => {
+                  setTab(value)
+                  setPage(0)
+                }}
+                style={({ pressed }) => [
+                  styles.tab,
+                  selected && styles.tabActive,
+                  pressed && styles.controlPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.tabText, selected && styles.tabTextActive]}>
+                  {value === 'user' ? 'Users' : 'Admins'}
+                </Text>
+
+                <View
+                  style={[
+                    styles.tabCount,
+                    selected && styles.tabCountActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tabCountText,
+                      selected && styles.tabCountTextActive,
+                    ]}
+                  >
+                    {accounts.filter((account) => account.role === value).length}
                   </Text>
                 </View>
               </Pressable>
             )
           })}
         </View>
+
         <View style={styles.searchWrap}>
           <Text style={styles.searchIcon}>⌕</Text>
-          <TextInput value={search} onChangeText={(value) => { setSearch(value); setPage(0) }}
-            placeholder="Search by name or email" placeholderTextColor="#94A3B8"
-            style={styles.search} autoCapitalize="none" returnKeyType="search"
-            accessibilityLabel="Search accounts by name or email" />
+
+          <TextInput
+            value={search}
+            onChangeText={(value) => {
+              setSearch(value)
+              setPage(0)
+            }}
+            placeholder="Search by name or email"
+            placeholderTextColor="#94A3B8"
+            style={styles.search}
+            autoCapitalize="none"
+            returnKeyType="search"
+            accessibilityLabel="Search accounts by name or email"
+          />
+
           {search.length > 0 ? (
-            <Pressable onPress={() => { setSearch(''); setPage(0) }} style={styles.clearSearch}
-              accessibilityRole="button" accessibilityLabel="Clear search">
+            <Pressable
+              onPress={() => {
+                setSearch('')
+                setPage(0)
+              }}
+              style={styles.clearSearch}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
               <Text style={styles.clearSearchText}>×</Text>
             </Pressable>
           ) : null}
         </View>
+
         <View style={styles.filterRow}>
           <Text style={styles.filterLabel}>ACCOUNT STATUS</Text>
+
           <View style={styles.filterOptions}>
             {(['all', 'active', 'suspended'] as const).map((value) => (
-              <Pressable key={value} onPress={() => { setStatusFilter(value); setPage(0) }}
-                style={({ pressed }) => [styles.filterChip, statusFilter === value && styles.filterChipActive, pressed && styles.controlPressed]}
-                accessibilityRole="button" accessibilityState={{ selected: statusFilter === value }}>
-                <Text style={[styles.filterChipText, statusFilter === value && styles.filterChipTextActive]}>
-                  {value === 'all' ? 'All' : value === 'active' ? 'Active' : 'Suspended'}
+              <Pressable
+                key={value}
+                onPress={() => {
+                  setStatusFilter(value)
+                  setPage(0)
+                }}
+                style={({ pressed }) => [
+                  styles.filterChip,
+                  statusFilter === value && styles.filterChipActive,
+                  pressed && styles.controlPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: statusFilter === value }}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    statusFilter === value && styles.filterChipTextActive,
+                  ]}
+                >
+                  {value === 'all'
+                    ? 'All'
+                    : value === 'active'
+                      ? 'Active'
+                      : 'Suspended'}
                 </Text>
               </Pressable>
             ))}
           </View>
         </View>
       </View>
+
       {blocked ? <Text style={styles.error}>{blocked}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
       <View style={styles.resultsHeader}>
         <View>
-          <Text style={styles.resultsTitle}>{tab === 'user' ? 'Registered users' : 'Administrators'}</Text>
-          <Text style={styles.resultsSubtitle}>{filtered.length} {filtered.length === 1 ? 'account' : 'accounts'} found</Text>
+          <Text style={styles.resultsTitle}>
+            {tab === 'user' ? 'Registered users' : 'Administrators'}
+          </Text>
+          <Text style={styles.resultsSubtitle}>
+            {filtered.length}{' '}
+            {filtered.length === 1 ? 'account' : 'accounts'} found
+          </Text>
         </View>
+
         <View style={styles.liveIndicator}>
           <View style={styles.liveDot} />
           <Text style={styles.liveText}>Activity tracking</Text>
         </View>
       </View>
+
       {loading ? (
         <View style={styles.loadingCard}>
           <ActivityIndicator color={adminColors.primary} />
@@ -313,106 +490,263 @@ export default function AdminUsersScreen() {
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>⌕</Text>
           <Text style={styles.emptyTitle}>No accounts found</Text>
-          <Text style={styles.emptyText}>Try another name or email search.</Text>
+          <Text style={styles.emptyText}>
+            Try another name or email search.
+          </Text>
         </View>
-      ) : visibleAccounts.map((account) => {
-        const online = isAccountOnline(account, activitySessions, activityClock)
-        return (
-          <View key={account.id} style={styles.accountCard}>
-            <View style={styles.accountHeader}>
-              <View style={styles.accountAvatar}>
-                <Text style={styles.accountAvatarText}>{(account.full_name || account.email || '?').slice(0, 1).toUpperCase()}</Text>
-              </View>
-              <View style={styles.identity}>
-                <Text style={styles.accountName} numberOfLines={1}>{account.full_name || 'No name provided'}</Text>
-                <Text style={styles.accountEmail} numberOfLines={2}>{account.email || 'No email'}</Text>
-                <Text style={styles.accountRole}>{account.role === 'admin' ? 'ADMINISTRATOR' : 'USER ACCOUNT'}</Text>
-              </View>
-              <View style={[styles.statusPill, account.status === 'active' ? styles.activePill : styles.suspendedPill]}>
-                <Text style={[styles.statusText, account.status === 'active' ? styles.activeText : styles.suspendedText]}>
-                  {account.status === 'active' ? 'Active' : 'Suspended'}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.cardDivider} />
-            <View style={styles.activityDetails}>
-              <View style={styles.activityColumn}>
-                <Text style={styles.activityLabel}>ACTIVITY STATUS</Text>
-                <View style={styles.activityStatusRow}>
-                  <View style={[styles.activityDot, online ? styles.onlineDot : styles.offlineDot]} />
-                  <Text style={[styles.activityText, online ? styles.onlineText : styles.offlineText]}>{online ? 'Online' : 'Offline'}</Text>
+      ) : (
+        visibleAccounts.map((account) => {
+          const online = isAccountOnline(
+            account,
+            activitySessions,
+            activityClock,
+          )
+
+          return (
+            <View key={account.id} style={styles.accountCard}>
+              <View style={styles.accountHeader}>
+                <View style={styles.accountAvatar}>
+                  <Text style={styles.accountAvatarText}>
+                    {(account.full_name || account.email || '?')
+                      .slice(0, 1)
+                      .toUpperCase()}
+                  </Text>
+                </View>
+
+                <View style={styles.identity}>
+                  <Text style={styles.accountName} numberOfLines={1}>
+                    {account.full_name || 'No name provided'}
+                  </Text>
+                  <Text style={styles.accountEmail} numberOfLines={2}>
+                    {account.email || 'No email'}
+                  </Text>
+                  <Text style={styles.accountRole}>
+                    {account.role === 'admin'
+                      ? 'ADMINISTRATOR'
+                      : 'USER ACCOUNT'}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.statusPill,
+                    account.status === 'active'
+                      ? styles.activePill
+                      : styles.suspendedPill,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusText,
+                      account.status === 'active'
+                        ? styles.activeText
+                        : styles.suspendedText,
+                    ]}
+                  >
+                    {account.status === 'active' ? 'Active' : 'Suspended'}
+                  </Text>
                 </View>
               </View>
-              <View style={styles.lastActiveColumn}>
-                <Text style={styles.activityLabel}>LAST ACTIVE</Text>
-                <Text style={styles.lastActiveText} numberOfLines={2}>{formatLastActive(account.last_seen_at, activityClock)}</Text>
+
+              <View style={styles.cardDivider} />
+
+              <View style={styles.activityDetails}>
+                <View style={styles.activityColumn}>
+                  <Text style={styles.activityLabel}>ACTIVITY STATUS</Text>
+                  <View style={styles.activityStatusRow}>
+                    <View
+                      style={[
+                        styles.activityDot,
+                        online ? styles.onlineDot : styles.offlineDot,
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.activityText,
+                        online ? styles.onlineText : styles.offlineText,
+                      ]}
+                    >
+                      {online ? 'Online' : 'Offline'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.lastActiveColumn}>
+                  <Text style={styles.activityLabel}>LAST ACTIVE</Text>
+                  <Text style={styles.lastActiveText} numberOfLines={2}>
+                    {formatLastActive(account.last_seen_at, activityClock)}
+                  </Text>
+                </View>
+
+                <View style={styles.joinedColumn}>
+                  <Text style={styles.activityLabel}>JOINED</Text>
+                  <Text style={styles.joinedText}>
+                    {new Date(account.created_at).toLocaleDateString(
+                      'en-PH',
+                      {
+                        timeZone: 'Asia/Manila',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      },
+                    )}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.joinedColumn}>
-                <Text style={styles.activityLabel}>JOINED</Text>
-                <Text style={styles.joinedText}>{new Date(account.created_at).toLocaleDateString('en-PH', {
-                  timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric',
-                })}</Text>
+
+              <View style={styles.cardFooter}>
+                <Text style={styles.actionHint}>ACCOUNT ACCESS</Text>
+
+                {account.status === 'active' ? (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.dangerAction,
+                      pressed && styles.actionPressed,
+                    ]}
+                    onPress={() => askAction('suspend', account)}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      'Suspend ' +
+                      (account.full_name || account.email || 'account')
+                    }
+                  >
+                    <Text style={styles.dangerActionIcon}>⊘</Text>
+                    <Text style={styles.dangerActionText}>Suspend</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.successAction,
+                      pressed && styles.actionPressed,
+                    ]}
+                    onPress={() => askAction('reactivate', account)}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      'Reactivate ' +
+                      (account.full_name || account.email || 'account')
+                    }
+                  >
+                    <Text style={styles.successActionIcon}>↻</Text>
+                    <Text style={styles.successActionText}>Reactivate</Text>
+                  </Pressable>
+                )}
               </View>
             </View>
-            <View style={styles.cardFooter}>
-              <Text style={styles.actionHint}>ACCOUNT ACCESS</Text>
-              {account.status === 'active' ? (
-                <Pressable style={({ pressed }) => [styles.dangerAction, pressed && styles.actionPressed]}
-                  onPress={() => askAction('suspend', account)} accessibilityRole="button"
-                  accessibilityLabel={'Suspend ' + (account.full_name || account.email || 'account')}>
-                  <Text style={styles.dangerActionIcon}>⊘</Text>
-                  <Text style={styles.dangerActionText}>Suspend</Text>
-                </Pressable>
-              ) : (
-                <Pressable style={({ pressed }) => [styles.successAction, pressed && styles.actionPressed]}
-                  onPress={() => askAction('reactivate', account)} accessibilityRole="button"
-                  accessibilityLabel={'Reactivate ' + (account.full_name || account.email || 'account')}>
-                  <Text style={styles.successActionIcon}>↻</Text>
-                  <Text style={styles.successActionText}>Reactivate</Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
-        )
-      })}
+          )
+        })
+      )}
+
       {!loading && filtered.length > 0 ? (
         <View style={styles.pagination}>
-          <Text style={styles.paginationInfo}>Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length}</Text>
+          <Text style={styles.paginationInfo}>
+            Showing {currentPage * pageSize + 1}–
+            {Math.min((currentPage + 1) * pageSize, filtered.length)} of{' '}
+            {filtered.length}
+          </Text>
+
           <View style={styles.paginationActions}>
-            <Pressable onPress={() => setPage((current) => Math.max(0, current - 1))}
-              disabled={page === 0} style={[styles.pageButton, page === 0 && styles.pageButtonDisabled]}
-              accessibilityRole="button" accessibilityLabel="Previous page">
-              <Text style={[styles.pageButtonText, page === 0 && styles.pageButtonTextDisabled]}>‹</Text>
+            <Pressable
+              onPress={() => setPage(Math.max(0, currentPage - 1))}
+              disabled={currentPage === 0}
+              style={[
+                styles.pageButton,
+                currentPage === 0 && styles.pageButtonDisabled,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Previous page"
+            >
+              <Text
+                style={[
+                  styles.pageButtonText,
+                  currentPage === 0 && styles.pageButtonTextDisabled,
+                ]}
+              >
+                ‹
+              </Text>
             </Pressable>
-            <Text style={styles.pageNumber}>{page + 1} / {pageCount}</Text>
-            <Pressable onPress={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
-              disabled={page >= pageCount - 1} style={[styles.pageButton, page >= pageCount - 1 && styles.pageButtonDisabled]}
-              accessibilityRole="button" accessibilityLabel="Next page">
-              <Text style={[styles.pageButtonText, page >= pageCount - 1 && styles.pageButtonTextDisabled]}>›</Text>
+
+            <Text style={styles.pageNumber}>
+              {currentPage + 1} / {pageCount}
+            </Text>
+
+            <Pressable
+              onPress={() =>
+                setPage(Math.min(pageCount - 1, currentPage + 1))
+              }
+              disabled={currentPage >= pageCount - 1}
+              style={[
+                styles.pageButton,
+                currentPage >= pageCount - 1 &&
+                  styles.pageButtonDisabled,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Next page"
+            >
+              <Text
+                style={[
+                  styles.pageButtonText,
+                  currentPage >= pageCount - 1 &&
+                    styles.pageButtonTextDisabled,
+                ]}
+              >
+                ›
+              </Text>
             </Pressable>
           </View>
         </View>
       ) : null}
 
-      <Modal transparent visible={!!pending} animationType="fade" onRequestClose={() => { if (!working) setPending(null) }}>
+      <Modal
+        transparent
+        visible={!!pending}
+        animationType="fade"
+        onRequestClose={() => {
+          if (!working) setPending(null)
+        }}
+      >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <View style={styles.modalIconWrap}>
-              <Text style={styles.modalIcon}>{pending?.kind === 'suspend' ? '!' : '✓'}</Text>
+              <Text style={styles.modalIcon}>
+                {pending?.kind === 'suspend' ? '!' : '✓'}
+              </Text>
             </View>
-            <Text style={styles.modalTitle}>{pending?.kind === 'suspend' ? 'Suspend this account?' : 'Reactivate this account?'}</Text>
+
+            <Text style={styles.modalTitle}>
+              {pending?.kind === 'suspend'
+                ? 'Suspend this account?'
+                : 'Reactivate this account?'}
+            </Text>
+
             <Text style={styles.modalMessage}>
               {pending?.kind === 'suspend'
-                ? (pending.target.full_name || pending.target.email) + ' will not be able to log in until reactivated.'
-                : (pending?.target.full_name || pending?.target.email) + ' will be able to log in again.'}
+                ? (pending.target.full_name || pending.target.email) +
+                  ' will not be able to log in until reactivated.'
+                : (pending?.target.full_name || pending?.target.email) +
+                  ' will be able to log in again.'}
             </Text>
+
             <View style={styles.modalActions}>
-              <Pressable style={styles.cancelButton} onPress={() => setPending(null)} disabled={working}>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => setPending(null)}
+                disabled={working}
+              >
                 <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
-              <Pressable style={styles.primaryButton} onPress={runPending} disabled={working}>
-                {working ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
-                <Text style={styles.primaryButtonText}>{working ? 'Please wait…' : 'Confirm'}</Text>
+
+              <Pressable
+                style={styles.primaryButton}
+                onPress={runPending}
+                disabled={working}
+              >
+                {working ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : null}
+
+                <Text style={styles.primaryButtonText}>
+                  {working ? 'Please wait…' : 'Confirm'}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -423,112 +757,535 @@ export default function AdminUsersScreen() {
 }
 
 const styles = StyleSheet.create({
-  introRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 2 },
+  introRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 2,
+  },
   introCopy: { flex: 1, gap: 4 },
-  eyebrow: { color: adminColors.primary, fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
-  sectionTitle: { color: adminColors.text, fontSize: 21, fontWeight: '900', letterSpacing: -0.4 },
-  sectionSubtitle: { color: adminColors.muted, fontSize: 11, lineHeight: 16 },
-  totalBadge: { minWidth: 62, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: '#EEF2FF', alignItems: 'center' },
-  totalValue: { color: adminColors.primary, fontSize: 18, fontWeight: '900' },
-  totalLabel: { color: adminColors.primary, fontSize: 8, fontWeight: '900', letterSpacing: 0.8, marginTop: 1 },
+  eyebrow: {
+    color: adminColors.primary,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  sectionTitle: {
+    color: adminColors.text,
+    fontSize: 21,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+  },
+  sectionSubtitle: {
+    color: adminColors.muted,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  totalBadge: {
+    minWidth: 62,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+  },
+  totalValue: {
+    color: adminColors.primary,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  totalLabel: {
+    color: adminColors.primary,
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginTop: 1,
+  },
   statsRow: { flexDirection: 'row', gap: 8 },
-  statCard: { flex: 1, minWidth: 0, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 12, gap: 5 },
+  statCard: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: adminColors.border,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+    gap: 5,
+  },
   statDot: { width: 7, height: 7, borderRadius: 4 },
-  statValue: { color: adminColors.text, fontSize: 19, fontWeight: '900' },
-  statLabel: { color: adminColors.muted, fontSize: 9, fontWeight: '700' },
-  directoryCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 15, padding: 13, gap: 12 },
-  directoryTitle: { color: adminColors.text, fontSize: 15, fontWeight: '900' },
-  directorySubtitle: { color: adminColors.muted, fontSize: 10, marginTop: 3 },
-  tabs: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 10, padding: 4, gap: 4 },
-  tab: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 7, paddingVertical: 9, borderRadius: 8 },
+  statValue: {
+    color: adminColors.text,
+    fontSize: 19,
+    fontWeight: '900',
+  },
+  statLabel: {
+    color: adminColors.muted,
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  directoryCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: adminColors.border,
+    borderRadius: 15,
+    padding: 13,
+    gap: 12,
+  },
+  directoryTitle: {
+    color: adminColors.text,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  directorySubtitle: {
+    color: adminColors.muted,
+    fontSize: 10,
+    marginTop: 3,
+  },
+  tabs: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    padding: 4,
+    gap: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
   tabActive: { backgroundColor: '#EEF2FF' },
-  tabText: { color: adminColors.muted, fontSize: 11, fontWeight: '800' },
+  tabText: {
+    color: adminColors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+  },
   tabTextActive: { color: adminColors.primary },
-  tabCount: { minWidth: 19, height: 19, borderRadius: 10, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  tabCount: {
+    minWidth: 19,
+    height: 19,
+    borderRadius: 10,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
   tabCountActive: { backgroundColor: '#DDE3FF' },
-  tabCountText: { color: '#64748B', fontSize: 9, fontWeight: '900' },
+  tabCountText: {
+    color: '#64748B',
+    fontSize: 9,
+    fontWeight: '900',
+  },
   tabCountTextActive: { color: adminColors.primary },
   controlPressed: { opacity: 0.75 },
-  searchWrap: { minHeight: 43, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: adminColors.border, borderRadius: 10, backgroundColor: '#FFFFFF', paddingHorizontal: 11 },
+  searchWrap: {
+    minHeight: 43,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: adminColors.border,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 11,
+  },
   searchIcon: { color: '#64748B', fontSize: 22, marginRight: 8 },
-  search: { flex: 1, minWidth: 0, paddingVertical: 10, color: adminColors.text, fontSize: 11 },
-  clearSearch: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  search: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 10,
+    color: adminColors.text,
+    fontSize: 11,
+  },
+  clearSearch: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   clearSearchText: { color: '#64748B', fontSize: 19, lineHeight: 22 },
-  error: { color: adminColors.danger, backgroundColor: '#FEECEC', borderWidth: 1, borderColor: '#FECACA', padding: 11, borderRadius: 10, fontSize: 11, lineHeight: 16 },
-  resultsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 },
-  resultsTitle: { color: adminColors.text, fontSize: 14, fontWeight: '900' },
-  resultsSubtitle: { color: adminColors.muted, fontSize: 10, marginTop: 2 },
-  liveIndicator: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F0FDF4', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 6 },
+  error: {
+    color: adminColors.danger,
+    backgroundColor: '#FEECEC',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    padding: 11,
+    borderRadius: 10,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  resultsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 2,
+  },
+  resultsTitle: {
+    color: adminColors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  resultsSubtitle: {
+    color: adminColors.muted,
+    fontSize: 10,
+    marginTop: 2,
+  },
+  liveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16A34A' },
   liveText: { color: '#166534', fontSize: 8, fontWeight: '800' },
-  loadingCard: { minHeight: 110, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 13, alignItems: 'center', justifyContent: 'center', gap: 9 },
-  loadingText: { color: adminColors.muted, fontSize: 10, fontWeight: '600' },
-  emptyCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 13, padding: 25, alignItems: 'center', gap: 6 },
+  loadingCard: {
+    minHeight: 110,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: adminColors.border,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+  },
+  loadingText: {
+    color: adminColors.muted,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: adminColors.border,
+    borderRadius: 13,
+    padding: 25,
+    alignItems: 'center',
+    gap: 6,
+  },
   emptyIcon: { color: '#94A3B8', fontSize: 25 },
-  emptyTitle: { color: adminColors.text, fontSize: 13, fontWeight: '900' },
-  emptyText: { color: adminColors.muted, fontSize: 10, textAlign: 'center', lineHeight: 15 },
-  accountCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 14, padding: 13, gap: 11, shadowColor: '#0F172A', shadowOpacity: 0.035, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
-  accountHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  accountAvatar: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
-  accountAvatarText: { color: adminColors.primary, fontWeight: '900', fontSize: 15 },
+  emptyTitle: {
+    color: adminColors.text,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  emptyText: {
+    color: adminColors.muted,
+    fontSize: 10,
+    textAlign: 'center',
+    lineHeight: 15,
+  },
+  accountCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: adminColors.border,
+    borderRadius: 14,
+    padding: 13,
+    gap: 11,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.035,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
+  },
+  accountHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  accountAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountAvatarText: {
+    color: adminColors.primary,
+    fontWeight: '900',
+    fontSize: 15,
+  },
   identity: { flex: 1, minWidth: 0, gap: 3 },
-  accountName: { color: adminColors.text, fontWeight: '900', fontSize: 12 },
-  accountEmail: { color: adminColors.muted, fontSize: 10, lineHeight: 14 },
-  accountRole: { color: '#94A3B8', fontSize: 8, fontWeight: '900', letterSpacing: 0.8, marginTop: 2 },
-  statusPill: { paddingHorizontal: 9, paddingVertical: 6, borderRadius: 20, flexShrink: 0 },
+  accountName: {
+    color: adminColors.text,
+    fontWeight: '900',
+    fontSize: 12,
+  },
+  accountEmail: {
+    color: adminColors.muted,
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  accountRole: {
+    color: '#94A3B8',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginTop: 2,
+  },
+  statusPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 20,
+    flexShrink: 0,
+  },
   activePill: { backgroundColor: '#DCFCE7' },
   suspendedPill: { backgroundColor: '#FEE2E2' },
   statusText: { fontSize: 9, fontWeight: '900' },
   activeText: { color: '#166534' },
   suspendedText: { color: '#B42318' },
   cardDivider: { height: 1, backgroundColor: '#EEF2F6' },
-  activityDetails: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 13 },
+  activityDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: 13,
+  },
   activityColumn: { minWidth: 82, gap: 6 },
   lastActiveColumn: { flex: 1, minWidth: 105, gap: 6 },
   joinedColumn: { minWidth: 75, gap: 6 },
-  activityLabel: { color: '#94A3B8', fontSize: 8, fontWeight: '900', letterSpacing: 0.6 },
-  activityStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  activityLabel: {
+    color: '#94A3B8',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  activityStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   activityDot: { width: 7, height: 7, borderRadius: 4 },
   onlineDot: { backgroundColor: '#16A34A' },
   offlineDot: { backgroundColor: '#94A3B8' },
   activityText: { fontSize: 10, fontWeight: '900' },
   onlineText: { color: '#15803D' },
   offlineText: { color: '#64748B' },
-  lastActiveText: { color: adminColors.text, fontSize: 10, fontWeight: '700', lineHeight: 14 },
-  joinedText: { color: adminColors.text, fontSize: 9, fontWeight: '700' },
-  cardFooter: { borderTopWidth: 1, borderTopColor: '#EEF2F6', paddingTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  actionHint: { color: '#94A3B8', fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
-  dangerAction: { minHeight: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF1F0', borderWidth: 1, borderColor: '#FECACA', paddingHorizontal: 12, borderRadius: 9 },
-  dangerActionIcon: { color: adminColors.danger, fontSize: 14, fontWeight: '900' },
-  dangerActionText: { color: adminColors.danger, fontSize: 10, fontWeight: '900' },
-  successAction: { minHeight: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0', paddingHorizontal: 12, borderRadius: 9 },
-  successActionIcon: { color: '#15803D', fontSize: 14, fontWeight: '900' },
-  successActionText: { color: '#166534', fontSize: 10, fontWeight: '900' },
-  actionPressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.52)', justifyContent: 'center', padding: 22 },
-  modalCard: { backgroundColor: '#FFFFFF', borderRadius: 18, padding: 20, gap: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  modalIconWrap: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#FFF1F0', alignItems: 'center', justifyContent: 'center' },
-  modalIcon: { color: adminColors.danger, fontSize: 18, fontWeight: '900' },
-  modalTitle: { color: adminColors.text, fontSize: 16, fontWeight: '900' },
-  modalMessage: { color: adminColors.muted, fontSize: 11, lineHeight: 18 },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 9, marginTop: 4 },
-  primaryButton: { minHeight: 38, backgroundColor: adminColors.primary, borderRadius: 9, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },
-  cancelButton: { minHeight: 38, borderWidth: 1, borderColor: adminColors.border, borderRadius: 9, paddingHorizontal: 14, justifyContent: 'center' },
-  cancelText: { color: adminColors.text, fontSize: 10, fontWeight: '800' },
+  lastActiveText: {
+    color: adminColors.text,
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 14,
+  },
+  joinedText: {
+    color: adminColors.text,
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  cardFooter: {
+    borderTopWidth: 1,
+    borderTopColor: '#EEF2F6',
+    paddingTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  actionHint: {
+    color: '#94A3B8',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+  },
+  dangerAction: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFF1F0',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingHorizontal: 12,
+    borderRadius: 9,
+  },
+  dangerActionIcon: {
+    color: adminColors.danger,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  dangerActionText: {
+    color: adminColors.danger,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  successAction: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    paddingHorizontal: 12,
+    borderRadius: 9,
+  },
+  successActionIcon: {
+    color: '#15803D',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  successActionText: {
+    color: '#166534',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  actionPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.52)',
+    justifyContent: 'center',
+    padding: 22,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FFF1F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalIcon: {
+    color: adminColors.danger,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  modalTitle: {
+    color: adminColors.text,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  modalMessage: {
+    color: adminColors.muted,
+    fontSize: 11,
+    lineHeight: 18,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 9,
+    marginTop: 4,
+  },
+  primaryButton: {
+    minHeight: 38,
+    backgroundColor: adminColors.primary,
+    borderRadius: 9,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  cancelButton: {
+    minHeight: 38,
+    borderWidth: 1,
+    borderColor: adminColors.border,
+    borderRadius: 9,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+  },
+  cancelText: {
+    color: adminColors.text,
+    fontSize: 10,
+    fontWeight: '800',
+  },
   filterRow: { gap: 8 },
-  filterLabel: { color: adminColors.muted, fontSize: 8, fontWeight: '900', letterSpacing: 0.9 },
-  filterOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  filterChip: { borderWidth: 1, borderColor: adminColors.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#FFFFFF' },
-  filterChipActive: { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' },
-  filterChipText: { color: adminColors.muted, fontSize: 10, fontWeight: '700' },
-  filterChipTextActive: { color: adminColors.primary, fontWeight: '900' },
-  pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingHorizontal: 2, paddingTop: 2 },
-  paginationInfo: { color: adminColors.muted, fontSize: 9, flex: 1 },
-  paginationActions: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  pageButton: { width: 31, height: 31, borderRadius: 9, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+  filterLabel: {
+    color: adminColors.muted,
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.9,
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+  },
+  filterChip: {
+    borderWidth: 1,
+    borderColor: adminColors.border,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: '#FFFFFF',
+  },
+  filterChipActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+  },
+  filterChipText: {
+    color: adminColors.muted,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  filterChipTextActive: {
+    color: adminColors.primary,
+    fontWeight: '900',
+  },
+  pagination: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 2,
+    paddingTop: 2,
+  },
+  paginationInfo: {
+    color: adminColors.muted,
+    fontSize: 9,
+    flex: 1,
+  },
+  paginationActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  pageButton: {
+    width: 31,
+    height: 31,
+    borderRadius: 9,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pageButtonDisabled: { backgroundColor: '#F1F5F9' },
-  pageButtonText: { color: adminColors.primary, fontSize: 22, lineHeight: 25, fontWeight: '700' },
+  pageButtonText: {
+    color: adminColors.primary,
+    fontSize: 22,
+    lineHeight: 25,
+    fontWeight: '700',
+  },
   pageButtonTextDisabled: { color: '#CBD5E1' },
-  pageNumber: { color: adminColors.text, fontSize: 10, fontWeight: '800' },
+  pageNumber: {
+    color: adminColors.text,
+    fontSize: 10,
+    fontWeight: '800',
+  },
 })

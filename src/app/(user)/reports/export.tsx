@@ -1,5 +1,13 @@
+import { UserPageHeader } from '@/components/user-navigation'
+import { useAuth } from '@/context/AuthContext'
 import { useAppTheme } from '@/context/ThemeContext'
-import React, { useState } from 'react'
+import { supabase } from '@/services/supabase'
+import { csvCell, htmlText } from '@/utils/userHelpers'
+import * as FileSystem from 'expo-file-system/legacy'
+import * as Print from 'expo-print'
+import { router, useLocalSearchParams } from 'expo-router'
+import * as Sharing from 'expo-sharing'
+import { useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -10,14 +18,6 @@ import {
   Text,
   View,
 } from 'react-native'
-import { useLocalSearchParams, router } from 'expo-router'
-import * as FileSystem from 'expo-file-system/legacy'
-import * as Print from 'expo-print'
-import * as Sharing from 'expo-sharing'
-import { UserPageHeader } from '@/components/user-navigation'
-import { useAuth } from '@/context/AuthContext'
-import { supabase } from '@/services/supabase'
-import { csvCell, htmlText } from '@/utils/userHelpers'
 
 type ExportKind = 'detailed' | 'category' | 'monthly'
 
@@ -54,8 +54,7 @@ function getC(dark: boolean) { return dark ? {
 } : LIGHT_C }
 
 
-const money = (value: number) =>
-  `₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
 
 export default function ReportExportScreen() {
   const { resolvedTheme } = useAppTheme()

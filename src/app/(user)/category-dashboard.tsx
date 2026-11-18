@@ -1,3 +1,4 @@
+
 import { useAppTheme } from '@/context/ThemeContext'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
@@ -12,8 +13,8 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { useAuth } from '@/context/AuthContext'
 import { CategoryIcon } from '@/components/CategoryIcon'
+import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 import { retainValidSelections, toggleSelection } from '@/utils/userHelpers'
 
@@ -27,18 +28,6 @@ type Category = {
   is_active: boolean
   show_in_picker: boolean
   sort_order: number
-}
-
-const CATEGORY_SYMBOLS: Record<string, string> = {
-  bus: '↔',
-  'plus-square': '+',
-  utensils: '♨',
-  zap: 'ϟ',
-  play: '▶',
-  'shopping-bag': '▣',
-  home: '⌂',
-  coins: '◉',
-  'piggy-bank': '●',
 }
 
 const HINTS: Record<string, string> = {
@@ -65,7 +54,8 @@ export default function CategoryDashboardScreen() {
   const [loadError, setLoadError] = useState('')
 
   const firstName = profile?.full_name?.trim().split(/\s+/)[0]
-  const allSelected = categories.length > 0 && selectedIds.size === categories.length
+  const allSelected =
+    categories.length > 0 && selectedIds.size === categories.length
 
   useEffect(() => {
     let mounted = true
@@ -76,7 +66,9 @@ export default function CategoryDashboardScreen() {
 
       const { data, error } = await supabase
         .from('categories')
-        .select('id, slug, name, icon, color, bg, is_active, show_in_picker, sort_order')
+        .select(
+          'id, slug, name, icon, color, bg, is_active, show_in_picker, sort_order',
+        )
         .eq('is_active', true)
         .eq('show_in_picker', true)
         .order('sort_order')
@@ -87,19 +79,33 @@ export default function CategoryDashboardScreen() {
         console.error('Unable to load category options:', error)
         setLoadError('Unable to load categories. Please try again.')
         setCategories([])
+        setSelectedIds((current) => retainValidSelections(current, []))
       } else {
-        setCategories((data ?? []) as Category[])
+        const nextCategories = (data ?? []) as Category[]
+
+        setCategories(nextCategories)
+        setSelectedIds((current) =>
+          retainValidSelections(
+            current,
+            nextCategories.map((category) => category.id),
+          ),
+        )
       }
 
       setLoading(false)
     }
 
     void loadCategories()
+
     const channel = supabase
       .channel('user-category-onboarding-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
-        void loadCategories()
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'categories' },
+        () => {
+          void loadCategories()
+        },
+      )
       .subscribe()
 
     return () => {
@@ -107,10 +113,6 @@ export default function CategoryDashboardScreen() {
       mounted = false
     }
   }, [])
-
-  useEffect(() => {
-    setSelectedIds((current) => retainValidSelections(current, categories.map((category) => category.id)))
-  }, [categories])
 
   const selectedCount = useMemo(() => selectedIds.size, [selectedIds])
 
@@ -190,18 +192,32 @@ export default function CategoryDashboardScreen() {
               onPress={() => {
                 setLoadError('')
                 setLoading(true)
+
                 void supabase
                   .from('categories')
-                  .select('id, slug, name, icon, color, bg, is_active, show_in_picker, sort_order')
+                  .select(
+                    'id, slug, name, icon, color, bg, is_active, show_in_picker, sort_order',
+                  )
                   .eq('is_active', true)
                   .eq('show_in_picker', true)
                   .order('sort_order')
                   .then(({ data, error }) => {
                     if (error) {
-                      setLoadError('Unable to load categories. Please try again.')
+                      setLoadError(
+                        'Unable to load categories. Please try again.',
+                      )
                     } else {
-                      setCategories((data ?? []) as Category[])
+                      const nextCategories = (data ?? []) as Category[]
+
+                      setCategories(nextCategories)
+                      setSelectedIds((current) =>
+                        retainValidSelections(
+                          current,
+                          nextCategories.map((category) => category.id),
+                        ),
+                      )
                     }
+
                     setLoading(false)
                   })
               }}
@@ -231,7 +247,6 @@ export default function CategoryDashboardScreen() {
             <View style={styles.grid}>
               {categories.map((category) => {
                 const selected = selectedIds.has(category.id)
-                const symbol = CATEGORY_SYMBOLS[category.icon] ?? '●'
 
                 return (
                   <Pressable
@@ -253,15 +268,22 @@ export default function CategoryDashboardScreen() {
                           { backgroundColor: category.bg || '#E6F4F1' },
                         ]}
                       >
-                        <CategoryIcon icon={category.icon} color={category.color || '#0F766E'} size={38} />
+                        <CategoryIcon
+                          icon={category.icon}
+                          color={category.color || '#0F766E'}
+                          size={38}
+                        />
                       </View>
+
                       <View
                         style={[
                           styles.checkbox,
                           selected && styles.checkboxSelected,
                         ]}
                       >
-                        {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                        {selected ? (
+                          <Text style={styles.checkmark}>✓</Text>
+                        ) : null}
                       </View>
                     </View>
 
@@ -269,6 +291,7 @@ export default function CategoryDashboardScreen() {
                     <Text style={styles.categoryHint}>
                       {HINTS[category.slug] ?? 'Track this type of spending'}
                     </Text>
+
                     {selected ? (
                       <Text style={styles.selectedLabel}>Selected</Text>
                     ) : null}
@@ -287,14 +310,19 @@ export default function CategoryDashboardScreen() {
                 styles.continueButtonDisabled,
             ]}
             onPress={handleContinue}
-            disabled={saving || loading || categories.length === 0 || !!loadError}
+            disabled={
+              saving || loading || categories.length === 0 || !!loadError
+            }
           >
             {saving ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.continueButtonText}>Continue to dashboard</Text>
+              <Text style={styles.continueButtonText}>
+                Continue to dashboard
+              </Text>
             )}
           </Pressable>
+
           <Text style={styles.footerNote}>
             You can add or edit your tracked categories later.
           </Text>
@@ -304,100 +332,176 @@ export default function CategoryDashboardScreen() {
   )
 }
 
-function makeStyles(dark: boolean) { return StyleSheet.create({
-  screen: { flex: 1, backgroundColor: (dark ? '#101a18' : '#F6F7F5') },
-  content: { padding: 20, paddingBottom: 36, flexGrow: 1 },
-  brand: { alignItems: 'center', marginBottom: 28 },
-  brandMark: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: (dark ? '#55c6b0' : '#0F766E'),
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 9,
-  },
-  brandMarkText: { color: (dark ? '#1b2a26' : '#FFFFFF'), fontSize: 25, fontWeight: '900' },
-  brandName: { color: (dark ? '#edf5f1' : '#14201C'), fontSize: 18, fontWeight: '800' },
-  heading: { marginBottom: 22 },
-  title: { color: (dark ? '#edf5f1' : '#14201C'), fontSize: 24, lineHeight: 31, fontWeight: '800' },
-  subtitle: { color: (dark ? '#a9b8b1' : '#64716B'), fontSize: 13, lineHeight: 20, marginTop: 8 },
-  loading: { minHeight: 190, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { color: (dark ? '#a9b8b1' : '#64716B'), fontSize: 13 },
-  errorCard: {
-    padding: 18,
-    borderRadius: 14,
-    backgroundColor: (dark ? '#1b2a26' : '#FFFFFF'),
-    borderWidth: 1,
-    borderColor: (dark ? '#30413a' : '#E4E8E5'),
-    gap: 12,
-  },
-  errorText: { color: (dark ? '#ff8178' : '#B42318'), fontSize: 13, lineHeight: 20 },
-  retryButton: { alignSelf: 'flex-start', paddingVertical: 8 },
-  retryText: { color: (dark ? '#55c6b0' : '#0F766E'), fontSize: 13, fontWeight: '800' },
-  selectionSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  selectionCount: { color: (dark ? '#a9b8b1' : '#64716B'), fontSize: 12, fontWeight: '600' },
-  selectAllText: { color: (dark ? '#55c6b0' : '#0F766E'), fontSize: 12, fontWeight: '800' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  categoryCard: {
-    width: '48%',
-    minHeight: 145,
-    padding: 13,
-    borderRadius: 13,
-    backgroundColor: (dark ? '#1b2a26' : '#FFFFFF'),
-    borderWidth: 1,
-    borderColor: (dark ? '#46564f' : '#CBD3CF'),
-  },
-  categoryCardSelected: {
-    borderWidth: 2,
-    borderColor: (dark ? '#55c6b0' : '#0F766E'),
-    backgroundColor: (dark ? '#203d36' : '#E6F4F1'),
-    padding: 12,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 11,
-  },
-  categoryIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  categorySymbol: { fontSize: 23, fontWeight: '800' },
-  checkbox: {
-    width: 21,
-    height: 21,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    borderColor: (dark ? '#46564f' : '#AAB6B0'),
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: (dark ? '#1b2a26' : '#FFFFFF'),
-  },
-  checkboxSelected: { backgroundColor: (dark ? '#55c6b0' : '#0F766E'), borderColor: (dark ? '#55c6b0' : '#0F766E') },
-  checkmark: { color: (dark ? '#1b2a26' : '#FFFFFF'), fontSize: 14, fontWeight: '900', lineHeight: 17 },
-  categoryName: { color: (dark ? '#edf5f1' : '#14201C'), fontSize: 13, fontWeight: '800' },
-  categoryHint: { color: (dark ? '#a9b8b1' : '#64716B'), fontSize: 10, lineHeight: 15, marginTop: 4 },
-  selectedLabel: { color: (dark ? '#55c6b0' : '#0F766E'), fontSize: 10, fontWeight: '800', marginTop: 7 },
-  footer: { marginTop: 24 },
-  continueButton: {
-    minHeight: 50,
-    borderRadius: 11,
-    backgroundColor: (dark ? '#55c6b0' : '#0F8A72'),
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  continueButtonDisabled: { opacity: 0.55 },
-  continueButtonText: { color: (dark ? '#1b2a26' : '#FFFFFF'), fontSize: 14, fontWeight: '800' },
-  footerNote: { color: (dark ? '#9aaba3' : '#718078'), fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: 11 },
-}) }
+function makeStyles(dark: boolean) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: dark ? '#101a18' : '#F6F7F5' },
+    content: { padding: 20, paddingBottom: 36, flexGrow: 1 },
+    brand: { alignItems: 'center', marginBottom: 28 },
+    brandMark: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      backgroundColor: dark ? '#55c6b0' : '#0F766E',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 9,
+    },
+    brandMarkText: {
+      color: dark ? '#1b2a26' : '#FFFFFF',
+      fontSize: 25,
+      fontWeight: '900',
+    },
+    brandName: {
+      color: dark ? '#edf5f1' : '#14201C',
+      fontSize: 18,
+      fontWeight: '800',
+    },
+    heading: { marginBottom: 22 },
+    title: {
+      color: dark ? '#edf5f1' : '#14201C',
+      fontSize: 24,
+      lineHeight: 31,
+      fontWeight: '800',
+    },
+    subtitle: {
+      color: dark ? '#a9b8b1' : '#64716B',
+      fontSize: 13,
+      lineHeight: 20,
+      marginTop: 8,
+    },
+    loading: {
+      minHeight: 190,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+    },
+    loadingText: {
+      color: dark ? '#a9b8b1' : '#64716B',
+      fontSize: 13,
+    },
+    errorCard: {
+      padding: 18,
+      borderRadius: 14,
+      backgroundColor: dark ? '#1b2a26' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: dark ? '#30413a' : '#E4E8E5',
+      gap: 12,
+    },
+    errorText: {
+      color: dark ? '#ff8178' : '#B42318',
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    retryButton: { alignSelf: 'flex-start', paddingVertical: 8 },
+    retryText: {
+      color: dark ? '#55c6b0' : '#0F766E',
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    selectionSummary: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    selectionCount: {
+      color: dark ? '#a9b8b1' : '#64716B',
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    selectAllText: {
+      color: dark ? '#55c6b0' : '#0F766E',
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    categoryCard: {
+      width: '48%',
+      minHeight: 145,
+      padding: 13,
+      borderRadius: 13,
+      backgroundColor: dark ? '#1b2a26' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: dark ? '#46564f' : '#CBD3CF',
+    },
+    categoryCardSelected: {
+      borderWidth: 2,
+      borderColor: dark ? '#55c6b0' : '#0F766E',
+      backgroundColor: dark ? '#203d36' : '#E6F4F1',
+      padding: 12,
+    },
+    cardTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 11,
+    },
+    categoryIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    categorySymbol: { fontSize: 23, fontWeight: '800' },
+    checkbox: {
+      width: 21,
+      height: 21,
+      borderRadius: 5,
+      borderWidth: 1.5,
+      borderColor: dark ? '#46564f' : '#AAB6B0',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: dark ? '#1b2a26' : '#FFFFFF',
+    },
+    checkboxSelected: {
+      backgroundColor: dark ? '#55c6b0' : '#0F766E',
+      borderColor: dark ? '#55c6b0' : '#0F766E',
+    },
+    checkmark: {
+      color: dark ? '#1b2a26' : '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '900',
+      lineHeight: 17,
+    },
+    categoryName: {
+      color: dark ? '#edf5f1' : '#14201C',
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    categoryHint: {
+      color: dark ? '#a9b8b1' : '#64716B',
+      fontSize: 10,
+      lineHeight: 15,
+      marginTop: 4,
+    },
+    selectedLabel: {
+      color: dark ? '#55c6b0' : '#0F766E',
+      fontSize: 10,
+      fontWeight: '800',
+      marginTop: 7,
+    },
+    footer: { marginTop: 24 },
+    continueButton: {
+      minHeight: 50,
+      borderRadius: 11,
+      backgroundColor: dark ? '#55c6b0' : '#0F8A72',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 16,
+    },
+    continueButtonDisabled: { opacity: 0.55 },
+    continueButtonText: {
+      color: dark ? '#1b2a26' : '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '800',
+    },
+    footerNote: {
+      color: dark ? '#9aaba3' : '#718078',
+      fontSize: 11,
+      lineHeight: 17,
+      textAlign: 'center',
+      marginTop: 11,
+    },
+  })
+}

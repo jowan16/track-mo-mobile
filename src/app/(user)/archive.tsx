@@ -1,3 +1,4 @@
+
 import { useAppTheme } from '@/context/ThemeContext'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -13,11 +14,14 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { UserPageHeader } from '@/components/user-navigation'
 import { CategoryIcon } from '@/components/CategoryIcon'
+import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
-import { archiveDateLabel as dateLabel, archiveMonthLabel as monthLabel } from '@/utils/userHelpers'
+import {
+  archiveDateLabel as dateLabel,
+  archiveMonthLabel as monthLabel,
+} from '@/utils/userHelpers'
 
 type Category = {
   id: number
@@ -59,16 +63,20 @@ const LIGHT_C = {
   brand: '#0f766e',
   danger: '#b42318',
 }
-function getC(dark: boolean) { return dark ? {
-  canvas: '#101a18',
-  card: '#1b2a26',
-  ink: '#edf5f1',
-  muted: '#a9b8b1',
-  line: '#30413a',
-  brand: '#55c6b0',
-  danger: '#ff8178',
-} : LIGHT_C }
 
+function getC(dark: boolean) {
+  return dark
+    ? {
+        canvas: '#101a18',
+        card: '#1b2a26',
+        ink: '#edf5f1',
+        muted: '#a9b8b1',
+        line: '#30413a',
+        brand: '#55c6b0',
+        danger: '#ff8178',
+      }
+    : LIGHT_C
+}
 
 function peso(value: number) {
   return `₱ ${value.toLocaleString('en-PH', {
@@ -84,6 +92,7 @@ export default function ArchiveScreen() {
   const styles = makeStyles(dark, C)
 
   const { profile } = useAuth()
+  const userId = profile?.id
 
   const [tab, setTab] = useState<Tab>('expenses')
   const [categories, setCategories] = useState<Category[]>([])
@@ -98,7 +107,7 @@ export default function ArchiveScreen() {
   )
 
   const loadArchive = useCallback(async () => {
-    if (!profile?.id) {
+    if (!userId) {
       setLoading(false)
       return
     }
@@ -114,14 +123,14 @@ export default function ArchiveScreen() {
           supabase
             .from('expenses')
             .select('*')
-            .eq('user_id', profile.id)
+            .eq('user_id', userId)
             .eq('is_archived', true)
             .order('spent_on', { ascending: false }),
 
           supabase
             .from('budgets')
             .select('*')
-            .eq('user_id', profile.id)
+            .eq('user_id', userId)
             .eq('is_archived', true)
             .order('year', { ascending: false })
             .order('month', { ascending: false }),
@@ -143,9 +152,11 @@ export default function ArchiveScreen() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [profile?.id])
+  }, [userId])
 
   useEffect(() => {
+    // Preserve the existing initial archive loading behavior.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadArchive()
 
     // Give each effect setup its own topic. This prevents a stale/reconnecting
@@ -251,10 +262,16 @@ export default function ArchiveScreen() {
           onPress={() => setTab('expenses')}
           style={[styles.tab, tab === 'expenses' && styles.activeTab]}
         >
-          <Text style={[styles.tabIcon, tab === 'expenses' && styles.activeTabIcon]}>↗</Text>
-          <Text style={[styles.tabText, tab === 'expenses' && styles.activeTabText]}>Expenses</Text>
+          <Text style={[styles.tabIcon, tab === 'expenses' && styles.activeTabIcon]}>
+            ↗
+          </Text>
+          <Text style={[styles.tabText, tab === 'expenses' && styles.activeTabText]}>
+            Expenses
+          </Text>
           <View style={[styles.tabCount, tab === 'expenses' && styles.activeTabCount]}>
-            <Text style={[styles.tabCountText, tab === 'expenses' && styles.activeTabCountText]}>{expenses.length}</Text>
+            <Text style={[styles.tabCountText, tab === 'expenses' && styles.activeTabCountText]}>
+              {expenses.length}
+            </Text>
           </View>
         </Pressable>
 
@@ -264,10 +281,16 @@ export default function ArchiveScreen() {
           onPress={() => setTab('budgets')}
           style={[styles.tab, tab === 'budgets' && styles.activeTab]}
         >
-          <Text style={[styles.tabIcon, tab === 'budgets' && styles.activeTabIcon]}>▤</Text>
-          <Text style={[styles.tabText, tab === 'budgets' && styles.activeTabText]}>Budgets</Text>
+          <Text style={[styles.tabIcon, tab === 'budgets' && styles.activeTabIcon]}>
+            ▤
+          </Text>
+          <Text style={[styles.tabText, tab === 'budgets' && styles.activeTabText]}>
+            Budgets
+          </Text>
           <View style={[styles.tabCount, tab === 'budgets' && styles.activeTabCount]}>
-            <Text style={[styles.tabCountText, tab === 'budgets' && styles.activeTabCountText]}>{budgets.length}</Text>
+            <Text style={[styles.tabCountText, tab === 'budgets' && styles.activeTabCountText]}>
+              {budgets.length}
+            </Text>
           </View>
         </Pressable>
       </View>
@@ -307,7 +330,10 @@ export default function ArchiveScreen() {
 
           {tab === 'expenses' ? (
             expenses.length === 0 ? (
-              <EmptyState styles={styles} message="No archived expenses. Expenses you archive will appear here." />
+              <EmptyState
+                styles={styles}
+                message="No archived expenses. Expenses you archive will appear here."
+              />
             ) : (
               expenses.map((item) => {
                 const category = categoryMap.get(item.category_id)
@@ -317,8 +343,15 @@ export default function ArchiveScreen() {
                     <View style={styles.itemTop}>
                       <View style={styles.itemInfo}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <CategoryIcon icon={category?.icon ?? 'coins'} color={category?.color ?? C.brand} size={28} backgroundColor={category?.bg ?? '#E6F4F1'} />
-                          <Text style={styles.itemTitle}>{category?.name ?? 'Unknown category'}</Text>
+                          <CategoryIcon
+                            icon={category?.icon ?? 'coins'}
+                            color={category?.color ?? C.brand}
+                            size={28}
+                            backgroundColor={category?.bg ?? '#E6F4F1'}
+                          />
+                          <Text style={styles.itemTitle}>
+                            {category?.name ?? 'Unknown category'}
+                          </Text>
                         </View>
 
                         <Text style={styles.muted}>
@@ -341,18 +374,10 @@ export default function ArchiveScreen() {
                       styles={styles}
                       busy={busyId === item.id}
                       onRestore={() =>
-                        confirmAction(
-                          'expenses',
-                          item.id,
-                          'restore',
-                        )
+                        confirmAction('expenses', item.id, 'restore')
                       }
                       onDelete={() =>
-                        confirmAction(
-                          'expenses',
-                          item.id,
-                          'delete',
-                        )
+                        confirmAction('expenses', item.id, 'delete')
                       }
                     />
                   </View>
@@ -360,7 +385,10 @@ export default function ArchiveScreen() {
               })
             )
           ) : budgets.length === 0 ? (
-            <EmptyState styles={styles} message="No archived budgets. Budgets you archive will appear here." />
+            <EmptyState
+              styles={styles}
+              message="No archived budgets. Budgets you archive will appear here."
+            />
           ) : (
             budgets.map((item) => {
               const category = categoryMap.get(item.category_id)
@@ -370,8 +398,15 @@ export default function ArchiveScreen() {
                   <View style={styles.itemTop}>
                     <View style={styles.itemInfo}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <CategoryIcon icon={category?.icon ?? 'coins'} color={category?.color ?? C.brand} size={28} backgroundColor={category?.bg ?? '#E6F4F1'} />
-                        <Text style={styles.itemTitle}>{category?.name ?? 'Unknown category'}</Text>
+                        <CategoryIcon
+                          icon={category?.icon ?? 'coins'}
+                          color={category?.color ?? C.brand}
+                          size={28}
+                          backgroundColor={category?.bg ?? '#E6F4F1'}
+                        />
+                        <Text style={styles.itemTitle}>
+                          {category?.name ?? 'Unknown category'}
+                        </Text>
                       </View>
 
                       <Text style={styles.muted}>
@@ -388,18 +423,10 @@ export default function ArchiveScreen() {
                     styles={styles}
                     busy={busyId === item.id}
                     onRestore={() =>
-                      confirmAction(
-                        'budgets',
-                        item.id,
-                        'restore',
-                      )
+                      confirmAction('budgets', item.id, 'restore')
                     }
                     onDelete={() =>
-                      confirmAction(
-                        'budgets',
-                        item.id,
-                        'delete',
-                      )
+                      confirmAction('budgets', item.id, 'delete')
                     }
                   />
                 </View>
@@ -412,7 +439,13 @@ export default function ArchiveScreen() {
   )
 }
 
-function EmptyState({ message, styles }: { message: string; styles: ReturnType<typeof makeStyles> }) {
+function EmptyState({
+  message,
+  styles,
+}: {
+  message: string
+  styles: ReturnType<typeof makeStyles>
+}) {
   return (
     <View style={styles.empty}>
       <Text style={styles.emptyIcon}>▣</Text>
@@ -456,12 +489,13 @@ function ActionButtons({
   )
 }
 
-function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: C.canvas,
-  },
-  header: {
+function makeStyles(dark: boolean, C: any) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: C.canvas,
+    },
+    header: {
       position: 'relative',
       flexDirection: 'row',
       alignItems: 'center',
@@ -473,182 +507,201 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
       borderBottomWidth: 1,
       borderBottomColor: dark ? '#30413a' : '#e4e8e5',
     },
-  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
-  headerSpacer: { width: 44, height: 44 },
-  subtitle: { color: C.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
-  title: { color: C.ink, fontSize: 24, fontWeight: '800', textAlign: 'center' },
-  tabs: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 2,
-    padding: 5,
-    gap: 6,
-    borderRadius: 14,
-    backgroundColor: dark ? '#1b2a26' : '#e8efeb',
-    borderWidth: 1,
-    borderColor: C.line,
-  },
-  tab: {
-    flex: 1,
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  activeTab: {
-    backgroundColor: C.brand,
-    borderWidth: 1,
-    borderColor: C.brand,
-  },
-  tabIcon: {
-    color: C.muted,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  activeTabIcon: {
-    color: '#ffffff',
-  },
-  tabText: {
-    color: C.muted,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  activeTabText: {
-    color: '#ffffff',
-  },
-  tabCount: {
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: 6,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: dark ? '#30413a' : '#dce5e0',
-  },
-  activeTabCount: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  tabCountText: {
-    color: C.muted,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  activeTabCountText: {
-    color: '#ffffff',
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  muted: {
-    color: C.muted,
-    fontSize: 12,
-  },
-  content: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 35,
-  },
-  summary: {
-    backgroundColor: C.card,
-    padding: 18,
-    borderRadius: 14,
-    gap: 5,
-  },
-  summaryLabel: {
-    color: C.muted,
-    fontSize: 13,
-  },
-  summaryValue: {
-    color: C.ink,
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  item: {
-    backgroundColor: C.card,
-    borderRadius: 14,
-    padding: 16,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: C.line,
-  },
-  itemTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  itemInfo: {
-    flex: 1,
-    gap: 5,
-  },
-  itemTitle: {
-    color: C.ink,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  note: {
-    color: C.muted,
-    fontSize: 12,
-  },
-  amount: {
-    color: C.ink,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: C.line,
-  },
-  actionButton: {
-    flex: 1,
-    minHeight: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 11,
-    borderWidth: 1,
-  },
-  restoreButton: {
-    backgroundColor: (dark ? '#203d36' : '#e5f5f0'),
-    borderColor: dark ? '#31594e' : '#c7e8dc',
-  },
-  restoreText: {
-    color: C.brand,
-    fontWeight: '800',
-  },
-  deleteButton: {
-    backgroundColor: dark ? '#302321' : '#fff7f6',
-    borderColor: dark ? '#593b36' : '#f2d6d2',
-  },
-  deleteText: {
-    color: C.danger,
-    fontWeight: '800',
-  },
-  empty: {
-    backgroundColor: C.card,
-    borderRadius: 14,
-    padding: 28,
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyIcon: {
-    color: C.brand,
-    fontSize: 35,
-  },
-  emptyTitle: {
-    color: C.ink,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-}) }
+    headerText: {
+      position: 'absolute',
+      left: 72,
+      right: 72,
+      alignItems: 'center',
+    },
+    headerSpacer: {
+      width: 44,
+      height: 44,
+    },
+    subtitle: {
+      color: C.muted,
+      fontSize: 12,
+      marginTop: 3,
+      textAlign: 'center',
+    },
+    title: {
+      color: C.ink,
+      fontSize: 24,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
+    tabs: {
+      flexDirection: 'row',
+      marginHorizontal: 16,
+      marginTop: 14,
+      marginBottom: 2,
+      padding: 5,
+      gap: 6,
+      borderRadius: 14,
+      backgroundColor: dark ? '#1b2a26' : '#e8efeb',
+      borderWidth: 1,
+      borderColor: C.line,
+    },
+    tab: {
+      flex: 1,
+      minHeight: 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      paddingHorizontal: 8,
+      paddingVertical: 10,
+      borderRadius: 10,
+    },
+    activeTab: {
+      backgroundColor: C.brand,
+      borderWidth: 1,
+      borderColor: C.brand,
+    },
+    tabIcon: {
+      color: C.muted,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+    activeTabIcon: {
+      color: '#ffffff',
+    },
+    tabText: {
+      color: C.muted,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    activeTabText: {
+      color: '#ffffff',
+    },
+    tabCount: {
+      minWidth: 22,
+      height: 22,
+      paddingHorizontal: 6,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: dark ? '#30413a' : '#dce5e0',
+    },
+    activeTabCount: {
+      backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    tabCountText: {
+      color: C.muted,
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    activeTabCountText: {
+      color: '#ffffff',
+    },
+    center: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+    },
+    muted: {
+      color: C.muted,
+      fontSize: 12,
+    },
+    content: {
+      padding: 16,
+      gap: 12,
+      paddingBottom: 35,
+    },
+    summary: {
+      backgroundColor: C.card,
+      padding: 18,
+      borderRadius: 14,
+      gap: 5,
+    },
+    summaryLabel: {
+      color: C.muted,
+      fontSize: 13,
+    },
+    summaryValue: {
+      color: C.ink,
+      fontSize: 28,
+      fontWeight: '800',
+    },
+    item: {
+      backgroundColor: C.card,
+      borderRadius: 14,
+      padding: 16,
+      gap: 14,
+      borderWidth: 1,
+      borderColor: C.line,
+    },
+    itemTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    itemInfo: {
+      flex: 1,
+      gap: 5,
+    },
+    itemTitle: {
+      color: C.ink,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+    note: {
+      color: C.muted,
+      fontSize: 12,
+    },
+    amount: {
+      color: C.ink,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: 10,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: C.line,
+    },
+    actionButton: {
+      flex: 1,
+      minHeight: 44,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 11,
+      borderWidth: 1,
+    },
+    restoreButton: {
+      backgroundColor: dark ? '#203d36' : '#e5f5f0',
+      borderColor: dark ? '#31594e' : '#c7e8dc',
+    },
+    restoreText: {
+      color: C.brand,
+      fontWeight: '800',
+    },
+    deleteButton: {
+      backgroundColor: dark ? '#302321' : '#fff7f6',
+      borderColor: dark ? '#593b36' : '#f2d6d2',
+    },
+    deleteText: {
+      color: C.danger,
+      fontWeight: '800',
+    },
+    empty: {
+      backgroundColor: C.card,
+      borderRadius: 14,
+      padding: 28,
+      alignItems: 'center',
+      gap: 8,
+    },
+    emptyIcon: {
+      color: C.brand,
+      fontSize: 35,
+    },
+    emptyTitle: {
+      color: C.ink,
+      fontSize: 16,
+      fontWeight: '800',
+    },
+  })
+}

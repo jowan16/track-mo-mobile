@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 
 import { AdminShell, adminColors } from '@/components/admin/AdminShell'
-import { CategoryIcon, CATEGORY_ICON_OPTIONS } from '@/components/CategoryIcon'
+import { CATEGORY_ICON_OPTIONS, CategoryIcon } from '@/components/CategoryIcon'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 import { validateCategoryDraft } from '@/utils/adminHelpers'
@@ -65,16 +65,26 @@ export default function AdminCategoriesScreen() {
     setLoading(false)
   }, [])
 
-  useEffect(() => {
-    void loadCategories()
-    const channel = supabase
-      .channel('admin-default-categories')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+ useEffect(() => {
+  // Preserve initial category loading behavior.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  void loadCategories()
+
+  const channel = supabase
+    .channel('admin-default-categories')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'categories' },
+      () => {
         void loadCategories()
-      })
-      .subscribe()
-    return () => { void supabase.removeChannel(channel) }
-  }, [loadCategories])
+      },
+    )
+    .subscribe()
+
+  return () => {
+    void supabase.removeChannel(channel)
+  }
+}, [loadCategories])
 
   const writeAudit = async (action: string) => {
     if (!profile) return

@@ -7,7 +7,7 @@ export const emptyBoard = (): Board =>
   Array.from({ length: SIZE }, () => Array(SIZE).fill(0))
 
 export function spawnTile(board: Board, random = Math.random): Board {
-  const empty: Array<[number, number]> = []
+const empty: [number, number][] = []
   board.forEach((row, r) => row.forEach((value, c) => { if (value === 0) empty.push([r, c]) }))
   if (!empty.length) return board
   const [r, c] = empty[Math.floor(random() * empty.length)]

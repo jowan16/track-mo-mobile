@@ -1,19 +1,19 @@
 
 import type { Session } from '@supabase/supabase-js'
-import { AppState } from 'react-native'
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useState,
-    useRef,
-    type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
 } from 'react'
+import { AppState } from 'react-native'
 
 import { supabase } from '@/services/supabase'
-import { normalizeAppRole } from '@/utils/authHelpers'
 import type { Profile } from '@/types/profile'
+import { normalizeAppRole } from '@/utils/authHelpers'
 
 interface AuthContextType {
   session: Session | null
@@ -168,21 +168,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Load and validate the profile when the user changes.
+
+  // Load and validate the profile when the user changes.
   useEffect(() => {
     let mounted = true
 
     if (signingInRef.current) return
 
-    if (!userId) {
-      setProfile(null)
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    setProfile(null)
-
     const loadProfile = async () => {
+      if (!userId) {
+        setProfile(null)
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      setProfile(null)
+
       try {
         const result = await validateProfile(userId)
 
@@ -211,6 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false
     }
   }, [userId, validateProfile])
+
 
   // Immediately end the local session if an administrator suspends this
   // account while the user is already signed in.

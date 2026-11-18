@@ -20,8 +20,8 @@ export type ParsedReceipt = {
 }
 
 const detectPaymentProvider = (text: string) => {
-  const providers: Array<{ name: string; pattern: RegExp }> = [
-    { name: 'GCash', pattern: /\bGCASH\b/i },
+const providers: { name: string; pattern: RegExp }[] = [
+      { name: 'GCash', pattern: /\bGCASH\b/i },
     { name: 'Maya', pattern: /\bMAYA\b|\bPAYMAYA\b/i },
     { name: 'BDO Pay', pattern: /\bBDO\s+PAY\b/i },
     { name: 'BDO Unibank', pattern: /\bBDO(?:\s+UNIBANK)?\b/i },
@@ -102,8 +102,6 @@ const merchantFromLines = (lines: string[]) => {
   return lines.slice(0, 8).find((line) => (line.match(/[A-Za-z]/g) ?? []).length >= 5 && line.length <= 70 && !ignored.test(line) && !/\d{5,}/.test(line)) ?? ''
 }
 
-const isPercentLine = (line: string) => /^[-+]?\s*\d+(?:\.\d+)?\s*%$/.test(line)
-const isQuantityLine = (line: string) => /^\d+(?:\.\d+)?\s*(?:PCS?|PIECES?)$/i.test(line)
 
 const extractItems = (lines: string[]): ParsedReceiptItem[] => {
   const items: ParsedReceiptItem[] = []
@@ -260,8 +258,8 @@ export const parseReceiptText = (text: string): ParsedReceipt => {
   // Score the complete OCR text instead of stopping at the first broad
   // keyword. This avoids words such as "ticket" or "store" overriding the
   // actual products and merchant on a receipt.
-  const categoryRules: Array<{ name: string; patterns: RegExp[]; merchantPatterns?: RegExp[] }> = [
-    {
+const categoryRules: { name: string; patterns: RegExp[]; merchantPatterns?: RegExp[] }[] = [
+      {
       name: 'Medicine',
       patterns: [
         /\b(pharmacy|drugstore|drug\s+store|medicine|medicines|medical|pharmaceutical|tablet|tablets|capsule|capsules|prescription|vitamins|paracetamol|biogesic|neozep|medication)\b/gi,
@@ -342,8 +340,7 @@ export const parseReceiptText = (text: string): ParsedReceipt => {
 export const parseReceiptQR = (payload: string): ParsedReceipt => {
   const raw = String(payload ?? '').trim()
   const fallback = parseReceiptText(raw)
-  const entries: Array<[string, unknown]> = []
-
+const entries: [string, unknown][] = []
   const collect = (value: unknown, prefix = '') => {
     if (value === null || value === undefined) return
     if (Array.isArray(value)) {
@@ -378,7 +375,7 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
   // merchant and requested amount, but it does not prove that a payment cleared
   // or reveal which bank the customer used.
   if (!structured && /^\d{8,}/.test(raw)) {
-    const emvEntries: Array<[string, unknown]> = []
+const emvEntries: [string, unknown][] = []
     let offset = 0
     while (offset + 4 <= raw.length) {
       const tag = raw.slice(offset, offset + 2)
@@ -501,8 +498,8 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
 
   const normalizeBankName = (value: string) => {
     const normalized = value.toLowerCase().replace(/[^a-z0-9]/g, '')
-    const banks: Array<{ name: string; aliases: string[] }> = [
-      { name: 'BDO Unibank', aliases: ['bdo', 'bdounibank', 'bdounibankinc'] },
+const banks: { name: string; aliases: string[] }[] = [   
+     { name: 'BDO Unibank', aliases: ['bdo', 'bdounibank', 'bdounibankinc'] },
       { name: 'BPI', aliases: ['bpi', 'bankofthephilippineislands'] },
       { name: 'Metrobank', aliases: ['metrobank', 'metropolitanbankandtrustcompany'] },
       { name: 'Land Bank of the Philippines', aliases: ['landbank', 'landbankofthephilippines', 'lbp'] },
@@ -536,8 +533,8 @@ export const parseReceiptQR = (payload: string): ParsedReceipt => {
   const bank_name = explicitBank
     ? normalizeBankName(explicitBank)
     : (() => {
-        const bankPatterns: Array<{ name: string; pattern: RegExp }> = [
-          { name: 'BDO Unibank', pattern: /\bBDO(?:\s+UNIBANK)?\b/i },
+const bankPatterns: { name: string; pattern: RegExp }[] = [
+            { name: 'BDO Unibank', pattern: /\bBDO(?:\s+UNIBANK)?\b/i },
           { name: 'BPI', pattern: /\bBPI\b|BANK OF THE PHILIPPINE ISLANDS/i },
           { name: 'Metrobank', pattern: /\bMETROBANK\b|METROPOLITAN BANK AND TRUST/i },
           { name: 'Land Bank of the Philippines', pattern: /\bLANDBANK\b|LAND BANK OF THE PHILIPPINES/i },

@@ -1,3 +1,4 @@
+
 import { useAppTheme } from '@/context/ThemeContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
@@ -16,9 +17,9 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { CategoryIcon } from '@/components/CategoryIcon'
 import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
-import { CategoryIcon } from '@/components/CategoryIcon'
 import { supabase } from '@/services/supabase'
 
 type Category = {
@@ -75,38 +76,26 @@ const LIGHT_COLORS = {
   danger: '#b42318',
   orange: '#c2410c',
 }
-function getCOLORS(dark: boolean) { return dark ? {
-  canvas: '#101a18',
-  ink: '#edf5f1',
-  muted: '#a9b8b1',
-  line: '#30413a',
-  brand: '#55c6b0',
-  danger: '#ff8178',
-  orange: '#ffad70',
-} : LIGHT_COLORS }
 
+function getCOLORS(dark: boolean) {
+  return dark
+    ? {
+        canvas: '#101a18',
+        ink: '#edf5f1',
+        muted: '#a9b8b1',
+        line: '#30413a',
+        brand: '#55c6b0',
+        danger: '#ff8178',
+        orange: '#ffad70',
+      }
+    : LIGHT_COLORS
+}
 
 function peso(value: number) {
   return `₱ ${value.toLocaleString('en-PH', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`
-}
-
-function categorySymbol(icon: string) {
-  const symbols: Record<string, string> = {
-    bus: '↔',
-    'plus-square': '+',
-    utensils: '♨',
-    zap: 'ϟ',
-    play: '▶',
-    'shopping-bag': '▣',
-    home: '⌂',
-    coins: '◉',
-    'piggy-bank': '●',
-  }
-
-  return symbols[icon] ?? '●'
 }
 
 function cleanAmount(value: string) {
@@ -145,6 +134,9 @@ export default function BudgetsScreen() {
   const styles = makeStyles(dark, COLORS)
 
   const { profile } = useAuth()
+  const userId = profile?.id
+  const warn80 = profile?.warn_80
+  const warn100 = profile?.warn_100
 
   const now = new Date()
   const month = now.getMonth() + 1
@@ -175,7 +167,7 @@ export default function BudgetsScreen() {
   // LOAD DATA
 
   const loadBudgets = useCallback(async () => {
-    if (!profile?.id) return
+    if (!userId) return
 
     setErrorMessage('')
 
@@ -198,12 +190,12 @@ export default function BudgetsScreen() {
         supabase
           .from('user_categories')
           .select('category_id')
-          .eq('user_id', profile.id),
+          .eq('user_id', userId),
 
         supabase
           .from('budgets')
           .select('*')
-          .eq('user_id', profile.id)
+          .eq('user_id', userId)
           .eq('is_archived', false)
           .eq('month', month)
           .eq('year', year),
@@ -211,7 +203,7 @@ export default function BudgetsScreen() {
         supabase
           .from('expenses')
           .select('*')
-          .eq('user_id', profile.id)
+          .eq('user_id', userId)
           .eq('is_archived', false)
           .gte('spent_on', from)
           .lt('spent_on', to)
@@ -219,8 +211,10 @@ export default function BudgetsScreen() {
 
         supabase
           .from('budget_alert_notifications')
-          .select('id, budget_id, category_id, threshold, budget_month, budget_year, budget_amount, spent_amount, remaining_amount, percentage, title, message, created_at')
-          .eq('user_id', profile.id)
+          .select(
+            'id, budget_id, category_id, threshold, budget_month, budget_year, budget_amount, spent_amount, remaining_amount, percentage, title, message, created_at',
+          )
+          .eq('user_id', userId)
           .eq('budget_month', month)
           .eq('budget_year', year)
           .order('created_at', { ascending: false })
@@ -279,8 +273,8 @@ export default function BudgetsScreen() {
           }))
           .filter(
             (alert) =>
-              (alert.threshold === 80 && !!profile.warn_80) ||
-              (alert.threshold === 100 && !!profile.warn_100),
+              (alert.threshold === 80 && !!warn80) ||
+              (alert.threshold === 100 && !!warn100),
           ),
       )
     } catch (error) {
@@ -292,22 +286,29 @@ export default function BudgetsScreen() {
           : 'Unable to load your budgets.',
       )
     }
-  }, [profile?.id, profile?.warn_80, profile?.warn_100, month, year])
+  }, [userId, warn80, warn100, month, year])
 
   useEffect(() => {
     let mounted = true
+
     const channel = supabase
-      .channel(`user-budgets-categories:${profile?.id ?? 'guest'}:${Date.now()}:${Math.random().toString(36).slice(2)}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
-        void loadBudgets()
-      })
+      .channel(
+        `user-budgets-categories:${userId ?? 'guest'}:${Date.now()}:${Math.random().toString(36).slice(2)}`,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'categories' },
+        () => {
+          void loadBudgets()
+        },
+      )
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'budget_alert_notifications',
-          filter: `user_id=eq.${profile?.id ?? ''}`,
+          filter: `user_id=eq.${userId ?? ''}`,
         },
         () => {
           void loadBudgets()
@@ -328,7 +329,7 @@ export default function BudgetsScreen() {
       mounted = false
       void supabase.removeChannel(channel)
     }
-  }, [loadBudgets, profile?.id])
+  }, [loadBudgets, userId])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -495,7 +496,9 @@ export default function BudgetsScreen() {
 
       Alert.alert(
         'Success',
-        editing ? 'Budget updated successfully.' : 'Budget created successfully.',
+        editing
+          ? 'Budget updated successfully.'
+          : 'Budget created successfully.',
       )
     } catch (error) {
       console.error('Budget save error:', error)
@@ -575,7 +578,11 @@ export default function BudgetsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <UserPageHeader title="Budgets" subtitle="Manage your monthly spending limits." />
+      <UserPageHeader
+        title="Budgets"
+        subtitle="Manage your monthly spending limits."
+      />
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -734,7 +741,11 @@ export default function BudgetsScreen() {
                           },
                         ]}
                       >
-                        <CategoryIcon icon={category?.icon ?? ''} color={category?.color ?? COLORS.brand} size={28} />
+                        <CategoryIcon
+                          icon={category?.icon ?? ''}
+                          color={category?.color ?? COLORS.brand}
+                          size={28}
+                        />
                       </View>
 
                       <View style={styles.categoryText}>
@@ -755,7 +766,9 @@ export default function BudgetsScreen() {
                   <View style={styles.budgetMetricsRow}>
                     <View style={styles.metricBlock}>
                       <Text style={styles.metricLabel}>CURRENT EXPENSES</Text>
-                      <Text style={styles.spentAmount}>{peso(categorySpent)}</Text>
+                      <Text style={styles.spentAmount}>
+                        {peso(categorySpent)}
+                      </Text>
                     </View>
                     <View style={[styles.metricBlock, styles.remainingMetric]}>
                       <Text style={styles.metricLabel}>REMAINING BUDGET</Text>
@@ -788,19 +801,25 @@ export default function BudgetsScreen() {
                     <View
                       style={[
                         styles.warningBanner,
-                        show100Warning ? styles.dangerBanner : styles.cautionBanner,
+                        show100Warning
+                          ? styles.dangerBanner
+                          : styles.cautionBanner,
                       ]}
                     >
                       <View
                         style={[
                           styles.warningIconWrap,
-                          show100Warning ? styles.dangerIconWrap : styles.cautionIconWrap,
+                          show100Warning
+                            ? styles.dangerIconWrap
+                            : styles.cautionIconWrap,
                         ]}
                       >
                         <Text
                           style={[
                             styles.warningIcon,
-                            show100Warning ? styles.dangerIcon : styles.cautionIcon,
+                            show100Warning
+                              ? styles.dangerIcon
+                              : styles.cautionIcon,
                           ]}
                         >
                           !
@@ -810,15 +829,21 @@ export default function BudgetsScreen() {
                         <Text
                           style={[
                             styles.warningHeadline,
-                            show100Warning ? styles.dangerHeadline : styles.cautionHeadline,
+                            show100Warning
+                              ? styles.dangerHeadline
+                              : styles.cautionHeadline,
                           ]}
                         >
-                          {show100Warning ? 'Budget limit reached' : 'Approaching budget limit'}
+                          {show100Warning
+                            ? 'Budget limit reached'
+                            : 'Approaching budget limit'}
                         </Text>
                         <Text
                           style={[
                             styles.warningDescription,
-                            show100Warning ? styles.dangerDescription : styles.cautionDescription,
+                            show100Warning
+                              ? styles.dangerDescription
+                              : styles.cautionDescription,
                           ]}
                         >
                           {show100Warning
@@ -831,10 +856,14 @@ export default function BudgetsScreen() {
                       <Text
                         style={[
                           styles.warningPercent,
-                          show100Warning ? styles.dangerHeadline : styles.cautionHeadline,
+                          show100Warning
+                            ? styles.dangerHeadline
+                            : styles.cautionHeadline,
                         ]}
                       >
-                        {activeCategoryAlert?.threshold ?? (show100Warning ? 100 : 80)}%
+                        {activeCategoryAlert?.threshold ??
+                          (show100Warning ? 100 : 80)}
+                        %
                       </Text>
                     </View>
                   ) : (
@@ -980,7 +1009,11 @@ export default function BudgetsScreen() {
                           { backgroundColor: category.bg || '#e6f4f1' },
                         ]}
                       >
-                        <CategoryIcon icon={category.icon} color={category.color || COLORS.brand} size={26} />
+                        <CategoryIcon
+                          icon={category.icon}
+                          color={category.color || COLORS.brand}
+                          size={26}
+                        />
                       </View>
 
                       <Text
@@ -1060,31 +1093,32 @@ export default function BudgetsScreen() {
   )
 }
 
-function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.canvas,
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: COLORS.canvas,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    color: COLORS.muted,
-    fontSize: 14,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 36,
-  },
-  header: {
+function makeStyles(dark: boolean, COLORS: any) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: COLORS.canvas,
+    },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: COLORS.canvas,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 12,
+    },
+    loadingText: {
+      color: COLORS.muted,
+      fontSize: 14,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: 20,
+      paddingTop: 15,
+      paddingBottom: 36,
+    },
+    header: {
       position: 'relative',
       flexDirection: 'row',
       alignItems: 'center',
@@ -1096,590 +1130,599 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
       borderBottomWidth: 1,
       borderBottomColor: dark ? '#30413a' : '#e4e8e5',
     },
-  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
-  headerSpacer: { width: 44, height: 44 },
-  monthBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: (dark ? '#203d36' : '#e6f4f1'),
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 15,
-  },
-  monthBadgeText: {
-    color: COLORS.brand,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  addButton: {
-    backgroundColor: COLORS.brand,
-    borderRadius: 13,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  addButtonText: {
-    color: (dark ? '#1b2a26' : '#ffffff'),
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  errorCard: {
-    backgroundColor: (dark ? '#402725' : '#fff0ef'),
-    borderColor: (dark ? '#75423e' : '#f3c3bf'),
-    borderWidth: 1,
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 16,
-  },
-  errorTitle: {
-    color: COLORS.danger,
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  errorMessage: {
-    color: (dark ? '#ffaaa3' : '#7f1d1d'),
-    fontSize: 12,
-    marginTop: 5,
-    marginBottom: 9,
-  },
-  retryText: {
-    color: COLORS.brand,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  sectionTitle: {
-    color: COLORS.ink,
-    fontSize: 19,
-    fontWeight: '800',
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 12,
-    marginBottom: 23,
-  },
-  summaryCard: {
-    flex: 1,
-    minWidth: '46%',
-    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    padding: 14,
-  },
-  summaryCardFull: {
-    flexBasis: '100%',
-  },
-  summaryLabel: {
-    color: COLORS.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  summaryAmount: {
-    color: COLORS.ink,
-    fontSize: 19,
-    fontWeight: '800',
-    marginTop: 8,
-  },
-  negativeAmount: {
-    color: COLORS.danger,
-  },
-  summaryDescription: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 5,
-    lineHeight: 15,
-  },
-  listHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 13,
-  },
-  sectionSubtitle: {
-    color: COLORS.muted,
-    fontSize: 11,
-    marginTop: 4,
-  },
-  budgetCount: {
-    color: COLORS.brand,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  budgetMetricsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginTop: 17,
-    marginBottom: 12,
-  },
-  metricBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
-  remainingMetric: {
-    alignItems: 'flex-end',
-  },
-  metricLabel: {
-    color: COLORS.muted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.55,
-    marginBottom: 5,
-  },
-  remainingAmount: {
-    color: COLORS.ink,
-    fontSize: 13,
-    fontWeight: '800',
-    textAlign: 'right',
-  },
-  warningBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 11,
-    paddingVertical: 10,
-    marginTop: 12,
-  },
-  cautionBanner: {
-    backgroundColor: dark ? '#3a3020' : '#fff8e8',
-    borderColor: dark ? '#72562d' : '#f1d28b',
-  },
-  dangerBanner: {
-    backgroundColor: dark ? '#402725' : '#fff0ef',
-    borderColor: dark ? '#75423e' : '#efc0bc',
-  },
-  warningIconWrap: {
-    width: 25,
-    height: 25,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cautionIconWrap: {
-    backgroundColor: dark ? '#654c27' : '#ffedc2',
-  },
-  dangerIconWrap: {
-    backgroundColor: dark ? '#693632' : '#fbd8d5',
-  },
-  warningIcon: {
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  cautionIcon: {
-    color: dark ? '#ffd27c' : '#9a6500',
-  },
-  dangerIcon: {
-    color: dark ? '#ffaaa3' : '#b42318',
-  },
-  warningCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  warningHeadline: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  cautionHeadline: {
-    color: dark ? '#ffd27c' : '#9a6500',
-  },
-  dangerHeadline: {
-    color: dark ? '#ffaaa3' : '#b42318',
-  },
-  warningDescription: {
-    fontSize: 10,
-    lineHeight: 14,
-  },
-  cautionDescription: {
-    color: dark ? '#e5c58d' : '#815d18',
-  },
-  dangerDescription: {
-    color: dark ? '#ffc0ba' : '#8f2922',
-  },
-  warningPercent: {
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  budgetList: {
-    gap: 12,
-  },
-  budgetCard: {
-    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 18,
-    padding: 16,
-    gap: 2,
-  },
-  budgetTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  categoryInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 10,
-  },
-  categoryIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  categorySymbol: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  categoryText: {
-    flex: 1,
-  },
-  categoryName: {
-    color: COLORS.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  categoryLimit: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 4,
-  },
-  percentText: {
-    color: COLORS.ink,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  spendingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 15,
-    marginBottom: 9,
-  },
-  spentAmount: {
-    color: COLORS.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  spendingOf: {
-    color: COLORS.muted,
-    fontSize: 11,
-  },
-  limitAmount: {
-    color: COLORS.muted,
-    fontSize: 11,
-  },
-  progressTrack: {
-    height: 9,
-    backgroundColor: (dark ? '#2a3a34' : '#edf0ee'),
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 20,
-  },
-  normalAlert: {
-    color: COLORS.brand,
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 8,
-  },
-  warningAlert: {
-    color: COLORS.orange,
-    fontSize: 10,
-    fontWeight: '800',
-    marginTop: 8,
-  },
-  dangerAlert: {
-    color: COLORS.danger,
-    fontSize: 10,
-    fontWeight: '800',
-    marginTop: 8,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 9,
-    marginTop: 13,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f2f0',
-  },
-  editButton: {
-    backgroundColor: (dark ? '#2b3155' : '#eef0ff'),
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  editButtonText: {
-    color: (dark ? '#aab4ff' : '#3b49df'),
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  archiveButton: {
-    backgroundColor: (dark ? '#453020' : '#fff1e8'),
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  archiveButtonText: {
-    color: (dark ? '#ffad70' : '#c2410c'),
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  emptyCard: {
-    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 18,
-    padding: 25,
-    alignItems: 'center',
-  },
-  emptySymbol: {
-    fontSize: 35,
-    color: (dark ? '#9aaba3' : '#a8b5ae'),
-    fontWeight: '800',
-  },
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.ink,
-    marginTop: 10,
-  },
-  emptyDescription: {
-    fontSize: 12,
-    color: COLORS.muted,
-    textAlign: 'center',
-    lineHeight: 19,
-    marginTop: 6,
-  },
-  emptyButton: {
-    marginTop: 15,
-    backgroundColor: COLORS.brand,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderRadius: 10,
-  },
-  emptyButtonText: {
-    color: (dark ? '#1b2a26' : '#ffffff'),
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  availableCard: {
-    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 16,
-    padding: 15,
-    marginTop: 18,
-  },
-  availableTitle: {
-    color: COLORS.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  availableDescription: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 5,
-  },
-  availableChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
-    marginTop: 12,
-  },
-  availableChip: {
-    backgroundColor: (dark ? '#2a3a34' : '#f0f3f1'),
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  availableChipText: {
-    color: COLORS.muted,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  noAvailableText: {
-    color: COLORS.brand,
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 12,
-  },
-  footer: {
-    alignItems: 'center',
-    marginTop: 30,
-  },
-  footerBrand: {
-    color: COLORS.brand,
-    fontWeight: '800',
-    fontSize: 12,
-  },
-  footerText: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 4,
-  },
+    headerText: {
+      position: 'absolute',
+      left: 72,
+      right: 72,
+      alignItems: 'center',
+    },
+    headerSpacer: {
+      width: 44,
+      height: 44,
+    },
+    monthBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: dark ? '#203d36' : '#e6f4f1',
+      paddingHorizontal: 13,
+      paddingVertical: 8,
+      borderRadius: 20,
+      marginBottom: 15,
+    },
+    monthBadgeText: {
+      color: COLORS.brand,
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    addButton: {
+      backgroundColor: COLORS.brand,
+      borderRadius: 13,
+      paddingVertical: 15,
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    addButtonText: {
+      color: dark ? '#1b2a26' : '#ffffff',
+      fontSize: 14,
+      fontWeight: '800',
+    },
+    errorCard: {
+      backgroundColor: dark ? '#402725' : '#fff0ef',
+      borderColor: dark ? '#75423e' : '#f3c3bf',
+      borderWidth: 1,
+      borderRadius: 15,
+      padding: 15,
+      marginBottom: 16,
+    },
+    errorTitle: {
+      color: COLORS.danger,
+      fontWeight: '800',
+      fontSize: 14,
+    },
+    errorMessage: {
+      color: dark ? '#ffaaa3' : '#7f1d1d',
+      fontSize: 12,
+      marginTop: 5,
+      marginBottom: 9,
+    },
+    retryText: {
+      color: COLORS.brand,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    sectionTitle: {
+      color: COLORS.ink,
+      fontSize: 19,
+      fontWeight: '800',
+    },
+    summaryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginTop: 12,
+      marginBottom: 23,
+    },
+    summaryCard: {
+      flex: 1,
+      minWidth: '46%',
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: COLORS.line,
+      padding: 14,
+    },
+    summaryCardFull: {
+      flexBasis: '100%',
+    },
+    summaryLabel: {
+      color: COLORS.muted,
+      fontSize: 9,
+      fontWeight: '800',
+      letterSpacing: 0.6,
+    },
+    summaryAmount: {
+      color: COLORS.ink,
+      fontSize: 19,
+      fontWeight: '800',
+      marginTop: 8,
+    },
+    negativeAmount: {
+      color: COLORS.danger,
+    },
+    summaryDescription: {
+      color: COLORS.muted,
+      fontSize: 10,
+      marginTop: 5,
+      lineHeight: 15,
+    },
+    listHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 13,
+    },
+    sectionSubtitle: {
+      color: COLORS.muted,
+      fontSize: 11,
+      marginTop: 4,
+    },
+    budgetCount: {
+      color: COLORS.brand,
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    budgetMetricsRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginTop: 17,
+      marginBottom: 12,
+    },
+    metricBlock: {
+      flex: 1,
+      minWidth: 0,
+    },
+    remainingMetric: {
+      alignItems: 'flex-end',
+    },
+    metricLabel: {
+      color: COLORS.muted,
+      fontSize: 9,
+      fontWeight: '800',
+      letterSpacing: 0.55,
+      marginBottom: 5,
+    },
+    remainingAmount: {
+      color: COLORS.ink,
+      fontSize: 13,
+      fontWeight: '800',
+      textAlign: 'right',
+    },
+    warningBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 11,
+      paddingVertical: 10,
+      marginTop: 12,
+    },
+    cautionBanner: {
+      backgroundColor: dark ? '#3a3020' : '#fff8e8',
+      borderColor: dark ? '#72562d' : '#f1d28b',
+    },
+    dangerBanner: {
+      backgroundColor: dark ? '#402725' : '#fff0ef',
+      borderColor: dark ? '#75423e' : '#efc0bc',
+    },
+    warningIconWrap: {
+      width: 25,
+      height: 25,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cautionIconWrap: {
+      backgroundColor: dark ? '#654c27' : '#ffedc2',
+    },
+    dangerIconWrap: {
+      backgroundColor: dark ? '#693632' : '#fbd8d5',
+    },
+    warningIcon: {
+      fontSize: 15,
+      fontWeight: '900',
+    },
+    cautionIcon: {
+      color: dark ? '#ffd27c' : '#9a6500',
+    },
+    dangerIcon: {
+      color: dark ? '#ffaaa3' : '#b42318',
+    },
+    warningCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: 2,
+    },
+    warningHeadline: {
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    cautionHeadline: {
+      color: dark ? '#ffd27c' : '#9a6500',
+    },
+    dangerHeadline: {
+      color: dark ? '#ffaaa3' : '#b42318',
+    },
+    warningDescription: {
+      fontSize: 10,
+      lineHeight: 14,
+    },
+    cautionDescription: {
+      color: dark ? '#e5c58d' : '#815d18',
+    },
+    dangerDescription: {
+      color: dark ? '#ffc0ba' : '#8f2922',
+    },
+    warningPercent: {
+      fontSize: 11,
+      fontWeight: '900',
+    },
+    budgetList: {
+      gap: 12,
+    },
+    budgetCard: {
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderWidth: 1,
+      borderColor: COLORS.line,
+      borderRadius: 18,
+      padding: 16,
+      gap: 2,
+    },
+    budgetTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    categoryInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: 10,
+    },
+    categoryIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    categorySymbol: {
+      fontSize: 20,
+      fontWeight: '800',
+    },
+    categoryText: {
+      flex: 1,
+    },
+    categoryName: {
+      color: COLORS.ink,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    categoryLimit: {
+      color: COLORS.muted,
+      fontSize: 10,
+      marginTop: 4,
+    },
+    percentText: {
+      color: COLORS.ink,
+      fontSize: 16,
+      fontWeight: '800',
+    },
+    spendingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 15,
+      marginBottom: 9,
+    },
+    spentAmount: {
+      color: COLORS.ink,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    spendingOf: {
+      color: COLORS.muted,
+      fontSize: 11,
+    },
+    limitAmount: {
+      color: COLORS.muted,
+      fontSize: 11,
+    },
+    progressTrack: {
+      height: 9,
+      backgroundColor: dark ? '#2a3a34' : '#edf0ee',
+      borderRadius: 20,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      borderRadius: 20,
+    },
+    normalAlert: {
+      color: COLORS.brand,
+      fontSize: 10,
+      fontWeight: '700',
+      marginTop: 8,
+    },
+    warningAlert: {
+      color: COLORS.orange,
+      fontSize: 10,
+      fontWeight: '800',
+      marginTop: 8,
+    },
+    dangerAlert: {
+      color: COLORS.danger,
+      fontSize: 10,
+      fontWeight: '800',
+      marginTop: 8,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 9,
+      marginTop: 13,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: '#f0f2f0',
+    },
+    editButton: {
+      backgroundColor: dark ? '#2b3155' : '#eef0ff',
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+    },
+    editButtonText: {
+      color: dark ? '#aab4ff' : '#3b49df',
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    archiveButton: {
+      backgroundColor: dark ? '#453020' : '#fff1e8',
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+    },
+    archiveButtonText: {
+      color: dark ? '#ffad70' : '#c2410c',
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    emptyCard: {
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderWidth: 1,
+      borderColor: COLORS.line,
+      borderRadius: 18,
+      padding: 25,
+      alignItems: 'center',
+    },
+    emptySymbol: {
+      fontSize: 35,
+      color: dark ? '#9aaba3' : '#a8b5ae',
+      fontWeight: '800',
+    },
+    emptyTitle: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: COLORS.ink,
+      marginTop: 10,
+    },
+    emptyDescription: {
+      fontSize: 12,
+      color: COLORS.muted,
+      textAlign: 'center',
+      lineHeight: 19,
+      marginTop: 6,
+    },
+    emptyButton: {
+      marginTop: 15,
+      backgroundColor: COLORS.brand,
+      paddingHorizontal: 16,
+      paddingVertical: 11,
+      borderRadius: 10,
+    },
+    emptyButtonText: {
+      color: dark ? '#1b2a26' : '#ffffff',
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    availableCard: {
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderWidth: 1,
+      borderColor: COLORS.line,
+      borderRadius: 16,
+      padding: 15,
+      marginTop: 18,
+    },
+    availableTitle: {
+      color: COLORS.ink,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    availableDescription: {
+      color: COLORS.muted,
+      fontSize: 10,
+      marginTop: 5,
+    },
+    availableChips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 7,
+      marginTop: 12,
+    },
+    availableChip: {
+      backgroundColor: dark ? '#2a3a34' : '#f0f3f1',
+      borderRadius: 20,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    availableChipText: {
+      color: COLORS.muted,
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    noAvailableText: {
+      color: COLORS.brand,
+      fontSize: 11,
+      fontWeight: '700',
+      marginTop: 12,
+    },
+    footer: {
+      alignItems: 'center',
+      marginTop: 30,
+    },
+    footerBrand: {
+      color: COLORS.brand,
+      fontWeight: '800',
+      fontSize: 12,
+    },
+    footerText: {
+      color: COLORS.muted,
+      fontSize: 10,
+      marginTop: 4,
+    },
 
-  // MODAL
+    // MODAL
 
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(10, 25, 20, 0.55)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: COLORS.canvas,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 21,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    maxHeight: '94%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 18,
-  },
-  modalTitle: {
-    color: COLORS.ink,
-    fontSize: 21,
-    fontWeight: '800',
-  },
-  modalSubtitle: {
-    color: COLORS.muted,
-    fontSize: 11,
-    marginTop: 4,
-  },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    color: COLORS.muted,
-    fontSize: 25,
-  },
-  formContent: {
-    paddingBottom: 22,
-  },
-  fieldLabel: {
-    color: COLORS.ink,
-    fontSize: 11,
-    fontWeight: '800',
-    marginTop: 14,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 11,
-    minHeight: 48,
-    paddingHorizontal: 13,
-    color: COLORS.ink,
-    fontSize: 14,
-  },
-  fieldHint: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 6,
-    lineHeight: 15,
-  },
-  categoryChoices: {
-    gap: 8,
-  },
-  categoryChoice: {
-    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 11,
-    minHeight: 53,
-    padding: 9,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  categoryChoiceActive: {
-    borderColor: COLORS.brand,
-    backgroundColor: (dark ? '#203d36' : '#edf8f5'),
-  },
-  choiceIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  categoryChoiceText: {
-    color: COLORS.ink,
-    fontSize: 12,
-    fontWeight: '600',
-    flex: 1,
-  },
-  categoryChoiceTextActive: {
-    color: COLORS.brand,
-    fontWeight: '800',
-  },
-  selectedCheck: {
-    color: COLORS.brand,
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  formErrorCard: {
-    backgroundColor: (dark ? '#402725' : '#fff0ef'),
-    borderColor: (dark ? '#75423e' : '#f3c3bf'),
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 11,
-    marginTop: 14,
-  },
-  formErrorText: {
-    color: COLORS.danger,
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  saveButton: {
-    backgroundColor: COLORS.brand,
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 22,
-  },
-  saveButtonText: {
-    color: (dark ? '#1b2a26' : '#ffffff'),
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  cancelButton: {
-    backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 9,
-  },
-  cancelButtonText: {
-    color: COLORS.muted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-}) }
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(10, 25, 20, 0.55)',
+      justifyContent: 'flex-end',
+    },
+    modalCard: {
+      backgroundColor: COLORS.canvas,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingTop: 21,
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+      maxHeight: '94%',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 18,
+    },
+    modalTitle: {
+      color: COLORS.ink,
+      fontSize: 21,
+      fontWeight: '800',
+    },
+    modalSubtitle: {
+      color: COLORS.muted,
+      fontSize: 11,
+      marginTop: 4,
+    },
+    closeButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    closeButtonText: {
+      color: COLORS.muted,
+      fontSize: 25,
+    },
+    formContent: {
+      paddingBottom: 22,
+    },
+    fieldLabel: {
+      color: COLORS.ink,
+      fontSize: 11,
+      fontWeight: '800',
+      marginTop: 14,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderWidth: 1,
+      borderColor: COLORS.line,
+      borderRadius: 11,
+      minHeight: 48,
+      paddingHorizontal: 13,
+      color: COLORS.ink,
+      fontSize: 14,
+    },
+    fieldHint: {
+      color: COLORS.muted,
+      fontSize: 10,
+      marginTop: 6,
+      lineHeight: 15,
+    },
+    categoryChoices: {
+      gap: 8,
+    },
+    categoryChoice: {
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderWidth: 1,
+      borderColor: COLORS.line,
+      borderRadius: 11,
+      minHeight: 53,
+      padding: 9,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    categoryChoiceActive: {
+      borderColor: COLORS.brand,
+      backgroundColor: dark ? '#203d36' : '#edf8f5',
+    },
+    choiceIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    categoryChoiceText: {
+      color: COLORS.ink,
+      fontSize: 12,
+      fontWeight: '600',
+      flex: 1,
+    },
+    categoryChoiceTextActive: {
+      color: COLORS.brand,
+      fontWeight: '800',
+    },
+    selectedCheck: {
+      color: COLORS.brand,
+      fontSize: 17,
+      fontWeight: '800',
+    },
+    formErrorCard: {
+      backgroundColor: dark ? '#402725' : '#fff0ef',
+      borderColor: dark ? '#75423e' : '#f3c3bf',
+      borderWidth: 1,
+      borderRadius: 10,
+      padding: 11,
+      marginTop: 14,
+    },
+    formErrorText: {
+      color: COLORS.danger,
+      fontSize: 11,
+      lineHeight: 16,
+    },
+    saveButton: {
+      backgroundColor: COLORS.brand,
+      borderRadius: 12,
+      paddingVertical: 15,
+      alignItems: 'center',
+      marginTop: 22,
+    },
+    saveButtonText: {
+      color: dark ? '#1b2a26' : '#ffffff',
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    disabledButton: {
+      opacity: 0.6,
+    },
+    cancelButton: {
+      backgroundColor: dark ? '#1b2a26' : '#ffffff',
+      borderWidth: 1,
+      borderColor: COLORS.line,
+      borderRadius: 12,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginTop: 9,
+    },
+    cancelButtonText: {
+      color: COLORS.muted,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+  })
+}

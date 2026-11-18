@@ -2,26 +2,27 @@ import { useAppTheme } from '@/context/ThemeContext'
 
 
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { useAuth } from '@/context/AuthContext'
 import { CategoryIcon } from '@/components/CategoryIcon'
+import { UserPageHeader } from '@/components/user-navigation'
+import { useAuth } from '@/context/AuthContext'
 import { supabase, withValidSession } from '@/services/supabase'
 import {
   cleanAmount,
@@ -78,7 +79,7 @@ type ExpenseForm = {
 const METHODS = ['Cash', 'E-wallet', 'Card', 'Bank transfer']
 const PAGE_SIZE = 10
 
-import { UserPageHeader } from '@/components/user-navigation'
+
 
 const LIGHT_COLORS = {
   canvas: '#f6f7f5',
@@ -176,21 +177,6 @@ function shortDate(value: string) {
   })
 }
 
-function categorySymbol(icon: string) {
-  const symbols: Record<string, string> = {
-    bus: '↔',
-    'plus-square': '+',
-    utensils: '♨',
-    zap: 'ϟ',
-    play: '▶',
-    'shopping-bag': '▣',
-    home: '⌂',
-    coins: '◉',
-    'piggy-bank': '●',
-  }
-
-  return symbols[icon] ?? '●'
-}
 
 function emptyForm(): ExpenseForm {
   return {
@@ -228,7 +214,8 @@ export default function ExpensesScreen() {
   const COLORS = getCOLORS(dark)
   const styles = makeStyles(dark, COLORS)
 
-  const { profile } = useAuth()
+const { profile } = useAuth()
+const userId = profile?.id
   const params = useLocalSearchParams<{ openForm?: string; category?: string; receiptDraft?: string; receiptPath?: string; receiptSource?: string; receiptModel?: string; receiptRawText?: string; receiptQrPayload?: string }>()
 
   const [categories, setCategories] = useState<Category[]>([])
@@ -260,8 +247,7 @@ export default function ExpensesScreen() {
   // ------------------------------------------------
 
   const loadExpenses = useCallback(async () => {
-    if (!profile?.id) return
-
+if (!userId) return
     setErrorMessage('')
 
     try {
@@ -284,12 +270,12 @@ export default function ExpensesScreen() {
         supabase
           .from('user_categories')
           .select('category_id')
-          .eq('user_id', profile.id),
+         .eq('user_id', userId),
 
         supabase
           .from('expenses')
           .select('*')
-          .eq('user_id', profile.id)
+.eq('user_id', userId)
           .eq('is_archived', false)
           .order('spent_on', { ascending: false })
           .order('created_at', { ascending: false }),
@@ -297,7 +283,7 @@ export default function ExpensesScreen() {
         supabase
           .from('budgets')
           .select('*')
-          .eq('user_id', profile.id)
+.eq('user_id', userId)
           .eq('is_archived', false)
           .eq('month', month)
           .eq('year', year),
@@ -350,7 +336,7 @@ export default function ExpensesScreen() {
           : 'Unable to load your expenses.',
       )
     }
-  }, [profile?.id])
+}, [userId])
 
   useEffect(() => {
     let mounted = true
@@ -456,16 +442,21 @@ export default function ExpensesScreen() {
     currentPage * PAGE_SIZE,
   )
 
-  useEffect(() => {
-    setPage(1)
-  }, [search, selectedCategory])
+ useEffect(() => {
+  // Reset pagination when the search or category filter changes.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  setPage(1)
+}, [search, selectedCategory])
 
-  useEffect(() => {
-    const categoryId = Number(params.category)
-    if (params.category && Number.isInteger(categoryId) && categoryId > 0) {
-      setSelectedCategory(categoryId)
-    }
-  }, [params.category])
+useEffect(() => {
+  const categoryId = Number(params.category)
+
+  if (params.category && Number.isInteger(categoryId) && categoryId > 0) {
+    // Apply the category requested by navigation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedCategory(categoryId)
+  }
+}, [params.category])
 
   // ------------------------------------------------
   // FORM ACTIONS
@@ -481,12 +472,14 @@ export default function ExpensesScreen() {
   }
 
   // Open the existing Add Expense form when requested by the sidebar.
-  useEffect(() => {
-    if (params.openForm === '1') {
-      openAdd()
-      router.setParams({ openForm: undefined })
-    }
-  }, [params.openForm])
+useEffect(() => {
+  if (params.openForm === '1') {
+    // Open the existing form when navigation requests it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    openAdd()
+    router.setParams({ openForm: undefined })
+  }
+}, [params.openForm])
 
   // Receipt OCR hands its parsed draft to this screen so it can reuse
   // the exact same Add Expense modal and validation as manual entry.
@@ -503,12 +496,12 @@ export default function ExpensesScreen() {
       const source = params.receiptSource === 'qr' ? 'qr' : 'image'
       const qrPayload = params.receiptRawText || ''
       const isStructuredQrPayload = source === 'qr' && (/^https?:\/\//i.test(qrPayload) || /^[\s]*[\[{]/.test(qrPayload))
-      const note = isStructuredQrPayload ? '' : formatReceiptDetails(qrPayload)
+     const note = isStructuredQrPayload ? '' : formatReceiptDetails(qrPayload)
 
-      setEditing(null)
-      setReceiptContext({
-        path: params.receiptPath || null,
-        source,
+setEditing(null) // eslint-disable-line react-hooks/set-state-in-effect
+setReceiptContext({
+  path: params.receiptPath || null,
+  source,
         draft,
         model: params.receiptModel || 'unknown',
         rawText: params.receiptRawText || '',
@@ -721,7 +714,7 @@ export default function ExpensesScreen() {
               .from('expenses')
               .update(row)
               .eq('id', editing.id)
-              .eq('user_id', profile.id)
+.eq('user_id', profile.id)
           : await supabase
               .from('expenses')
               .insert({

@@ -1,3 +1,4 @@
+
 import { Redirect } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
@@ -14,32 +15,18 @@ type Destination =
 export default function IndexScreen() {
   const { session, profile, loading } = useAuth()
   const [destination, setDestination] = useState<Destination | null>(null)
+  const [destinationUserId, setDestinationUserId] = useState<string | null>(null)
   const [checkingCategories, setCheckingCategories] = useState(false)
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
 
+  const userId = profile?.id
+  const role = profile?.role
+
   useEffect(() => {
-    if (loading) return
+    if (loading || !session || !userId || role === 'admin') return
 
     let mounted = true
-    setDestination(null)
-    setError('')
-
-    if (!session || !profile) {
-      setCheckingCategories(false)
-      setDestination('/(auth)/login')
-      return () => {
-        mounted = false
-      }
-    }
-
-    if (profile.role === 'admin') {
-      setCheckingCategories(false)
-      setDestination('/(admin)')
-      return () => {
-        mounted = false
-      }
-    }
 
     const checkSelectedCategories = async () => {
       setCheckingCategories(true)
@@ -48,7 +35,7 @@ export default function IndexScreen() {
         const { data, error: queryError } = await supabase
           .from('user_categories')
           .select('category_id')
-          .eq('user_id', profile.id)
+          .eq('user_id', userId)
           .limit(1)
 
         if (queryError) throw queryError
@@ -59,8 +46,10 @@ export default function IndexScreen() {
             ? '/(user)'
             : '/(user)/category-dashboard',
         )
+        setDestinationUserId(userId)
       } catch (queryError) {
         console.error('Unable to check selected categories:', queryError)
+
         if (mounted) {
           setError(
             queryError instanceof Error
@@ -78,9 +67,9 @@ export default function IndexScreen() {
     return () => {
       mounted = false
     }
-  }, [loading, session, profile, retry])
+  }, [loading, session, userId, role, retry])
 
-  if (loading || checkingCategories) {
+  if (loading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#0F766E" />
@@ -88,8 +77,27 @@ export default function IndexScreen() {
     )
   }
 
-  if (destination) {
-    return <Redirect href={destination} />
+  if (!session || !profile) {
+    return <Redirect href="/(auth)/login" />
+  }
+
+  if (role === 'admin') {
+    return <Redirect href="/(admin)" />
+  }
+
+  const userDestination =
+    destinationUserId === userId ? destination : null
+
+  if (checkingCategories || !userDestination && !error) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0F766E" />
+      </View>
+    )
+  }
+
+  if (userDestination) {
+    return <Redirect href={userDestination} />
   }
 
   if (error) {
@@ -97,7 +105,17 @@ export default function IndexScreen() {
       <View style={styles.container}>
         <Text style={styles.errorTitle}>Unable to load your account</Text>
         <Text style={styles.errorText}>{error}</Text>
-        <Pressable style={styles.retryButton} onPress={() => setRetry((value) => value + 1)}>
+
+        <Pressable
+          style={styles.retryButton}
+          onPress={() => {
+            setError('')
+            setDestination(null)
+            setDestinationUserId(null)
+            setCheckingCategories(true)
+            setRetry((value) => value + 1)
+          }}
+        >
           <Text style={styles.retryText}>Try again</Text>
         </Pressable>
       </View>
@@ -119,8 +137,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
-  errorTitle: { color: '#14201C', fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  errorText: { color: '#64716B', fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 8 },
+  errorTitle: {
+    color: '#14201C',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  errorText: {
+    color: '#64716B',
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginTop: 8,
+  },
   retryButton: {
     marginTop: 18,
     backgroundColor: '#0F766E',
@@ -128,5 +157,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 12,
   },
-  retryText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  retryText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
 })

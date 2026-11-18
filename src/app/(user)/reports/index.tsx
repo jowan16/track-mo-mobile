@@ -1,4 +1,5 @@
 import { useAppTheme } from '@/context/ThemeContext'
+import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
@@ -10,7 +11,6 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
 
 import { UserPageHeader } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
@@ -84,8 +84,9 @@ export default function ReportsScreen() {
   const C = getC(dark)
   const styles = makeStyles(dark, C)
 
-  const { profile } = useAuth()
-  const today = new Date()
+ const { profile } = useAuth()
+const userId = profile?.id
+const today = new Date()
 
   const [mode, setMode] = useState<Mode>('monthly')
   const [year, setYear] = useState(today.getFullYear())
@@ -102,104 +103,112 @@ export default function ReportsScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
 
-  const loadReport = useCallback(async () => {
-    if (!profile?.id) return
+const loadReport = useCallback(async () => {
+  if (!userId) return
+  
+ 
+  setError('')
 
-    setError('')
+  const weeklyEnd = new Date(weekStart)
+  weeklyEnd.setDate(weeklyEnd.getDate() + 7)
 
-    const weeklyEnd = new Date(weekStart)
-    weeklyEnd.setDate(weeklyEnd.getDate() + 7)
+  const previousWeekStart = new Date(weekStart)
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7)
 
-    const previousWeekStart = new Date(weekStart)
-    previousWeekStart.setDate(previousWeekStart.getDate() - 7)
+  const from = mode === 'weekly'
+    ? dateKey(previousWeekStart)
+    : mode === 'monthly'
+      ? dateKey(new Date(year, month - 2, 1))
+      : `${year - 1}-01-01`
 
-    const from = mode === 'weekly'
-      ? dateKey(previousWeekStart)
-      : mode === 'monthly'
-        ? dateKey(new Date(year, month - 2, 1))
-        : `${year - 1}-01-01`
+  const to = mode === 'weekly'
+    ? dateKey(weeklyEnd)
+    : mode === 'monthly'
+      ? dateKey(new Date(year, month, 1))
+      : `${year + 1}-01-01`
 
-    const to = mode === 'weekly'
-      ? dateKey(weeklyEnd)
-      : mode === 'monthly'
-        ? dateKey(new Date(year, month, 1))
-        : `${year + 1}-01-01`
+  try {
+    const [categoryResult, trackedResult, expenseResult, budgetResult] =
+      await Promise.all([
+        supabase.from('categories').select('id,name,icon,color')
+          .eq('is_active', true).order('sort_order'),
 
-    try {
-      const [categoryResult, trackedResult, expenseResult, budgetResult] =
-        await Promise.all([
-          supabase.from('categories').select('id,name,icon,color')
-            .eq('is_active', true).order('sort_order'),
-          supabase.from('user_categories').select('category_id')
-            .eq('user_id', profile.id),
-          supabase.from('expenses').select('id,category_id,amount,spent_on,is_archived')
-            .eq('user_id', profile.id).eq('is_archived', false)
-            .gte('spent_on', from).lt('spent_on', to)
-            .order('spent_on', { ascending: true }),
-          supabase.from('budgets').select('category_id,amount')
-            .eq('user_id', profile.id).eq('is_archived', false)
-            .eq('month', month).eq('year', year),
-        ])
+        supabase.from('user_categories').select('category_id')
+          .eq('user_id', userId),
 
-      if (categoryResult.error) throw categoryResult.error
-      if (trackedResult.error) throw trackedResult.error
-      if (expenseResult.error) throw expenseResult.error
-      if (budgetResult.error) throw budgetResult.error
+        supabase.from('expenses').select('id,category_id,amount,spent_on,is_archived')
+          .eq('user_id', userId).eq('is_archived', false)
+          .gte('spent_on', from).lt('spent_on', to)
+          .order('spent_on', { ascending: true }),
 
-      const trackedIds = new Set(
-        (trackedResult.data ?? []).map((item) => Number(item.category_id)),
-      )
+        supabase.from('budgets').select('category_id,amount')
+          .eq('user_id', userId).eq('is_archived', false)
+          .eq('month', month).eq('year', year),
+      ])
 
-      setCategories(
-        ((categoryResult.data ?? []) as Category[])
-          .filter((item) => trackedIds.has(item.id)),
-      )
+    if (categoryResult.error) throw categoryResult.error
+    if (trackedResult.error) throw trackedResult.error
+    if (expenseResult.error) throw expenseResult.error
+    if (budgetResult.error) throw budgetResult.error
 
-      setExpenses(
-        ((expenseResult.data ?? []) as Expense[])
-          .filter((item) => trackedIds.has(item.category_id))
-          .map((item) => ({ ...item, amount: Number(item.amount) })),
-      )
+    const trackedIds = new Set(
+      (trackedResult.data ?? []).map((item) => Number(item.category_id)),
+    )
 
-      setBudgets(
-        ((budgetResult.data ?? []) as Budget[])
-          .filter((item) => trackedIds.has(item.category_id))
-          .map((item) => ({ ...item, amount: Number(item.amount) })),
-      )
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to load reports.')
-    }
-  }, [profile?.id, mode, year, month, weekStart])
+    setCategories(
+      ((categoryResult.data ?? []) as Category[])
+        .filter((item) => trackedIds.has(item.id)),
+    )
+
+    setExpenses(
+      ((expenseResult.data ?? []) as Expense[])
+        .filter((item) => trackedIds.has(item.category_id))
+        .map((item) => ({ ...item, amount: Number(item.amount) })),
+    )
+
+    setBudgets(
+      ((budgetResult.data ?? []) as Budget[])
+        .filter((item) => trackedIds.has(item.category_id))
+        .map((item) => ({ ...item, amount: Number(item.amount) })),
+    )
+   } catch (e) {
+    setError(e instanceof Error ? e.message : 'Unable to load reports.')
+  }
+}, [userId, mode, year, month, weekStart])
 
   useEffect(() => {
-    let active = true
+  let active = true
 
-    // Use a unique topic for every effect instance. Screen remounts can happen
-    // before Supabase finishes removing the previous subscribed channel.
-    const channelTopic = `user-reports-categories:${profile?.id ?? 'guest'}:${Date.now()}:${Math.random().toString(36).slice(2)}`
-    const channel = supabase
-      .channel(channelTopic)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'categories' },
-        () => {
-          if (active) void loadReport()
-        },
-      )
+  const channelTopic = `user-reports-categories:${userId ?? 'guest'}:${Date.now()}:${Math.random().toString(36).slice(2)}`
 
-    // Register callbacks before subscribing to the channel.
-    channel.subscribe()
+  const channel = supabase
+    .channel(channelTopic)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'categories' },
+      () => {
+        if (active) void loadReport()
+      },
+    )
 
-    setLoading(true)
-    loadReport().finally(() => {
+  channel.subscribe()
+
+  void Promise.resolve()
+    .then(() => {
+      if (!active) return
+
+      setLoading(true)
+      return loadReport()
+    })
+    .finally(() => {
       if (active) setLoading(false)
     })
 
-    return () => {
-      active = false
-      void supabase.removeChannel(channel)
-    }
-  }, [loadReport, profile?.id])
+  return () => {
+    active = false
+    void supabase.removeChannel(channel)
+  }
+}, [loadReport, userId])
 
   const refresh = async () => {
     setRefreshing(true)

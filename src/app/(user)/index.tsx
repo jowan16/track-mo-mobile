@@ -4,9 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import {
-  Modal,
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,10 +16,10 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { useAuth } from '@/context/AuthContext'
 import { CategoryIcon } from '@/components/CategoryIcon'
-import { supabase, withValidSession } from '@/services/supabase'
 import { UserPageHeader } from '@/components/user-navigation'
+import { useAuth } from '@/context/AuthContext'
+import { supabase, withValidSession } from '@/services/supabase'
 
 // --------------------------------------------------
 // TYPES
@@ -97,17 +97,7 @@ function getCOLORS(dark: boolean) { return dark ? {
 } : LIGHT_COLORS }
 
 
-const CATEGORY_SYMBOLS: Record<string, string> = {
-  bus: '↔',
-  'plus-square': '+',
-  utensils: '♨',
-  zap: 'ϟ',
-  play: '▶',
-  'shopping-bag': '▣',
-  home: '⌂',
-  coins: '◉',
-  'piggy-bank': '●',
-}
+
 
 function localDateString(date: Date) {
   const year = date.getFullYear()
@@ -149,9 +139,7 @@ function getCurrentMonth() {
   })
 }
 
-function getCategorySymbol(icon: string) {
-  return CATEGORY_SYMBOLS[icon] ?? '●'
-}
+
 
 function SummaryCard({
   title,
@@ -204,8 +192,9 @@ export default function UserDashboard() {
   const COLORS = getCOLORS(dark)
   const styles = makeStyles(dark, COLORS)
 
-  const { profile, signOut } = useAuth()
-  const realtimeInstanceId = useId().replace(/:/g, '')
+  const { profile } = useAuth()
+const userId = profile?.id
+const realtimeInstanceId = useId().replace(/:/g, '')
 
   const [data, setData] = useState<DashboardData>({
     categories: [],
@@ -225,9 +214,8 @@ export default function UserDashboard() {
   // FETCH DASHBOARD DATA
   // ------------------------------------------------
 
-  const loadDashboard = useCallback(async () => {
-    if (!profile?.id) return
-
+ const loadDashboard = useCallback(async () => {
+  if (!userId) return
     setErrorMessage('')
 
     const now = new Date()
@@ -259,12 +247,12 @@ export default function UserDashboard() {
           supabase
             .from('user_categories')
             .select('category_id')
-            .eq('user_id', profile.id),
+.eq('user_id', userId),
 
           supabase
             .from('expenses')
             .select('*')
-            .eq('user_id', profile.id)
+.eq('user_id', userId)
             .eq('is_archived', false)
             .gte('spent_on', from)
             .lt('spent_on', toExclusive)
@@ -274,7 +262,7 @@ export default function UserDashboard() {
           supabase
             .from('budgets')
             .select('*')
-            .eq('user_id', profile.id)
+.eq('user_id', userId)
             .eq('is_archived', false)
             .eq('month', now.getMonth() + 1)
             .eq('year', now.getFullYear()),
@@ -344,7 +332,7 @@ export default function UserDashboard() {
           : 'Unable to load your dashboard.',
       )
     }
-  }, [profile?.id])
+}, [userId])
 
   useEffect(() => {
     let mounted = true
@@ -590,36 +578,9 @@ export default function UserDashboard() {
     }
   }
 
-  // ------------------------------------------------
-  // SIGN OUT
-  // ------------------------------------------------
+  
 
-  const handleSignOut = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut()
-              router.replace('/(auth)/login')
-            } catch (error) {
-              Alert.alert(
-                'Sign Out Failed',
-                error instanceof Error
-                  ? error.message
-                  : 'Unable to sign out. Please try again.',
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
+ 
 
   // ------------------------------------------------
   // LOADING
@@ -669,7 +630,7 @@ export default function UserDashboard() {
           </Text>
 
           <Text style={styles.welcomeSubtitle}>
-            Here's how your money is doing this month.
+Here&apos;s how your money is doing this month.
           </Text>
 
           <View style={styles.welcomeFooter}>
