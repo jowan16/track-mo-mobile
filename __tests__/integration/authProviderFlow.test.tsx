@@ -8,6 +8,7 @@ const mockRefresh = jest.fn<(...args: any[]) => any>()
 const mockRpc = jest.fn<(...args: any[]) => any>()
 const mockMaybeSingle = jest.fn<(...args: any[]) => any>()
 let mockAuthListener: ((event: string, session: unknown) => void) | null = null
+let mockSession: any = null
 let mockProfile: Record<string, unknown> | null = null
 let mockProfileError: unknown = null
 
@@ -72,19 +73,60 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  mockProfile = { id: 'user-1', role: 'user', status: 'active', full_name: 'Kai' }
+  mockProfile = {
+    id: 'user-1',
+    role: 'user',
+    status: 'active',
+    full_name: 'Kai',
+  }
+
   mockProfileError = null
   mockAuthListener = null
-  mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+  mockSession = null
+
+  mockGetSession.mockImplementation(async () => ({
+    data: { session: mockSession },
+    error: null,
+  }))
+
   mockSignIn.mockImplementation(async () => {
-    const session = { user: { id: 'user-1' }, expires_at: Math.floor(Date.now() / 1000) + 3600 }
+    const session = {
+      user: { id: 'user-1' },
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    }
+
+    mockSession = session
     mockAuthListener?.('SIGNED_IN', session)
-    return { data: { user: { id: 'user-1', email_confirmed_at: '2026-11-17T00:00:00Z' }, session }, error: null }
+
+    return {
+      data: {
+        user: {
+          id: 'user-1',
+          email_confirmed_at: '2026-11-17T00:00:00Z',
+        },
+        session,
+      },
+      error: null,
+    }
   })
-  mockMaybeSingle.mockImplementation(async () => ({ data: mockProfile, error: mockProfileError }))
-  mockSignOut.mockResolvedValue({ error: null })
-  mockRefresh.mockResolvedValue({ data: { session: null }, error: null })
+
+  mockMaybeSingle.mockImplementation(async () => ({
+    data: mockProfile,
+    error: mockProfileError,
+  }))
+
+  mockSignOut.mockImplementation(async () => {
+    mockSession = null
+    return { error: null }
+  })
+
+  mockRefresh.mockResolvedValue({
+    data: { session: null },
+    error: null,
+  })
+
   mockRpc.mockResolvedValue({ error: null })
+
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
