@@ -18,7 +18,7 @@ import {
 import { supabase } from '@/services/supabase'
 
 export default function ResetPasswordScreen() {
-  const { code } = useLocalSearchParams<{ code?: string }>()
+  const { code, verified: verifiedParam } = useLocalSearchParams<{ code?: string; verified?: string }>()
   const hasExchangedCode = useRef(false)
 
   const [password, setPassword] = useState('')
@@ -53,6 +53,20 @@ export default function ResetPasswordScreen() {
     }
 
     const readIncomingLink = async () => {
+      const isAlreadyVerified = Array.isArray(verifiedParam)
+        ? verifiedParam[0] === '1'
+        : verifiedParam === '1'
+
+      // The root deep-link handler already exchanged the recovery code and
+      // intentionally kept the Supabase recovery session alive.
+      if (isAlreadyVerified) {
+        if (mounted) {
+          setVerified(true)
+          setVerifying(false)
+        }
+        return
+      }
+
       const routeCode = Array.isArray(code) ? code[0] : code
       if (routeCode) {
         await verifyResetLink(routeCode)
@@ -93,7 +107,7 @@ export default function ResetPasswordScreen() {
       mounted = false
       subscription.remove()
     }
-  }, [code])
+  }, [code, verifiedParam])
 
   const handlePasswordChange = (value: string) => {
     setPassword(value)
@@ -142,8 +156,11 @@ export default function ResetPasswordScreen() {
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
 
-      await supabase.auth.signOut({ scope: 'local' })
-      router.replace('/(auth)/login')
+      // End the recovery session only after Supabase confirms the new password.
+      const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
+      if (signOutError) {
+        console.warn('Password changed, but the recovery session could not be cleared:', signOutError)
+      }
 
       Alert.alert(
         'Password updated',
