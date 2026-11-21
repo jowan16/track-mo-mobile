@@ -38,7 +38,7 @@ function AppContent() {
         const isPasswordRecovery =
           params.get('type') === 'recovery' ||
           parsedUrl.hostname === 'reset-password' ||
-          parsedUrl.pathname.replace(/^\\/+|\\/+$/g, '') === 'reset-password'
+          parsedUrl.pathname.replace(/^\/+|\/+$/g, '') === 'reset-password'
 
         if (callbackError) {
           console.error('Auth callback failed:', callbackError)
