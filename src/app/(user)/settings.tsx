@@ -33,7 +33,7 @@ export default function SettingsScreen() {
     text: dark ? '#f1f5f3' : '#14201c',
     muted: dark ? '#a0ada7' : '#64716b',
     border: dark ? '#34423c' : '#e4e8e5',
-    brand: '#0f766e',
+    brand: dark ? '#55c6b0' : '#0f766e',
     danger: '#dc4444',
     input: dark ? '#26332e' : '#f8faf9',
   }
@@ -150,7 +150,7 @@ export default function SettingsScreen() {
     ])
   }
 
-  const styles = makeStyles(C)
+  const styles = makeStyles(C, dark)
 
   if (!profile) {
     return (
@@ -379,7 +379,7 @@ function makeStyles(C: {
   brand: string
   danger: string
   input: string
-}) {
+}, dark: boolean) {
   return StyleSheet.create({
     flex: { flex: 1 },
     screen: { flex: 1, backgroundColor: C.background },
@@ -434,7 +434,7 @@ function makeStyles(C: {
       justifyContent: 'center',
       alignItems: 'center',
     },
-    avatarText: { color: '#fff', fontSize: 20, fontWeight: '800' },
+    avatarText: { color: dark ? '#14201c' : '#fff', fontSize: 20, fontWeight: '800' },
     accountInfo: { flex: 1, gap: 4 },
     itemTitle: { color: C.text, fontSize: 14, fontWeight: '700' },
     description: { color: C.muted, fontSize: 12, lineHeight: 18 },
@@ -485,7 +485,7 @@ function makeStyles(C: {
       justifyContent: 'center',
       minHeight: 44,
     },
-    primaryButtonText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+    primaryButtonText: { color: dark ? '#14201c' : '#fff', fontSize: 13, fontWeight: '800' },
     secondaryButton: {
       flex: 1,
       borderWidth: 1,
@@ -523,7 +523,7 @@ function makeStyles(C: {
     },
     themeIcon: { color: C.text, fontSize: 19 },
     themeLabel: { color: C.text, fontSize: 12, fontWeight: '700' },
-    selectedText: { color: '#fff' },
+    selectedText: { color: dark ? '#14201c' : '#fff' },
     switchRow: {
       flexDirection: 'row',
       alignItems: 'center',

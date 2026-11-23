@@ -167,7 +167,7 @@ export default function RegisterScreen() {
             <View style={styles.successIcon}>
               <Text style={styles.successCheck}>✓</Text>
             </View>
-            <Text style={styles.successEyebrow}>YOU'RE ALMOST THERE</Text>
+            <Text style={styles.successEyebrow}>YOU’RE ALMOST THERE</Text>
             <Text style={styles.successTitle}>Account Created Successfully!</Text>
             <Text style={styles.successMessage}>
               Please verify your email address to activate your account. Open the message we sent and tap its verification link before logging in.
@@ -265,6 +265,7 @@ export default function RegisterScreen() {
             }}
             placeholder="Enter your full name"
             placeholderTextColor="#94A3B8"
+            selectionColor="#0F766E"
             autoComplete="name"
             autoCapitalize="words"
             editable={!loading}
@@ -282,6 +283,7 @@ export default function RegisterScreen() {
             }}
             placeholder="you@example.com"
             placeholderTextColor="#94A3B8"
+            selectionColor="#0F766E"
             keyboardType="email-address"
             autoComplete="email"
             autoCapitalize="none"
@@ -301,6 +303,7 @@ export default function RegisterScreen() {
               }}
               placeholder="At least 8 characters, with a letter and number"
               placeholderTextColor="#94A3B8"
+              selectionColor="#0F766E"
               secureTextEntry={!showPassword}
               // Prevent Android/iOS password autofill from inserting different
               // generated values into the two confirmation fields.
@@ -314,6 +317,8 @@ export default function RegisterScreen() {
               onPress={() => setShowPassword((previous) => !previous)}
               disabled={loading}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
             >
               <Text style={styles.showPassword}>{showPassword ? 'Hide' : 'Show'}</Text>
             </Pressable>
@@ -332,6 +337,7 @@ export default function RegisterScreen() {
               }}
               placeholder="Re-enter your password"
               placeholderTextColor="#94A3B8"
+              selectionColor="#0F766E"
               secureTextEntry={!showConfirmPassword}
               // Prevent Android/iOS password autofill from inserting different
               // generated values into the two confirmation fields.
@@ -345,6 +351,8 @@ export default function RegisterScreen() {
               onPress={() => setShowConfirmPassword((previous) => !previous)}
               disabled={loading}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}
             >
               <Text style={styles.showPassword}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
             </Pressable>
@@ -479,10 +487,10 @@ const styles = StyleSheet.create({
   errorBanner: { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 10, padding: 11, marginBottom: 16 },
   errorBannerText: { color: '#B91C1C', fontSize: 13, lineHeight: 19 },
   label: { color: '#334B41', fontSize: 13, fontWeight: '700', marginBottom: 7 },
-  input: { height: 48, borderWidth: 1, borderColor: '#CBD8D1', borderRadius: 10, paddingHorizontal: 12, fontSize: 14, color: '#10231D', marginBottom: 14 },
+  input: { height: 48, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD8D1', borderRadius: 10, paddingHorizontal: 12, fontSize: 14, color: '#10231D', marginBottom: 14 },
   inputInvalid: { borderColor: '#DC2626' },
-  passwordContainer: { minHeight: 49, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#CBD8D1', borderRadius: 10, paddingHorizontal: 12, marginBottom: 8 },
-  passwordInput: { flex: 1, minHeight: 47, color: '#10231D', fontSize: 13 },
+  passwordContainer: { minHeight: 49, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD8D1', borderRadius: 10, paddingHorizontal: 12, marginBottom: 8 },
+  passwordInput: { flex: 1, minHeight: 47, backgroundColor: '#FFFFFF', color: '#10231D', fontSize: 13 },
   showPassword: { color: '#0F766E', fontSize: 12, fontWeight: '700', paddingLeft: 8 },
   fieldError: { color: '#DC2626', fontSize: 12, marginTop: -8, marginBottom: 11 },
   hint: { color: '#718078', fontSize: 11, marginBottom: 14 },
