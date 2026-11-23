@@ -220,12 +220,19 @@ export function UserDrawerProvider({
 
             <View style={styles.accountFooter}>
               <View style={styles.separator} />
-
-              <Text style={styles.signedInLabel}>Signed in as</Text>
-
-              <Text style={styles.profileName} numberOfLines={2}>
-                {profile?.full_name || 'User'}
-              </Text>
+              <View style={styles.accountSummary}>
+                <View style={styles.accountAvatar}>
+                  <Text style={styles.accountAvatarText}>
+                    {(profile?.full_name || 'User').trim().charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.accountInfo}>
+                  <Text style={styles.signedInLabel}>PERSONAL ACCOUNT</Text>
+                  <Text style={styles.profileName} numberOfLines={1}>
+                    {profile?.full_name || 'User'}
+                  </Text>
+                </View>
+              </View>
 
               <Pressable
                 style={({ pressed }) => [
@@ -234,9 +241,13 @@ export function UserDrawerProvider({
                 ]}
                 onPress={handleSignOut}
                 accessibilityRole="button"
+                accessibilityLabel="Log out of Track Mo"
               >
-                <Text style={styles.logoutIcon}>↪</Text>
+                <View style={styles.logoutIconBox}>
+                  <Text style={styles.logoutIcon}>⇥</Text>
+                </View>
                 <Text style={styles.logoutText}>Log out</Text>
+                <Text style={styles.logoutChevron}>›</Text>
               </Pressable>
             </View>
           </View>
@@ -275,7 +286,7 @@ function makeStyles(dark: boolean) {
     brand: '#0f766e',
     dangerBg: dark ? '#3a2423' : '#fff1f0',
     dangerPressed: dark ? '#4a2b29' : '#ffe2df',
-    danger: '#ef7770',
+    danger: dark ? '#ffafa5' : '#b64b45',
   }
   return StyleSheet.create({
   overlay: {
@@ -380,39 +391,82 @@ function makeStyles(dark: boolean) {
   accountFooter: {
     paddingTop: 15,
   },
+  accountSummary: {
+    marginTop: 14,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    borderRadius: 16,
+    backgroundColor: palette.subtle,
+    padding: 11,
+  },
+  accountAvatar: {
+    width: 41,
+    height: 41,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: dark ? '#204d43' : '#d9f3e8',
+  },
+  accountAvatarText: {
+    color: dark ? '#c5ffea' : '#0f766e',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  accountInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
   signedInLabel: {
     color: palette.muted,
-    fontSize: 12,
-    marginTop: 17,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.7,
   },
   profileName: {
     color: palette.text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
-    marginTop: 5,
-    marginBottom: 16,
+    marginTop: 4,
   },
   logoutButton: {
-    minHeight: 45,
-    borderRadius: 10,
-    backgroundColor: palette.dangerBg,
+    minHeight: 54,
+    borderRadius: 15,
+    backgroundColor: dark ? '#302727' : '#fffbfa',
+    borderWidth: 1,
+    borderColor: dark ? '#64423f' : '#f1dcd8',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 13,
-    gap: 10,
+    paddingHorizontal: 10,
+    gap: 11,
   },
   logoutPressed: {
     backgroundColor: palette.dangerPressed,
   },
+  logoutIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.dangerBg,
+  },
   logoutIcon: {
     color: palette.danger,
-    fontSize: 19,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '900',
   },
   logoutText: {
     color: palette.danger,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
+    flex: 1,
+  },
+  logoutChevron: {
+    color: palette.danger,
+    fontSize: 22,
+    marginRight: 4,
   },
   menuButton: {
     width: 42,

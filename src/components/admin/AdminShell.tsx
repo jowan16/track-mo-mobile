@@ -164,20 +164,37 @@ export function AdminShell({
 
             <View style={styles.accountFooter}>
               <View style={styles.separator} />
-              <Text style={styles.signedInLabel}>Signed in as</Text>
-              <Text style={styles.profileName} numberOfLines={2}>
-                {profile?.full_name || profile?.email || 'Administrator'}
-              </Text>
+              <View style={styles.accountSummary}>
+                <View style={styles.accountAvatar}>
+                  <Text style={styles.accountAvatarText}>
+                    {(profile?.full_name || profile?.email || 'Administrator').trim().charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.accountInfo}>
+                  <Text style={styles.signedInLabel}>ADMINISTRATOR ACCOUNT</Text>
+                  <Text style={styles.profileName} numberOfLines={1}>
+                    {profile?.full_name || profile?.email || 'Administrator'}
+                  </Text>
+                </View>
+              </View>
               <Pressable
-                style={styles.drawerSignOutButton}
+                style={({ pressed }) => [
+                  styles.drawerSignOutButton,
+                  pressed && styles.drawerSignOutPressed,
+                  signingOut && styles.drawerSignOutDisabled,
+                ]}
                 onPress={confirmSignOut}
                 disabled={signingOut}
                 accessibilityRole="button"
+                accessibilityLabel="Sign out of Track Mo administration"
               >
-                <Text style={styles.drawerSignOutIcon}>↪</Text>
+                <View style={styles.drawerSignOutIconBox}>
+                  <Text style={styles.drawerSignOutIcon}>⇥</Text>
+                </View>
                 <Text style={styles.drawerSignOutText}>
                   {signingOut ? 'Signing out…' : 'Sign out'}
                 </Text>
+                <Text style={styles.drawerSignOutChevron}>›</Text>
               </Pressable>
             </View>
           </View>
@@ -289,23 +306,32 @@ const styles = StyleSheet.create({
   menuText: { color: '#34413B', fontSize: 14, fontWeight: '600' },
   activeMenuText: { color: adminColors.primary, fontWeight: '800' },
   accountFooter: { paddingTop: 15 },
-  signedInLabel: { color: '#7B8782', fontSize: 12, marginTop: 17 },
+  accountSummary: { flexDirection: 'row', alignItems: 'center', gap: 11, borderRadius: 16, backgroundColor: '#F2F6F4', padding: 11, marginTop: 14, marginBottom: 12 },
+  accountAvatar: { width: 41, height: 41, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#D9F3E8' },
+  accountAvatarText: { color: '#0F766E', fontSize: 18, fontWeight: '900' },
+  accountInfo: { flex: 1, minWidth: 0 },
+  signedInLabel: { color: '#647C70', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   profileName: {
     color: adminColors.text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
-    marginTop: 5,
-    marginBottom: 16,
+    marginTop: 4,
   },
   drawerSignOutButton: {
-    minHeight: 45,
-    borderRadius: 10,
-    backgroundColor: '#FFF1F0',
+    minHeight: 54,
+    borderRadius: 15,
+    backgroundColor: '#FFFBFA',
+    borderWidth: 1,
+    borderColor: '#F1DCD8',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 13,
-    gap: 10,
+    paddingHorizontal: 10,
+    gap: 11,
   },
-  drawerSignOutIcon: { color: adminColors.danger, fontSize: 19, fontWeight: '800' },
-  drawerSignOutText: { color: adminColors.danger, fontSize: 14, fontWeight: '700' },
+  drawerSignOutPressed: { backgroundColor: '#FFEAE6' },
+  drawerSignOutDisabled: { opacity: 0.55 },
+  drawerSignOutIconBox: { width: 34, height: 34, borderRadius: 11, backgroundColor: '#FDE9E6', alignItems: 'center', justifyContent: 'center' },
+  drawerSignOutIcon: { color: '#B64B45', fontSize: 22, fontWeight: '900' },
+  drawerSignOutText: { flex: 1, color: '#B64B45', fontSize: 14, fontWeight: '800' },
+  drawerSignOutChevron: { color: '#B64B45', fontSize: 22, marginRight: 4 },
 })
