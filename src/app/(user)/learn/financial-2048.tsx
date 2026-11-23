@@ -3,13 +3,13 @@ import React, { useState } from 'react'
 import {
   PanResponder,
   Pressable,
-  SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native'
 import { router } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 type Board = number[][]
 type Direction = 'left' | 'right' | 'up' | 'down'
@@ -18,7 +18,7 @@ const SIZE = 4
 const emptyBoard = (): Board => Array.from({ length: SIZE }, () => Array(SIZE).fill(0))
 
 function spawnTile(board: Board): Board {
-  const empty: Array<[number, number]> = []
+  const empty: [number, number][] = []
   board.forEach((row, r) => row.forEach((value, c) => { if (value === 0) empty.push([r, c]) }))
   if (!empty.length) return board
   const [r, c] = empty[Math.floor(Math.random() * empty.length)]
@@ -109,12 +109,14 @@ export default function Financial2048Screen() {
   const dark = resolvedTheme === 'dark'
   const C = getC(dark)
   const styles = makeStyles(C, dark)
+  const { width, height } = useWindowDimensions()
+  const compact = height < 740
+  const boardSize = Math.max(190, Math.min(width - 32, height - (compact ? 365 : 390), 420))
   const [board, setBoard] = useState<Board>(() => newGame())
   const [score, setScore] = useState(0)
   const [best, setBest] = useState(0)
   const [won, setWon] = useState(false)
   const [keepPlaying, setKeepPlaying] = useState(false)
-  const [scrollEnabled, setScrollEnabled] = useState(true)
 
   const reset = () => {
     setBoard(newGame())
@@ -136,64 +138,69 @@ export default function Financial2048Screen() {
   }
 
   const gameOver = !hasMoves(board)
+  const canSwipe = !gameOver && (!won || keepPlaying)
 
+  // There is no parent ScrollView and no gesture-driven state change until
+  // release, so swiping the board cannot scroll or re-render the page.
   const swipeResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
+    onStartShouldSetPanResponder: () => canSwipe,
     onMoveShouldSetPanResponder: (_, gesture) =>
-      Math.abs(gesture.dx) > 8 || Math.abs(gesture.dy) > 8,
-    onPanResponderGrant: () => setScrollEnabled(false),
+      canSwipe && (Math.abs(gesture.dx) > 8 || Math.abs(gesture.dy) > 8),
     onPanResponderTerminationRequest: () => false,
     onPanResponderRelease: (_, gesture) => {
-      setScrollEnabled(true)
       const horizontal = Math.abs(gesture.dx)
       const vertical = Math.abs(gesture.dy)
-      const threshold = 24
-      if (Math.max(horizontal, vertical) < threshold) return
+      if (Math.max(horizontal, vertical) < 24) return
       if (horizontal > vertical) move(gesture.dx > 0 ? 'right' : 'left')
       else move(gesture.dy > 0 ? 'down' : 'up')
     },
-    onPanResponderTerminate: () => setScrollEnabled(true),
   })
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Pressable onPress={() => router.back()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Back to Financial Literacy">
           <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
         <Text style={styles.headerTitle}>2048 Money Mind</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} scrollEnabled={scrollEnabled}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>PLAY & LEARN</Text>
-          <Text style={styles.heroTitle}>Merge tiles. Reach 2048.</Text>
-          <Text style={styles.heroText}>Slide matching numbers together to make bigger values. Plan your moves, keep the board clear, and aim for 2048!</Text>
+      <View style={styles.playArea}>
+        <View style={[styles.gameIntro, { width: boardSize }]}>
+          <View style={styles.introCopy}>
+            <Text style={styles.eyebrow}>✦ PLAY & LEARN</Text>
+            <Text style={styles.introTitle}>Make every move count.</Text>
+          </View>
+          <View style={styles.goalBadge}>
+            <Text style={styles.goalLabel}>GOAL</Text>
+            <Text style={styles.goalValue}>2048</Text>
+          </View>
         </View>
 
-        <View style={styles.scoreRow}>
+        <View style={[styles.scoreRow, { width: boardSize }]}>
           <View style={styles.scoreCard}>
             <Text style={styles.scoreLabel}>SCORE</Text>
             <Text style={styles.scoreValue}>{score}</Text>
           </View>
           <View style={styles.scoreCard}>
-            <Text style={styles.scoreLabel}>BEST THIS SESSION</Text>
+            <Text style={styles.scoreLabel}>BEST</Text>
             <Text style={styles.scoreValue}>{best}</Text>
           </View>
-          <Pressable onPress={reset} style={styles.newGameButton}>
+          <Pressable onPress={reset} style={styles.newGameButton} accessibilityRole="button" accessibilityLabel="Start a new 2048 game">
+            <Text style={styles.restartIcon}>↻</Text>
             <Text style={styles.newGameText}>New game</Text>
           </Pressable>
         </View>
 
-        <View style={styles.board} {...swipeResponder.panHandlers}>
+        <View style={[styles.board, { width: boardSize, height: boardSize }]} {...swipeResponder.panHandlers}>
           {board.map((row, r) => (
             <View key={r} style={styles.boardRow}>
               {row.map((value, c) => {
                 const tile = tileColors(value, dark)
                 return (
                   <View key={c} style={[styles.tile, { backgroundColor: tile.bg }]}>
-                    <Text style={[styles.tileText, { color: tile.color, fontSize: value >= 1024 ? 17 : value >= 128 ? 20 : 25 }]}>
+                    <Text style={[styles.tileText, { color: tile.color, fontSize: boardSize < 300 ? (value >= 1024 ? 13 : value >= 128 ? 16 : 21) : value >= 1024 ? 17 : value >= 128 ? 20 : 25 }]}>
                       {value === 0 ? '' : value}
                     </Text>
                   </View>
@@ -223,14 +230,18 @@ export default function Financial2048Screen() {
           ) : null}
         </View>
 
-        <Text style={styles.swipeHint}>Swipe the board up, down, left, or right to move the tiles.</Text>
-
-        <View style={styles.tipCard}>
-          <Text style={styles.tipTitle}>Money mindset tip</Text>
-          <Text style={styles.tipText}>Good financial habits grow through small, consistent decisions. Set a goal, make a plan, and review your progress regularly.</Text>
+        <View style={[styles.swipeHintCard, { width: boardSize }]}>
+          <Text style={styles.swipeHintIcon}>↕</Text>
+          <Text style={styles.swipeHint}>Swipe anywhere on the board to merge matching tiles</Text>
         </View>
-        <Text style={styles.disclaimer}>This number puzzle is a learning activity and does not represent real money or investment returns.</Text>
-      </ScrollView>
+
+        {!compact ? (
+          <View style={[styles.tipCard, { width: boardSize }]}>
+            <Text style={styles.tipTitle}>💡 Money mindset</Text>
+            <Text style={styles.tipText}>A little planning makes every move count—on the board and with your budget.</Text>
+          </View>
+        ) : null}
+      </View>
     </SafeAreaView>
   )
 }
@@ -264,36 +275,37 @@ function makeStyles(C: ReturnType<typeof getC>, dark: boolean) {
     backText: { color: C.brand, fontSize: 12, fontWeight: '800' },
     headerTitle: { position: 'absolute', left: 72, right: 72, textAlign: 'center', color: C.ink, fontSize: 18, fontWeight: '900' },
     headerSpacer: { width: 44, height: 44 },
-    content: { padding: 17, paddingBottom: 38 },
-    hero: { backgroundColor: C.soft, borderRadius: 18, padding: 19, marginBottom: 16 },
+    playArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, gap: 11 },
+    gameIntro: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+    introCopy: { flex: 1 },
     eyebrow: { color: C.brand, fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
-    heroTitle: { color: C.ink, fontSize: 23, fontWeight: '900', marginTop: 7 },
-    heroText: { color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 7 },
-    scoreRow: { flexDirection: 'row', gap: 8, marginBottom: 13, alignItems: 'stretch' },
-    scoreCard: { flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 12, padding: 10, alignItems: 'center', justifyContent: 'center' },
-    scoreLabel: { color: C.muted, fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
-    scoreValue: { color: C.ink, fontSize: 20, fontWeight: '900', marginTop: 3 },
-    newGameButton: { backgroundColor: C.brand, borderRadius: 12, paddingHorizontal: 12, justifyContent: 'center' },
-    newGameText: { color: '#ffffff', fontSize: 12, fontWeight: '900' },
-    board: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: darkBoard(C), padding: 8, borderRadius: 14, gap: 8, position: 'relative', aspectRatio: 1 },
+    introTitle: { color: C.ink, fontSize: 18, lineHeight: 24, fontWeight: '900', marginTop: 5 },
+    goalBadge: { paddingHorizontal: 13, paddingVertical: 8, borderRadius: 12, backgroundColor: C.soft, alignItems: 'center', minWidth: 70 },
+    goalLabel: { color: C.brand, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+    goalValue: { color: C.ink, fontSize: 18, fontWeight: '900', marginTop: 2 },
+    scoreRow: { flexDirection: 'row', gap: 8, height: 68 },
+    scoreCard: { flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 13, padding: 8, alignItems: 'center', justifyContent: 'center' },
+    scoreLabel: { color: C.muted, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
+    scoreValue: { color: C.ink, fontSize: 22, fontWeight: '900', marginTop: 2 },
+    newGameButton: { minWidth: 88, backgroundColor: C.brand, borderRadius: 13, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
+    restartIcon: { color: '#ffffff', fontSize: 23, fontWeight: '800', lineHeight: 24 },
+    newGameText: { color: '#ffffff', fontSize: 10, fontWeight: '900', marginTop: 1 },
+    board: { alignSelf: 'center', backgroundColor: dark ? '#355248' : '#bbd0c2', borderColor: dark ? '#456257' : '#d9e6dd', borderWidth: 3, padding: 8, borderRadius: 19, gap: 8, position: 'relative', elevation: 3 },
     boardRow: { flex: 1, flexDirection: 'row', gap: 8 },
-    tile: { flex: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    tile: { flex: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     tileText: { fontWeight: '900' },
-    overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10, 20, 16, 0.88)', borderRadius: 14, alignItems: 'center', justifyContent: 'center', padding: 24 },
+    overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10, 27, 23, 0.94)', borderRadius: 16, alignItems: 'center', justifyContent: 'center', padding: 18 },
     overlayTitle: { color: '#ffffff', fontSize: 22, fontWeight: '900', textAlign: 'center' },
     overlayText: { color: '#e1ebe5', fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 8 },
     primaryButton: { backgroundColor: C.brand, borderRadius: 11, paddingVertical: 12, paddingHorizontal: 18, alignItems: 'center', marginTop: 15, width: '100%' },
     primaryButtonText: { color: '#ffffff', fontWeight: '900', fontSize: 13 },
     secondaryButton: { borderWidth: 1, borderColor: '#dce8e1', borderRadius: 11, paddingVertical: 11, paddingHorizontal: 18, alignItems: 'center', marginTop: 9, width: '100%' },
     secondaryButtonText: { color: '#ffffff', fontWeight: '800', fontSize: 13 },
-    swipeHint: { color: C.muted, fontSize: 12, lineHeight: 18, fontWeight: '700', textAlign: 'center', marginTop: 12 },
-    tipCard: { backgroundColor: C.soft, borderRadius: 13, padding: 15, marginTop: 20 },
-    tipTitle: { color: C.ink, fontSize: 13, fontWeight: '900' },
-    tipText: { color: C.muted, fontSize: 12, lineHeight: 19, marginTop: 5 },
-    disclaimer: { color: C.muted, fontSize: 10, lineHeight: 16, textAlign: 'center', marginTop: 16 },
+    swipeHintCard: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingVertical: 7 },
+    swipeHintIcon: { color: C.brand, fontSize: 20, fontWeight: '900' },
+    swipeHint: { flex: 1, color: C.muted, fontSize: 11, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
+    tipCard: { backgroundColor: C.soft, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 11 },
+    tipTitle: { color: C.ink, fontSize: 12, fontWeight: '900' },
+    tipText: { color: C.muted, fontSize: 11, lineHeight: 16, marginTop: 4 },
   })
-}
-
-function darkBoard(C: ReturnType<typeof getC>) {
-  return C.line
 }

@@ -14,6 +14,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router'
 import { UserMenuButton } from '@/components/user-navigation'
 import { supabase } from '@/services/supabase'
+import { LinearGradient } from 'expo-linear-gradient'
 
 type Lesson = {
   id: number
@@ -135,13 +136,24 @@ export default function LessonDetailScreen() {
           </View>
         ) : lesson ? (
           <>
-            <Text style={styles.topic}>{topicNames[lesson.topic] || lesson.topic}</Text>
-            <Text style={styles.title}>{lesson.title}</Text>
+            <LinearGradient
+              colors={['#0a3b34', '#0e7568', '#169581']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.lessonHero}
+            >
+              <View style={styles.topicChip}>
+                <Text style={styles.topic}>{topicNames[lesson.topic] || lesson.topic}</Text>
+              </View>
+              <Text style={styles.lessonHeroTitle}>{lesson.title}</Text>
+              <Text style={styles.lessonHeroSubtitle}>A simple money skill you can use in everyday life.</Text>
+            </LinearGradient>
             <View style={styles.card}>
+              <Text style={styles.readingLabel}>{"TODAY'S LESSON"}</Text>
               <Text style={styles.body}>{lesson.body}</Text>
             </View>
 
-            <Pressable onPress={openResource} style={styles.resourceButton}>
+            <Pressable onPress={openResource} style={styles.resourceButton} accessibilityRole="button">
               <Text style={styles.resourceText}>Read more from an official resource ↗</Text>
             </Pressable>
 
@@ -206,9 +218,13 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   content: { padding: 17, paddingBottom: 40 },
   back: { marginBottom: 18, paddingVertical: 5 },
   backText: { color: C.brand, fontSize: 14, fontWeight: '800' },
-  topic: { color: C.brand, fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
-  title: { color: C.ink, fontSize: 25, fontWeight: '900', marginTop: 7, marginBottom: 17 },
-  card: { backgroundColor: C.card, borderRadius: 15, borderWidth: 1, borderColor: C.line, padding: 17, marginBottom: 13 },
+  lessonHero: { borderRadius: 23, padding: 22, marginBottom: 16, overflow: 'hidden', minHeight: 168, justifyContent: 'center' },
+  topicChip: { backgroundColor: 'rgba(255,255,255,0.17)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 99, alignSelf: 'flex-start' },
+  topic: { color: '#d8fff0', fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
+  lessonHeroTitle: { color: '#ffffff', fontSize: 25, lineHeight: 32, fontWeight: '900', marginTop: 13 },
+  lessonHeroSubtitle: { color: '#d9eee9', fontSize: 12, lineHeight: 18, marginTop: 7 },
+  card: { backgroundColor: C.card, borderRadius: 17, borderWidth: 1, borderColor: C.line, padding: 19, marginBottom: 13 },
+  readingLabel: { color: C.brand, fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 13 },
   body: { color: C.ink, fontSize: 15, lineHeight: 25 },
   resourceButton: { backgroundColor: C.brand, borderRadius: 12, padding: 15, alignItems: 'center', marginVertical: 8 },
   resourceText: { color: (dark ? '#1b2a26' : '#ffffff'), fontWeight: '800', fontSize: 13 },
