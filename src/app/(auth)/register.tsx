@@ -234,6 +234,8 @@ export default function RegisterScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={false}
       >
         <View style={styles.brand}>
           <View style={styles.brandIcon}>
@@ -471,7 +473,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', fontSize: 15, fontWeight: '800',
     letterSpacing: 0.2, textAlign: 'center',
   },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 22 },
+  // Keep the form top-anchored when the keyboard resizes the screen.
+  // Vertical centering here made the content jump while entering passwords.
+  scrollContent: { flexGrow: 1, padding: 22 },
   brand: { alignItems: 'center', marginBottom: 22 },
   brandIcon: { width: 64, height: 64, borderRadius: 18, backgroundColor: '#E6F4ED', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   brandLogo: { width: 56, height: 56 },

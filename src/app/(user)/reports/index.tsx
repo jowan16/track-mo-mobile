@@ -87,7 +87,7 @@ export default function ReportsScreen() {
   const { profile } = useAuth()
   const today = new Date()
 
-  const [mode, setMode] = useState<Mode>('monthly')
+  const [mode, setMode] = useState<Mode>('weekly')
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
   const [weekStart, setWeekStart] = useState(() => {
@@ -454,7 +454,7 @@ export default function ReportsScreen() {
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Spending over the {mode === 'monthly' ? 'month' : 'year'}</Text>
+              <Text style={styles.cardTitle}>Spending over the {mode === 'weekly' ? 'week' : mode === 'monthly' ? 'month' : 'year'}</Text>
               <Text style={styles.muted}>{mode === 'yearly' ? 'Monthly spending totals' : 'Daily spending totals'}</Text>
               <View style={styles.chart}>
                 {chartData.map((item, index) => (
@@ -465,7 +465,7 @@ export default function ReportsScreen() {
                         { height: `${Math.max((item.amount / chartMax) * 100, item.amount > 0 ? 4 : 0)}%` },
                       ]} />
                     </View>
-                    {(mode === 'yearly' || index % 5 === 0 || index === chartData.length - 1) && (
+                    {(mode !== 'monthly' || index % 5 === 0 || index === chartData.length - 1) && (
                       <Text style={styles.barLabel}>{item.label}</Text>
                     )}
                   </View>
