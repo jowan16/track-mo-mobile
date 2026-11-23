@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -192,7 +193,7 @@ export default function LoginScreen() {
       >
         <View style={styles.brand}>
           <View style={styles.brandIcon}>
-            <Text style={styles.brandIconText}>₱</Text>
+            <Image source={require('../../../assets/images/trackmo-mark.png')} style={styles.brandLogo} resizeMode="contain" accessibilityLabel="Track Mo logo" />
           </View>
           <Text style={styles.brandName}>Track Mo, Pake Ko!</Text>
           <Text style={styles.brandTagline}>Your money. Your control.</Text>
@@ -338,18 +339,17 @@ const styles = StyleSheet.create({
     marginBottom: 26,
   },
   brandIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
-    backgroundColor: '#5EEAD4',
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: '#E6F4ED',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
-  brandIconText: {
-    color: '#0A211C',
-    fontSize: 26,
-    fontWeight: '900',
+  brandLogo: {
+    width: 56,
+    height: 56,
   },
   brandName: {
     color: '#FFFFFF',

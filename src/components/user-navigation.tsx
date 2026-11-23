@@ -159,7 +159,7 @@ export function UserDrawerProvider({
 
             <View style={styles.brandHeader}>
               <View style={styles.brandMark}>
-                <Image source={require('../../assets/trackmo-logo.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
+                <Image source={require('../../assets/images/trackmo-mark.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
               </View>
 
               <Text style={styles.brandName}>Track Mo, Pake Ko!</Text>
@@ -305,7 +305,7 @@ function makeStyles(dark: boolean) {
     width: 42,
     height: 42,
     borderRadius: 13,
-    backgroundColor: palette.brand,
+    backgroundColor: '#E6F4ED',
     alignItems: 'center',
     justifyContent: 'center',
   },

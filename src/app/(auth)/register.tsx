@@ -3,6 +3,7 @@ import { useState } from 'react'
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -235,6 +236,9 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.brand}>
+          <View style={styles.brandIcon}>
+            <Image source={require('../../../assets/images/trackmo-mark.png')} style={styles.brandLogo} resizeMode="contain" accessibilityLabel="Track Mo logo" />
+          </View>
           <Text style={styles.brandName}>Track Mo, Pake Ko!</Text>
           <Text style={styles.brandTagline}>Start tracking today</Text>
         </View>
@@ -461,6 +465,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 22 },
   brand: { alignItems: 'center', marginBottom: 22 },
+  brandIcon: { width: 64, height: 64, borderRadius: 18, backgroundColor: '#E6F4ED', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  brandLogo: { width: 56, height: 56 },
   brandName: { color: '#FFFFFF', fontSize: 23, fontWeight: '800' },
   brandTagline: { color: '#B7CEC6', fontSize: 13, marginTop: 6 },
   card: {

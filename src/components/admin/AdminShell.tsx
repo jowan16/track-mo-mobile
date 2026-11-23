@@ -2,6 +2,7 @@ import { router, useSegments } from 'expo-router'
 import { useState, type ReactNode } from 'react'
 import {
   Alert,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -110,7 +111,7 @@ export function AdminShell({
           <View style={styles.drawer}>
             <View style={styles.drawerBrandRow}>
               <View style={styles.drawerBrandMark}>
-                <Text style={styles.drawerBrandMarkText}>₱</Text>
+                <Image source={require('../../../assets/images/trackmo-mark.png')} style={styles.drawerBrandLogo} resizeMode="contain" accessibilityLabel="Track Mo logo" />
               </View>
               <View style={styles.drawerBrandText}>
                 <Text style={styles.drawerBrand}>Track Mo, Pake Ko!</Text>
@@ -254,11 +255,11 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 13,
-    backgroundColor: adminColors.primary,
+    backgroundColor: '#E6F4ED',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  drawerBrandMarkText: { color: '#FFFFFF', fontSize: 24, fontWeight: '800' },
+  drawerBrandLogo: { width: 38, height: 38 },
   drawerBrandText: { flex: 1, marginLeft: 11 },
   drawerBrand: { color: adminColors.text, fontSize: 15, fontWeight: '800' },
   drawerBrandSubtitle: { color: adminColors.muted, fontSize: 10, marginTop: 2 },
