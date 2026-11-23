@@ -55,6 +55,7 @@ export default function AdminCategoriesScreen() {
       .from('categories')
       .select('id, slug, name, icon, color, bg, is_active, show_in_picker, sort_order')
       .is('user_id', null)
+      .eq('is_active', true)
       .order('sort_order', { ascending: true })
     if (queryError) {
       setError(queryError.message)

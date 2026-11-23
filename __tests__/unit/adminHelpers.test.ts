@@ -82,5 +82,13 @@ describe('admin audit and report helpers', () => {
       { id: null, name: 'Transport', color: '#0f766e', show: true },
       [],
     )).toEqual({})
+    expect(validateCategoryDraft(
+      { id: null, name: '  transportation  ', color: '#0f766e', show: true },
+      [{ id: 1, name: 'Transportation', is_active: true, show_in_picker: true }],
+    )).toEqual({ name: 'This category already exists. Please enter a different name.' })
+    expect(validateCategoryDraft(
+      { id: 1, name: ' transportation ', color: '#0f766e', show: true },
+      [{ id: 1, name: 'Transportation', is_active: true, show_in_picker: true }],
+    )).toEqual({})
   })
 })

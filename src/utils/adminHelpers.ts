@@ -92,13 +92,16 @@ export function filterAccounts<T extends { role: string; status: string; full_na
 }
 
 export type CategoryDraft = { id: number | null; name: string; color: string; show: boolean }
-export type ExistingCategory = { id: number; is_active: boolean; show_in_picker: boolean }
+export type ExistingCategory = { id: number; name: string; is_active: boolean; show_in_picker: boolean }
 
 export function validateCategoryDraft(draft: CategoryDraft, categories: ExistingCategory[]) {
   const errors: { name?: string; color?: string; show?: string } = {}
   const name = draft.name.trim()
   if (!name) errors.name = 'Enter a category name.'
   else if (name.length > 30) errors.name = 'Name is too long (30 characters max).'
+  else if (categories.some((category) => category.id !== draft.id && category.is_active && category.name.trim().toLowerCase() === name.toLowerCase())) {
+    errors.name = 'This category already exists. Please enter a different name.'
+  }
   if (!/^#[0-9a-fA-F]{6}$/.test(draft.color)) errors.color = 'Enter a valid hex color, for example #0F766E.'
   if (!draft.show && categories.filter((category) => category.id !== draft.id && category.is_active && category.show_in_picker).length === 0) {
     errors.show = 'At least one category must stay visible in the picker.'
