@@ -564,7 +564,7 @@ export default function BudgetsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom']}>
         <ActivityIndicator size="large" color={COLORS.brand} />
         <Text style={styles.loadingText}>Loading your budgets...</Text>
       </SafeAreaView>
@@ -574,7 +574,7 @@ export default function BudgetsScreen() {
   // MAIN SCREEN
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <UserPageHeader title="Budgets" subtitle="Manage your monthly spending limits." />
       <ScrollView
         style={styles.scrollView}
