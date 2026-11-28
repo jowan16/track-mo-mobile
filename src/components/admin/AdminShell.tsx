@@ -281,9 +281,9 @@ const styles = StyleSheet.create({
   drawerBrand: { color: adminColors.text, fontSize: 15, fontWeight: '800' },
   drawerBrandSubtitle: { color: adminColors.muted, fontSize: 10, marginTop: 2 },
   closeButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
