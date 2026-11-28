@@ -108,7 +108,7 @@ export default function IndexScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ActivityIndicator size="large" color="#0F766E" />
-    </View>
+    </SafeAreaView>
   )
 }
 
