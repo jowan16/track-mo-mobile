@@ -341,7 +341,7 @@ export default function ReportsScreen() {
   }, [topCategory, change, mode, budgets, currentExpenses, categories])
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <UserPageHeader title="Reports" subtitle="Understand where your money goes." />
 
       <ScrollView
