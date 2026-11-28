@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 
 import { useAuth } from '@/context/AuthContext'
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
 import { recognizeReceipt, uploadReceipt } from '@/services/receiptStorage'
 import { parseReceiptQR, parseReceiptText } from '@/services/receiptParser'
 
@@ -153,14 +153,7 @@ export default function ScanReceiptScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <UserMenuButton />
-        <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Scan Receipt</Text>
-          <Text style={styles.headerSubtitle}>AI-powered expense recognition</Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      <UserPageHeader title="Scan Receipt" subtitle="AI-powered expense recognition" />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.intro}>
@@ -229,23 +222,7 @@ export default function ScanReceiptScreen() {
 
 function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.canvas },
-  header: {
-      position: 'relative',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 18,
-      paddingVertical: 14,
-      minHeight: 72,
-      backgroundColor: dark ? '#1b2a26' : '#ffffff',
-      borderBottomWidth: 1,
-      borderBottomColor: dark ? '#30413a' : '#e4e8e5',
-    },
-  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: COLORS.ink, textAlign: 'center' },
-  headerSubtitle: { color: COLORS.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
-  headerSpacer: { width: 44, height: 44 },
-  content: { padding: 20, paddingBottom: 44, gap: 17 },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 36, gap: 16 },
   intro: { alignItems: 'center', paddingVertical: 16 },
   introIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: COLORS.brandLight, alignItems: 'center', justifyContent: 'center', marginBottom: 13 },
   introIconText: { color: COLORS.brand, fontSize: 30, fontWeight: '800' },
