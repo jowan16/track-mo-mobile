@@ -23,7 +23,7 @@ type ExportKind = 'detailed' | 'category' | 'monthly'
 
 type ExpenseRow = {
   id: string
-  category_id: string
+  category_id: number
   amount: number
   spent_on: string
   payment_method: string | null
@@ -59,7 +59,7 @@ type ExportTable = {
 }
 
 type CategoryRow = {
-  id: string
+  id: number
   name: string
 }
 
@@ -157,10 +157,10 @@ export default function ReportExportScreen() {
     if (expenseResult.error) throw expenseResult.error
 
     const categories = (categoryResult.data || []) as CategoryRow[]
-    const trackedIds = new Set(
-      (trackedResult.data || []).map((item: { category_id: string }) => item.category_id),
+    const trackedIds = new Set<number>(
+      (trackedResult.data || []).map((item: { category_id: number }) => item.category_id),
     )
-    const categoryNames = new Map(categories.map((item) => [item.id, item.name]))
+    const categoryNames = new Map<number, string>(categories.map((item) => [item.id, item.name]))
 
     const expenses = ((expenseResult.data || []) as ExpenseRow[])
       .filter((item) => trackedIds.has(item.category_id))
