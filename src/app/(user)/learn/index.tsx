@@ -84,7 +84,7 @@ export default function LearnHubScreen() {
   }, [])
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <UserPageHeader title="Financial Literacy" subtitle="Learn to make better money decisions" />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

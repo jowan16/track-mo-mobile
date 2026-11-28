@@ -1,5 +1,6 @@
 import { Redirect, Stack } from 'expo-router'
-import { ActivityIndicator, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, StyleSheet } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/context/AuthContext'
 
@@ -8,9 +9,9 @@ export default function AdminLayout() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <ActivityIndicator size="large" color="#4F46E5" />
-      </View>
+      </SafeAreaView>
     )
   }
 

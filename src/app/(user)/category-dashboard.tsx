@@ -345,7 +345,7 @@ function makeStyles(dark: boolean) { return StyleSheet.create({
   selectAllText: { color: (dark ? '#55c6b0' : '#0F766E'), fontSize: 12, fontWeight: '800' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   categoryCard: {
-    width: '48%',
+    width: '47%',
     minHeight: 145,
     padding: 13,
     borderRadius: 13,

@@ -5,14 +5,14 @@ import {
   Alert,
   Linking,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
-import { UserMenuButton } from '@/components/user-navigation'
+import { UserPageHeader } from '@/components/user-navigation'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from '@/services/supabase'
 
 type Lesson = {
@@ -112,17 +112,10 @@ export default function LessonDetailScreen() {
   const topicLessons = lessons.filter((item) => item.topic === id)
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <UserMenuButton />
-        <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Learning lesson</Text>
-          <Text style={styles.headerSubtitle}>Financial Literacy</Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <UserPageHeader title="Learning lesson" subtitle="Financial Literacy" />
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Pressable onPress={() => router.back()} style={styles.back}>
           <Text style={styles.backText}>‹  Back to topics</Text>
         </Pressable>
@@ -187,27 +180,11 @@ export default function LessonDetailScreen() {
 
 function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
-  header: {
-      position: 'relative',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 18,
-      paddingVertical: 14,
-      minHeight: 72,
-      backgroundColor: dark ? '#1b2a26' : '#ffffff',
-      borderBottomWidth: 1,
-      borderBottomColor: dark ? '#30413a' : '#e4e8e5',
-    },
-  headerText: { position: 'absolute', left: 72, right: 72, alignItems: 'center' },
-  headerSpacer: { width: 44, height: 44 },
-  headerTitle: { color: C.ink, fontSize: 24, fontWeight: '800', textAlign: 'center' },
-  headerSubtitle: { color: C.muted, fontSize: 12, marginTop: 3, textAlign: 'center' },
   content: { padding: 17, paddingBottom: 40 },
-  back: { marginBottom: 18, paddingVertical: 5 },
+  back: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', marginBottom: 12, paddingVertical: 5, paddingHorizontal: 2 },
   backText: { color: C.brand, fontSize: 14, fontWeight: '800' },
   topic: { color: C.brand, fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
-  title: { color: C.ink, fontSize: 25, fontWeight: '900', marginTop: 7, marginBottom: 17 },
+  title: { color: C.ink, fontSize: 23, lineHeight: 30, fontWeight: '900', marginTop: 7, marginBottom: 15 },
   card: { backgroundColor: C.card, borderRadius: 15, borderWidth: 1, borderColor: C.line, padding: 17, marginBottom: 13 },
   body: { color: C.ink, fontSize: 15, lineHeight: 25 },
   resourceButton: { backgroundColor: C.brand, borderRadius: 12, padding: 15, alignItems: 'center', marginVertical: 8 },

@@ -12,6 +12,7 @@ import {
 import { router, usePathname } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { useAppTheme } from '@/context/ThemeContext'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type DrawerContextType = {
   openDrawer: () => void
@@ -35,6 +36,7 @@ export function UserDrawerProvider({
   children: React.ReactNode
 }) {
   const [visible, setVisible] = useState(false)
+  const insets = useSafeAreaInsets()
   const { profile, signOut } = useAuth()
   const pathname = usePathname()
   const { resolvedTheme } = useAppTheme()
@@ -154,7 +156,7 @@ export function UserDrawerProvider({
             accessibilityLabel="Close navigation menu"
           />
 
-          <View style={styles.drawer}>
+          <View style={[styles.drawer, { paddingTop: Math.max(insets.top, 16) + 12, paddingBottom: Math.max(insets.bottom, 12) + 12 }]}>
             {/* BRAND */}
 
             <View style={styles.brandHeader}>
@@ -298,13 +300,12 @@ function makeStyles(dark: boolean) {
     ...StyleSheet.absoluteFill,
   },
   drawer: {
-    width: '82%',
-    maxWidth: 340,
+    width: '84%',
+    maxWidth: 360,
     height: '100%',
+    minHeight: 0,
     backgroundColor: palette.drawer,
-    paddingTop: 58,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingHorizontal: 18,
     zIndex: 1,
   },
   brandHeader: {
@@ -333,9 +334,9 @@ function makeStyles(dark: boolean) {
     marginLeft: 11,
   },
   closeButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: palette.subtle,
     alignItems: 'center',
     justifyContent: 'center',
@@ -351,7 +352,8 @@ function makeStyles(dark: boolean) {
   },
   menuScroll: {
     flex: 1,
-    marginTop: 18,
+    minHeight: 0,
+    marginTop: 14,
   },
   menuContent: {
     gap: 6,
@@ -469,8 +471,8 @@ function makeStyles(dark: boolean) {
     marginRight: 4,
   },
   menuButton: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     backgroundColor: palette.active,
     alignItems: 'center',
@@ -497,36 +499,44 @@ export function UserPageHeader({
 
   return (
     <View style={{
-      position: 'relative',
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 18,
-      paddingVertical: 14,
-      minHeight: 72,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      minHeight: 66,
       backgroundColor: dark ? '#1b2421' : '#ffffff',
       borderBottomWidth: 1,
       borderBottomColor: dark ? '#34423c' : '#e4e8e5',
+      gap: 8,
     }}>
       <UserMenuButton />
-      <View style={{
-        position: 'absolute',
-        left: 72,
-        right: 72,
-        alignItems: 'center',
-      }}>
-        <Text style={{
-          color: dark ? '#f1f5f3' : '#14201c',
-          fontSize: 24,
-          fontWeight: '800',
-          textAlign: 'center',
-        }} numberOfLines={1}>{title}</Text>
-        <Text style={{
-          color: dark ? '#a0ada7' : '#64716b',
-          fontSize: 12,
-          marginTop: 3,
-          textAlign: 'center',
-        }} numberOfLines={1}>{subtitle}</Text>
+      <View style={{ flex: 1, minWidth: 0, alignItems: 'center', paddingHorizontal: 4 }}>
+        <Text
+          style={{
+            color: dark ? '#f1f5f3' : '#14201c',
+            fontSize: 20,
+            lineHeight: 25,
+            fontWeight: '800',
+            textAlign: 'center',
+            maxWidth: '100%',
+          }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.78}
+        >{title}</Text>
+        <Text
+          style={{
+            color: dark ? '#a0ada7' : '#64716b',
+            fontSize: 11,
+            lineHeight: 15,
+            marginTop: 2,
+            textAlign: 'center',
+            maxWidth: '100%',
+          }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.85}
+        >{subtitle}</Text>
       </View>
       <View style={{ width: 44, height: 44 }} />
     </View>

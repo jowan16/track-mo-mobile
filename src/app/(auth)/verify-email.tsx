@@ -13,6 +13,7 @@ import {
 } from 'react-native'
 
 import { supabase } from '@/services/supabase'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 const AUTH_REDIRECT_URL = 'trackmomobile://verify-email'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -108,10 +109,11 @@ export default function VerifyEmailScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -191,7 +193,8 @@ export default function VerifyEmailScreen() {
 
         <Text style={styles.footer}>Track your expenses. Manage your budget. Stay in control.</Text>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
 

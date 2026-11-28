@@ -341,7 +341,7 @@ export default function ReportsScreen() {
   }, [topCategory, change, mode, budgets, currentExpenses, categories])
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <UserPageHeader title="Reports" subtitle="Understand where your money goes." />
 
       <ScrollView
@@ -555,7 +555,7 @@ function makeStyles(dark: boolean, C: any) { return StyleSheet.create({
     flexDirection: 'row', backgroundColor: (dark ? '#2a3a34' : '#e9eeeb'),
     padding: 4, borderRadius: 12,
   },
-  toggleButton: { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: 'center' },
+  toggleButton: { flex: 1, minHeight: 42, paddingVertical: 10, borderRadius: 9, alignItems: 'center' },
   toggleActive: { backgroundColor: C.white },
   toggleText: { color: C.muted, fontSize: 13, fontWeight: '700' },
   toggleTextActive: { color: C.brand },

@@ -16,6 +16,7 @@ import {
 } from 'react-native'
 
 import { supabase } from '@/services/supabase'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function ResetPasswordScreen() {
   const { code, verified: verifiedParam } = useLocalSearchParams<{ code?: string; verified?: string }>()
@@ -186,16 +187,18 @@ export default function ResetPasswordScreen() {
 
   if (verifying) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#5EEAD4" />
-        <Text style={styles.loadingText}>Verifying reset link...</Text>
-      </View>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#5EEAD4" />
+          <Text style={styles.loadingText}>Verifying reset link...</Text>
+        </View>
+      </SafeAreaView>
     )
   }
 
   if (!verified) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -237,15 +240,16 @@ export default function ResetPasswordScreen() {
             Track your expenses. Manage your budget. Stay in control.
           </Text>
         </ScrollView>
-      </View>
+      </SafeAreaView>
     )
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -335,7 +339,8 @@ export default function ResetPasswordScreen() {
 
         <Text style={styles.footer}>Track your expenses. Manage your budget. Stay in control.</Text>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
 

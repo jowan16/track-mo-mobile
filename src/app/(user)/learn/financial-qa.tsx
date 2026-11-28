@@ -2,12 +2,12 @@ import { useAppTheme } from '@/context/ThemeContext'
 import React, { useState } from 'react'
 import {
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 
 type Question = {
@@ -141,7 +141,7 @@ export default function FinancialQAScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backText}>‹ Back</Text>
@@ -253,10 +253,10 @@ function makeStyles(C: ReturnType<typeof getC>, dark: boolean) {
       borderBottomWidth: 1,
       borderBottomColor: dark ? '#30413a' : '#e4e8e5',
     },
-    backButton: { width: 44, height: 44, alignItems: 'flex-start', justifyContent: 'center' },
+    backButton: { width: 48, minHeight: 44, flexShrink: 0, alignItems: 'flex-start', justifyContent: 'center' },
     backText: { color: C.brand, fontSize: 12, fontWeight: '800' },
-    headerTitle: { position: 'absolute', left: 72, right: 72, textAlign: 'center', color: C.ink, fontSize: 18, fontWeight: '900' },
-    headerSpacer: { width: 44, height: 44 },
+    headerTitle: { flex: 1, minWidth: 0, paddingHorizontal: 5, textAlign: 'center', color: C.ink, fontSize: 16, lineHeight: 21, fontWeight: '900' },
+    headerSpacer: { width: 44, height: 44, flexShrink: 0 },
     content: { padding: 17, paddingBottom: 36 },
     hero: { backgroundColor: C.soft, borderRadius: 18, padding: 19, marginBottom: 18 },
     eyebrow: { color: C.brand, fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },

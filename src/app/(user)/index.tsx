@@ -627,7 +627,7 @@ export default function UserDashboard() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom']}>
         <ActivityIndicator size="large" color={COLORS.brand} />
         <Text style={styles.loadingText}>Preparing your dashboard...</Text>
       </SafeAreaView>
@@ -639,7 +639,7 @@ export default function UserDashboard() {
   // ------------------------------------------------
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <UserPageHeader title="Track Mo, Pake Ko!" subtitle="Your personal finance overview" />
       <ScrollView
         style={styles.scrollView}
@@ -1531,7 +1531,7 @@ function makeStyles(dark: boolean, COLORS: any) { return StyleSheet.create({
     marginBottom: 22,
   },
   summaryCard: {
-    width: '48%',
+    width: '47%',
     minHeight: 154,
     backgroundColor: (dark ? '#1b2a26' : '#ffffff'),
     borderRadius: 18,

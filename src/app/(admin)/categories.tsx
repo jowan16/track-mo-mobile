@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -214,7 +216,11 @@ export default function AdminCategoriesScreen() {
 
       <Modal transparent visible={!!draft} animationType="slide" onRequestClose={() => { if (!saving) setDraft(null) }}>
         <View style={styles.modalBackdrop}>
-          <ScrollView contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled">
+          <KeyboardAvoidingView
+            style={styles.modalKeyboard}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <ScrollView contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled">
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>{draft?.id === null ? 'New category' : 'Edit category'}</Text>
               <Text style={styles.fieldLabel}>Name</Text>
@@ -343,7 +349,8 @@ export default function AdminCategoriesScreen() {
                 </Pressable>
               </View>
             </View>
-          </ScrollView>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -357,18 +364,19 @@ const styles = StyleSheet.create({
   newButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
   error: { color: adminColors.danger, backgroundColor: '#FEECEC', padding: 11, borderRadius: 9, fontSize: 11 },
   empty: { color: adminColors.muted, textAlign: 'center', padding: 25, backgroundColor: '#FFFFFF', borderRadius: 12 },
-  categoryCard: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: adminColors.border, padding: 11, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  categoryCard: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: adminColors.border, padding: 11, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
   disabledCard: { opacity: 0.6 },
   iconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   iconGlyph: { fontSize: 21, fontWeight: '900' },
-  categoryInfo: { flex: 1 },
+  categoryInfo: { flex: 1, minWidth: 100 },
   categoryName: { color: adminColors.text, fontSize: 12, fontWeight: '900' },
   categoryMeta: { color: adminColors.muted, fontSize: 9, marginTop: 4 },
-  editButton: { paddingHorizontal: 8, paddingVertical: 8 },
+  editButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 8 },
   editText: { color: adminColors.primary, fontSize: 10, fontWeight: '900' },
-  removeButton: { paddingHorizontal: 7, paddingVertical: 8 },
+  removeButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 9, paddingVertical: 8 },
   removeText: { color: adminColors.danger, fontSize: 10, fontWeight: '900' },
   modalBackdrop: { flex: 1, backgroundColor: '#0F172A88', justifyContent: 'center', padding: 17 },
+  modalKeyboard: { flex: 1, justifyContent: 'center' },
   modalScroll: { flexGrow: 1, justifyContent: 'center' },
   modalCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, gap: 9 },
   modalTitle: { color: adminColors.text, fontSize: 17, fontWeight: '900', marginBottom: 4 },
@@ -400,7 +408,7 @@ const styles = StyleSheet.create({
   iconChoiceLabelActive: { color: adminColors.primary, fontWeight: '900' },
   switchRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
   switchHint: { color: adminColors.muted, fontSize: 9, marginTop: 2 },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 9, marginTop: 10 },
+  modalActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', gap: 9, marginTop: 10 },
   cancelButton: { borderWidth: 1, borderColor: adminColors.border, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 11 },
   cancelText: { color: adminColors.text, fontSize: 11, fontWeight: '800' },
 })
