@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -214,7 +216,11 @@ export default function AdminCategoriesScreen() {
 
       <Modal transparent visible={!!draft} animationType="slide" onRequestClose={() => { if (!saving) setDraft(null) }}>
         <View style={styles.modalBackdrop}>
-          <ScrollView contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled">
+          <KeyboardAvoidingView
+            style={styles.modalKeyboard}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <ScrollView contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled">
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>{draft?.id === null ? 'New category' : 'Edit category'}</Text>
               <Text style={styles.fieldLabel}>Name</Text>
@@ -343,7 +349,8 @@ export default function AdminCategoriesScreen() {
                 </Pressable>
               </View>
             </View>
-          </ScrollView>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -369,6 +376,7 @@ const styles = StyleSheet.create({
   removeButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 9, paddingVertical: 8 },
   removeText: { color: adminColors.danger, fontSize: 10, fontWeight: '900' },
   modalBackdrop: { flex: 1, backgroundColor: '#0F172A88', justifyContent: 'center', padding: 17 },
+  modalKeyboard: { flex: 1, justifyContent: 'center' },
   modalScroll: { flexGrow: 1, justifyContent: 'center' },
   modalCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, gap: 9 },
   modalTitle: { color: adminColors.text, fontSize: 17, fontWeight: '900', marginBottom: 4 },
