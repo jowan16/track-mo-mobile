@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   retryButton: { alignSelf: 'flex-start', marginTop: 8, backgroundColor: adminColors.primary, borderRadius: 9, paddingHorizontal: 13, paddingVertical: 10 },
   error: { color: adminColors.danger, backgroundColor: '#FEECEC', padding: 11, borderRadius: 9, fontSize: 11 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-  statCard: { width: '31.5%', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 12, padding: 10, minHeight: 90 },
+  statCard: { flexGrow: 1, flexBasis: '30%', minWidth: 100, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 12, padding: 10, minHeight: 90 },
   statLabel: { color: adminColors.muted, fontSize: 9, fontWeight: '700' },
   statValue: { color: adminColors.text, fontSize: 23, fontWeight: '900', marginTop: 13 },
   section: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 13, padding: 14 },
