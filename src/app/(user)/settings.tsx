@@ -154,14 +154,14 @@ export default function SettingsScreen() {
 
   if (!profile) {
     return (
-      <SafeAreaView style={[styles.screen, styles.center]}>
+      <SafeAreaView style={[styles.screen, styles.center]} edges={['top', 'bottom']}>
         <ActivityIndicator size="large" color={C.brand} />
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <UserPageHeader title="Settings" subtitle="Manage your account and preferences" />
 
       <KeyboardAvoidingView
