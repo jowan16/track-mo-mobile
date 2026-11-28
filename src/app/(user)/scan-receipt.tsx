@@ -152,7 +152,7 @@ export default function ScanReceiptScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <UserMenuButton />
         <View style={styles.headerText}>
