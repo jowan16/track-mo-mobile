@@ -1,6 +1,7 @@
 
 import { Redirect, Stack } from 'expo-router'
 import { ActivityIndicator, StyleSheet, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { UserDrawerProvider } from '@/components/user-navigation'
 import { useAuth } from '@/context/AuthContext'
@@ -10,9 +11,9 @@ export default function UserLayout() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <ActivityIndicator size="large" color="#2563EB" />
-      </View>
+      </SafeAreaView>
     )
   }
 
