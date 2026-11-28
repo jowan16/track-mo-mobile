@@ -1,5 +1,6 @@
 import { router } from 'expo-router'
 import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 const sections = [
   {
@@ -30,7 +31,7 @@ const sections = [
 
 export default function TermsScreen() {
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
           <Text style={styles.title}>Terms and Conditions</Text>
@@ -46,7 +47,7 @@ export default function TermsScreen() {
           </Pressable>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   )
 }
 
