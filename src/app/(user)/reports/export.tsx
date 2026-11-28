@@ -160,7 +160,7 @@ export default function ReportExportScreen() {
     const trackedIds = new Set<number>(
       (trackedResult.data || []).map((item: { category_id: number }) => item.category_id),
     )
-    const categoryNames = new Map<number, string>(categories.map((item) => [item.id, item.name]))
+    const categoryNames = new Map<number, string>(categories.map((item): [number, string] => [item.id, item.name]))
 
     const expenses = ((expenseResult.data || []) as ExpenseRow[])
       .filter((item) => trackedIds.has(item.category_id))
