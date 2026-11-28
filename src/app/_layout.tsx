@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { DarkTheme, DefaultTheme, ThemeProvider as RouterThemeProvider, Stack, router } from 'expo-router'
 import * as Linking from 'expo-linking'
 import { View } from 'react-native'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { AuthProvider } from '@/context/AuthContext'
 import { ThemeProvider, useAppTheme } from '@/context/ThemeContext'
@@ -175,10 +176,12 @@ function AppContent() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   )
 }
