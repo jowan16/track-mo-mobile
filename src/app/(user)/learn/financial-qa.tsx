@@ -2,12 +2,12 @@ import { useAppTheme } from '@/context/ThemeContext'
 import React, { useState } from 'react'
 import {
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 
 type Question = {
@@ -141,7 +141,7 @@ export default function FinancialQAScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backText}>‹ Back</Text>
