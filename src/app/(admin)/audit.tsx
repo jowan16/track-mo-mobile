@@ -122,8 +122,8 @@ export default function AdminAuditScreen() {
 }
 
 const styles = StyleSheet.create({
-  summary: { flexDirection: 'row', gap: 9 },
-  summaryCard: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 12, padding: 12 },
+  summary: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  summaryCard: { flex: 1, minWidth: 125, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 12, padding: 12 },
   summaryLabel: { color: adminColors.muted, fontSize: 10 },
   summaryValue: { color: adminColors.text, fontSize: 24, fontWeight: '900', marginTop: 8 },
   filters: { flexDirection: 'row', gap: 6 },
@@ -135,9 +135,9 @@ const styles = StyleSheet.create({
   emptyCard: { backgroundColor: '#FFFFFF', padding: 25, borderRadius: 12, alignItems: 'center' },
   emptyText: { color: adminColors.muted, fontSize: 11 },
   logCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: adminColors.border, borderRadius: 11, padding: 13, gap: 8 },
-  logTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
+  logTop: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
   action: { flex: 1, color: adminColors.text, fontSize: 11, fontWeight: '900' },
-  time: { color: adminColors.muted, fontSize: 9 },
+  time: { color: adminColors.muted, fontSize: 9, flexShrink: 0 },
   actor: { color: adminColors.muted, fontSize: 10 },
   pagination: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 7 },
   pageButton: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: adminColors.border, backgroundColor: '#FFFFFF' },
