@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +14,7 @@ import * as FileSystem from 'expo-file-system/legacy'
 import * as Print from 'expo-print'
 import * as Sharing from 'expo-sharing'
 import { UserPageHeader } from '@/components/user-navigation'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
 import { csvCell, htmlText } from '@/utils/userHelpers'
@@ -511,7 +511,7 @@ export default function ReportExportScreen() {
       ]
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <UserPageHeader title="Export report" subtitle="Create a file you can share" />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
