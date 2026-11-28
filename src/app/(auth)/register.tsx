@@ -14,6 +14,7 @@ import {
 } from 'react-native'
 
 import { supabase } from '@/services/supabase'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const AUTH_REDIRECT_URL = 'trackmomobile://verify-email'
@@ -157,9 +158,9 @@ export default function RegisterScreen() {
 
   if (successEmail) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <ScrollView
-          contentContainerStyle={styles.successScrollContent}
+          contentContainerStyle={styles.successScrollContent>
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -222,15 +223,16 @@ export default function RegisterScreen() {
             </Pressable>
           </View>
         </ScrollView>
-      </View>
+      </SafeAreaView>
     )
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -419,7 +421,8 @@ export default function RegisterScreen() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
 
