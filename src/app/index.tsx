@@ -1,6 +1,7 @@
 import { Redirect } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/services/supabase'
@@ -82,9 +83,9 @@ export default function IndexScreen() {
 
   if (loading || checkingCategories) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <ActivityIndicator size="large" color="#0F766E" />
-      </View>
+      </SafeAreaView>
     )
   }
 
@@ -94,18 +95,18 @@ export default function IndexScreen() {
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <Text style={styles.errorTitle}>Unable to load your account</Text>
         <Text style={styles.errorText}>{error}</Text>
         <Pressable style={styles.retryButton} onPress={() => setRetry((value) => value + 1)}>
           <Text style={styles.retryText}>Try again</Text>
         </Pressable>
-      </View>
+      </SafeAreaView>
     )
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ActivityIndicator size="large" color="#0F766E" />
     </View>
   )
