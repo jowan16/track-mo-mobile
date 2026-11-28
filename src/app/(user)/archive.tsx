@@ -241,7 +241,7 @@ export default function ArchiveScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <UserPageHeader title="Archive" subtitle="Manage your archived records" />
 
       <View style={styles.tabs}>
