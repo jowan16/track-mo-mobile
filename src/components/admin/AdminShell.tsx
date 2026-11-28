@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/context/AuthContext'
 
@@ -35,6 +35,7 @@ export function AdminShell({
   const segments = useSegments()
   const [signingOut, setSigningOut] = useState(false)
   const [drawerVisible, setDrawerVisible] = useState(false)
+  const insets = useSafeAreaInsets()
   const current = segments[1] ?? 'index'
   const activeRoute =
     current === 'index' ? '/(admin)' : `/(admin)/${current}`
@@ -67,7 +68,7 @@ export function AdminShell({
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <View style={styles.brandRow}>
           <Pressable
@@ -108,7 +109,7 @@ export function AdminShell({
             onPress={closeDrawer}
             accessibilityLabel="Close navigation menu"
           />
-          <View style={styles.drawer}>
+          <View style={[styles.drawer, { paddingTop: Math.max(insets.top, 16) + 12, paddingBottom: Math.max(insets.bottom, 12) + 12 }]}>
             <View style={styles.drawerBrandRow}>
               <View style={styles.drawerBrandMark}>
                 <Image source={require('../../../assets/images/trackmo-mark.png')} style={styles.drawerBrandLogo} resizeMode="contain" accessibilityLabel="Track Mo logo" />
@@ -254,13 +255,12 @@ const styles = StyleSheet.create({
   },
   backdrop: { ...StyleSheet.absoluteFill },
   drawer: {
-    width: '82%',
-    maxWidth: 340,
+    width: '84%',
+    maxWidth: 360,
     height: '100%',
+    minHeight: 0,
     backgroundColor: '#FFFFFF',
-    paddingTop: 58,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingHorizontal: 18,
     zIndex: 1,
   },
   drawerBrandRow: {
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   },
   closeText: { color: '#475569', fontSize: 25, lineHeight: 29 },
   separator: { height: 1, backgroundColor: '#E8EEEB' },
-  menuScroll: { flex: 1, marginTop: 18 },
+  menuScroll: { flex: 1, minHeight: 0, marginTop: 14 },
   menuContent: { gap: 6, paddingBottom: 20 },
   menuItem: {
     minHeight: 49,
