@@ -160,7 +160,7 @@ export default function RegisterScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <ScrollView
-          contentContainerStyle={styles.successScrollContent}>
+          contentContainerStyle={styles.successScrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
