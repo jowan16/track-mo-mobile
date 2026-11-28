@@ -334,9 +334,9 @@ function makeStyles(dark: boolean) {
     marginLeft: 11,
   },
   closeButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: palette.subtle,
     alignItems: 'center',
     justifyContent: 'center',
